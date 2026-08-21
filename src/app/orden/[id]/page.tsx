@@ -115,7 +115,7 @@ export default function OrderStatusPage() {
 
         {/* Status Header Banner */}
         <div
-          className={`rounded-3xl p-6 sm:p-8 border shadow-2xl relative overflow-hidden backdrop-blur-xl ${
+          className={`rounded-2xl sm:rounded-3xl p-4 sm:p-8 border shadow-2xl relative overflow-hidden backdrop-blur-xl ${
             isApproved
               ? 'bg-gradient-to-br from-emerald-950/80 via-slate-900/90 to-slate-950/90 border-emerald-500/40'
               : isRejected
@@ -124,9 +124,9 @@ export default function OrderStatusPage() {
           }`}
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3 sm:gap-4">
               <div
-                className={`h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 ${
+                className={`h-11 w-11 sm:h-14 sm:w-14 rounded-2xl flex items-center justify-center shrink-0 ${
                   isApproved
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : isRejected
@@ -135,11 +135,11 @@ export default function OrderStatusPage() {
                 }`}
               >
                 {isApproved ? (
-                  <CheckCircle2 className="h-8 w-8" />
+                  <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8" />
                 ) : isRejected ? (
-                  <XCircle className="h-8 w-8" />
+                  <XCircle className="h-6 w-6 sm:h-8 sm:w-8" />
                 ) : (
-                  <Clock className="h-8 w-8 animate-pulse" />
+                  <Clock className="h-6 w-6 sm:h-8 sm:w-8 animate-pulse" />
                 )}
               </div>
 

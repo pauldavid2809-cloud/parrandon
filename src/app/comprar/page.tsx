@@ -328,18 +328,18 @@ export default function ComprarPage() {
       <div className="max-w-4xl mx-auto">
         
         {/* Step Indicator */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between max-w-md mx-auto relative">
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-full bg-slate-800 -z-0" />
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-between max-w-md mx-auto relative px-2">
+            <div className="absolute left-4 right-4 top-4.5 sm:top-5 h-0.5 bg-slate-800 -z-0" />
             <div
-              className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-300 -z-0"
-              style={{ width: `${((step - 1) / 2) * 100}%` }}
+              className="absolute left-4 top-4.5 sm:top-5 h-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-300 -z-0"
+              style={{ width: `${((step - 1) / 2) * 88}%` }}
             />
 
             {[
-              { num: 1, title: 'Mesas & Sillas' },
-              { num: 2, title: 'Datos Asistentes' },
-              { num: 3, title: 'Pago & Capture' }
+              { num: 1, shortTitle: 'Sillas', title: 'Mesas & Sillas' },
+              { num: 2, shortTitle: 'Datos', title: 'Datos Asistentes' },
+              { num: 3, shortTitle: 'Pago', title: 'Pago Seguro' }
             ].map((s) => (
               <button
                 key={s.num}
@@ -350,7 +350,7 @@ export default function ComprarPage() {
                 }`}
               >
                 <div
-                  className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  className={`h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     s.num === step
                       ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/40 ring-4 ring-amber-500/20'
                       : s.num < step
@@ -360,7 +360,10 @@ export default function ComprarPage() {
                 >
                   {s.num < step ? <Check className="h-4 w-4" /> : s.num}
                 </div>
-                <span className="text-[11px] font-semibold mt-1.5">{s.title}</span>
+                <span className="text-[10px] sm:text-[11px] font-bold mt-1">
+                  <span className="inline sm:hidden">{s.shortTitle}</span>
+                  <span className="hidden sm:inline">{s.title}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -390,8 +393,8 @@ export default function ComprarPage() {
             />
 
             {/* Bottom Static Bar */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-              <span className="text-xs text-slate-400">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800">
+              <span className="text-xs text-slate-400 text-center sm:text-left">
                 {selectedSeats.length === 0
                   ? 'Por favor selecciona al menos 1 silla en el mapa.'
                   : `Has seleccionado ${selectedSeats.length} asiento(s).`}
@@ -401,7 +404,7 @@ export default function ComprarPage() {
                 type="button"
                 disabled={selectedSeats.length === 0}
                 onClick={() => setStep(2)}
-                className="flex items-center gap-2 rounded-2xl bg-amber-500 hover:bg-amber-400 px-8 py-3.5 text-sm font-bold text-slate-950 transition-all shadow-xl shadow-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-amber-500 hover:bg-amber-400 px-6 sm:px-8 py-3 sm:py-3.5 text-xs sm:text-sm font-bold text-slate-950 transition-all shadow-xl shadow-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <span>Continuar con Datos ({selectedSeats.length} Asientos)</span>
                 <ChevronRight className="h-4 w-4" />
@@ -412,34 +415,34 @@ export default function ComprarPage() {
 
         {/* FLOATING ACTION BAR FOR STEP 1 */}
         {step === 1 && selectedSeats.length > 0 && (
-          <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 border-t-2 border-amber-500/80 p-3.5 sm:p-4 shadow-2xl backdrop-blur-lg animate-fadeIn">
-            <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="h-10 w-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-sm shrink-0 border border-amber-500/40">
+          <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 border-t-2 border-amber-500/80 p-3 sm:p-4 shadow-2xl backdrop-blur-lg animate-fadeIn">
+            <div className="max-w-4xl mx-auto flex flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-xs sm:text-sm shrink-0 border border-amber-500/40">
                   {selectedSeats.length}
                 </div>
-                <div className="truncate">
-                  <span className="text-xs font-black text-white block">
-                    {selectedSeats.length === 1 ? '1 Asiento Seleccionado' : `${selectedSeats.length} Asientos Seleccionados`}
+                <div className="min-w-0">
+                  <span className="text-xs font-black text-white block truncate">
+                    {selectedSeats.length === 1 ? '1 Asiento' : `${selectedSeats.length} Asientos`}
                   </span>
-                  <div className="text-[11px] text-amber-300 font-mono truncate max-w-xs sm:max-w-md">
-                    {selectedSeats.map(s => `Mesa ${s.tableId}-S${s.seatNumber}`).join(', ')}
+                  <div className="text-[10px] sm:text-[11px] text-amber-300 font-mono truncate max-w-[120px] xs:max-w-[180px] sm:max-w-md">
+                    {selectedSeats.map(s => `M${s.tableId}-S${s.seatNumber}`).join(', ')}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Total:</span>
-                  <span className="text-xl font-black text-emerald-400">${selectedSeats.length * 10}.00 USD</span>
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 block uppercase font-bold">Total:</span>
+                  <span className="text-base sm:text-xl font-black text-emerald-400">${selectedSeats.length * ticketPrice}.00 USD</span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 px-6 sm:px-8 py-3.5 text-sm font-black text-slate-950 transition-all shadow-xl shadow-amber-500/30 hover:scale-105"
+                  className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 px-4 sm:px-8 py-2.5 sm:py-3.5 text-xs sm:text-sm font-black text-slate-950 transition-all shadow-xl shadow-amber-500/30 hover:scale-105"
                 >
-                  <span>Continuar a Comprar</span>
+                  <span>Continuar</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -613,32 +616,32 @@ export default function ComprarPage() {
             </div>
 
             {/* Payment Method Selector (Sin Taquilla en Online) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               {[
-                { id: 'pago_movil', label: 'Pago Móvil (Bs)', icon: '📱', sub: `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}` },
+                { id: 'pago_movil', label: 'Pago Móvil', icon: '📱', sub: `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}` },
                 { id: 'paypal', label: 'PayPal / Tarjetas', icon: '💳', sub: `$${(ticketCount * 21.50).toFixed(2)} USD` },
-                { id: 'zelle', label: 'Zelle (USD)', icon: '💵', sub: `$${(ticketCount * ticketPrice).toFixed(2)} USD` },
+                { id: 'zelle', label: 'Zelle', icon: '💵', sub: `$${(ticketCount * ticketPrice).toFixed(2)} USD` },
                 { id: 'binance', label: 'Binance Pay', icon: '🪙', sub: `${ticketCount * ticketPrice} USDT` }
               ].map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => setPaymentMethod(m.id as PaymentMethod)}
-                  className={`p-3.5 rounded-2xl border text-center transition-all ${
+                  className={`p-2.5 sm:p-3.5 rounded-2xl border text-center transition-all ${
                     paymentMethod === m.id
                       ? 'border-amber-500 bg-amber-500/15 text-white ring-2 ring-amber-500/40 shadow-lg'
                       : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                   }`}
                 >
-                  <span className="text-2xl block mb-1">{m.icon}</span>
-                  <span className="text-xs font-bold block">{m.label}</span>
-                  <span className="text-[10px] text-amber-300/80 font-mono mt-0.5 block">{m.sub}</span>
+                  <span className="text-xl sm:text-2xl block mb-0.5 sm:mb-1">{m.icon}</span>
+                  <span className="text-[11px] sm:text-xs font-bold block">{m.label}</span>
+                  <span className="text-[9px] sm:text-[10px] text-amber-300/80 font-mono mt-0.5 block truncate">{m.sub}</span>
                 </button>
               ))}
             </div>
 
             {/* Bank details card */}
-            <div className="rounded-2xl border border-amber-500/30 bg-slate-950 p-5 space-y-3">
+            <div className="rounded-2xl border border-amber-500/30 bg-slate-950 p-3.5 sm:p-5 space-y-3">
               {paymentMethod === 'pago_movil' && config?.paymentDetails.pagoMovil && (
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between">

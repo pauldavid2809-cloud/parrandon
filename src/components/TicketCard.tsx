@@ -52,56 +52,56 @@ export default function TicketCard({ ticket, buyerName, buyerPhone }: TicketCard
       </div>
 
       {/* Ticket Body */}
-      <div className="p-6 text-center">
+      <div className="p-4 sm:p-6 text-center">
         
         {/* Table & Seat VIP Badge */}
-        <div className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-slate-800 to-emerald-500/20 border-2 border-amber-500/40 p-4 mb-4 text-center shadow-lg">
-          <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 block mb-1">
+        <div className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-slate-800 to-emerald-500/20 border-2 border-amber-500/40 p-3 sm:p-4 mb-3 sm:mb-4 text-center shadow-lg">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest text-amber-400 block mb-1">
             Ubicación Asignada en el Bulevar
           </span>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-3 sm:gap-4">
             <div className="text-center">
-              <span className="text-xs text-slate-400 block font-medium">MESA</span>
-              <strong className="text-2xl font-black text-white">{ticket.tableId || 'A1'}</strong>
+              <span className="text-[10px] sm:text-xs text-slate-400 block font-medium">MESA</span>
+              <strong className="text-xl sm:text-2xl font-black text-white">{ticket.tableId || 'A1'}</strong>
             </div>
-            <div className="h-8 w-0.5 bg-amber-500/40" />
+            <div className="h-7 sm:h-8 w-0.5 bg-amber-500/40" />
             <div className="text-center">
-              <span className="text-xs text-slate-400 block font-medium">SILLA</span>
-              <strong className="text-2xl font-black text-amber-300">#{ticket.seatNumber || 1}</strong>
+              <span className="text-[10px] sm:text-xs text-slate-400 block font-medium">SILLA</span>
+              <strong className="text-xl sm:text-2xl font-black text-amber-300">#{ticket.seatNumber || 1}</strong>
             </div>
-            <div className="h-8 w-0.5 bg-amber-500/40" />
+            <div className="h-7 sm:h-8 w-0.5 bg-amber-500/40" />
             <div className="text-center">
-              <span className="text-xs text-slate-400 block font-medium">SECTOR</span>
-              <strong className="text-2xl font-black text-emerald-400">{ticket.sector || 'A'}</strong>
+              <span className="text-[10px] sm:text-xs text-slate-400 block font-medium">SECTOR</span>
+              <strong className="text-xl sm:text-2xl font-black text-emerald-400">{ticket.sector || 'A'}</strong>
             </div>
           </div>
         </div>
 
         {/* Attendee Name Badge */}
-        <div className="rounded-xl bg-slate-800/80 border border-slate-700 p-3 mb-4 text-left">
-          <div className="text-[10px] font-semibold uppercase text-slate-400">Asistente Registrado</div>
-          <div className="text-base font-bold text-white capitalize truncate">{ticket.attendeeName}</div>
+        <div className="rounded-xl bg-slate-800/80 border border-slate-700 p-3 mb-3 sm:mb-4 text-left">
+          <div className="text-[9px] sm:text-[10px] font-semibold uppercase text-slate-400">Asistente Registrado</div>
+          <div className="text-sm sm:text-base font-bold text-white capitalize truncate">{ticket.attendeeName}</div>
           <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-700/60 text-xs">
-            <span className="text-slate-400">Pase N°: <strong className="text-amber-400">#{ticket.ticketNumber}</strong></span>
-            <span className="text-slate-400">Ref: <code className="text-amber-300 font-mono text-[11px]">{ticket.ticketCode}</code></span>
+            <span className="text-slate-400 text-[11px] sm:text-xs">Pase N°: <strong className="text-amber-400">#{ticket.ticketNumber}</strong></span>
+            <span className="text-slate-400 text-[11px] sm:text-xs">Ref: <code className="text-amber-300 font-mono text-[10px] sm:text-[11px]">{ticket.ticketCode}</code></span>
           </div>
         </div>
 
         {/* QR Code Container */}
-        <div className="relative inline-block mx-auto rounded-2xl bg-white p-4 shadow-inner border-4 border-amber-500/30">
+        <div className="relative inline-block mx-auto rounded-2xl bg-white p-3 sm:p-4 shadow-inner border-4 border-amber-500/30">
           {ticket.qrCodeDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={ticket.qrCodeDataUrl}
               alt={`QR Entrada ${ticket.ticketCode}`}
-              className="w-52 h-52 object-contain mx-auto"
+              className="w-44 h-44 sm:w-52 sm:h-52 object-contain mx-auto"
             />
           ) : (
-            <div className="w-52 h-52 flex items-center justify-center text-slate-500 text-xs">
+            <div className="w-44 h-44 sm:w-52 sm:h-52 flex items-center justify-center text-slate-500 text-xs">
               Generando Código QR...
             </div>
           )}
-          <div className="mt-1 text-[10px] font-mono font-bold text-slate-900 tracking-wider">
+          <div className="mt-1 text-[9px] sm:text-[10px] font-mono font-bold text-slate-900 tracking-wider">
             {ticket.ticketCode}
           </div>
         </div>

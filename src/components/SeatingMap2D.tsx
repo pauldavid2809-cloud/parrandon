@@ -374,88 +374,91 @@ export default function SeatingMap2D({
         </div>
       )}
 
-      {/* ROUND TABLE SEAT SELECTION MODAL (STABLE, JITTER-FREE) */}
+      {/* ROUND TABLE SEAT SELECTION MODAL (STABLE, JITTER-FREE, RESPONSIVE) */}
       {activeTableModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-xl max-h-[95vh] overflow-y-auto rounded-3xl border-2 border-amber-500/60 bg-slate-900 p-5 sm:p-7 shadow-2xl text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2 sm:p-4 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-xl max-h-[94vh] overflow-y-auto rounded-3xl border-2 border-amber-500/60 bg-slate-900 p-4 sm:p-7 shadow-2xl text-center">
             
             {/* Close */}
             <button
               type="button"
               onClick={() => setActiveTableModal(null)}
-              className="absolute top-4 right-4 rounded-full bg-slate-800 p-2 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors z-30"
+              className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 rounded-full bg-slate-800 p-2 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors z-30"
+              aria-label="Cerrar modal"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-3.5 py-1 text-xs font-black text-amber-300 mb-2">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-black text-amber-300 mb-1 sm:mb-2">
               <span>{sectorNames[activeTableModal.sector]}</span>
             </div>
 
-            <h3 className="text-2xl sm:text-3xl font-black text-white">
+            <h3 className="text-xl sm:text-3xl font-black text-white">
               Mesa {activeTableModal.id}
             </h3>
-            <p className="text-xs text-amber-200 mt-1 font-semibold max-w-md mx-auto">
-              👇 Haz clic en las sillas verdes o en los botones para elegirlas:
+            <p className="text-[11px] sm:text-xs text-amber-200 mt-0.5 sm:mt-1 font-semibold max-w-md mx-auto">
+              👇 Toca las sillas verdes o los botones de abajo para elegirlas:
             </p>
 
-            {/* Circular Banquet Table Visualization with 10 Stable Chairs (320px x 320px, Center: 160, 160) */}
-            <div className="relative w-80 h-80 mx-auto my-4 flex items-center justify-center select-none">
-              
-              {/* Central Table Surface (Festive Navy Blue Tablecloth) */}
-              <div className="w-36 h-36 rounded-full bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 border-4 border-amber-400 shadow-2xl flex flex-col items-center justify-center text-white z-10 pointer-events-none">
-                <span className="text-[10px] uppercase font-bold text-sky-300 tracking-wider">Bulevar</span>
-                <span className="text-2xl font-black text-white">{activeTableModal.id}</span>
-                <span className="text-[9px] text-amber-300 font-bold mt-0.5">10 Comensales</span>
+            {/* Circular Banquet Table Visualization - Responsive Scaled Container */}
+            <div className="w-full flex items-center justify-center overflow-hidden py-1">
+              <div className="relative w-[300px] h-[300px] sm:w-80 sm:h-80 flex items-center justify-center select-none scale-[0.88] xs:scale-95 sm:scale-100 origin-center shrink-0">
+                
+                {/* Central Table Surface (Festive Navy Blue Tablecloth) */}
+                <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 border-4 border-amber-400 shadow-2xl flex flex-col items-center justify-center text-white z-10 pointer-events-none">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-bold text-sky-300 tracking-wider">Bulevar</span>
+                  <span className="text-xl sm:text-2xl font-black text-white">{activeTableModal.id}</span>
+                  <span className="text-[8px] sm:text-[9px] text-amber-300 font-bold mt-0.5">10 Comensales</span>
+                </div>
+
+                {/* 10 Realistic Interactive Chairs with Rock-solid positioning */}
+                {activeTableModal.seats.map((seat, i) => {
+                  const angle = (i * 360) / 10 - 90;
+                  const radius = 115; // px from center (160, 160)
+                  const rad = (angle * Math.PI) / 180;
+                  const x = Math.round(radius * Math.cos(rad));
+                  const y = Math.round(radius * Math.sin(rad));
+
+                  const isSelected = isSeatSelected(activeTableModal.id, seat.number);
+                  const isTaken = seat.isOccupied || seat.isPending;
+
+                  return (
+                    <button
+                      key={seat.number}
+                      type="button"
+                      disabled={isTaken}
+                      onClick={() => toggleSeat(activeTableModal, seat.number)}
+                      style={{
+                        left: `${160 + x - 24}px`,
+                        top: `${160 + y - 24}px`
+                      }}
+                      className={`absolute h-11 w-11 sm:h-12 sm:w-12 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-amber-400 text-slate-950 font-black shadow-2xl ring-4 ring-amber-400/80 z-20'
+                          : isTaken
+                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 opacity-60'
+                          : 'bg-emerald-600 hover:bg-emerald-500 hover:ring-4 hover:ring-emerald-400/50 text-white shadow-lg border-2 border-emerald-300 z-20'
+                      }`}
+                      title={isTaken ? `Silla #${seat.number} (Ocupada)` : `Silla #${seat.number} (Toca para elegir)`}
+                    >
+                      {isSelected ? (
+                        <Check className="h-4 w-4 stroke-[3]" />
+                      ) : (
+                        <Armchair className="h-4 w-4 shrink-0" />
+                      )}
+                      <span className="text-[10px] sm:text-[11px] font-black leading-none mt-0.5">{seat.number}</span>
+                    </button>
+                  );
+                })}
               </div>
-
-              {/* 10 Realistic Interactive Chairs with Rock-solid left/top positioning (NO TRANSFORM JITTER) */}
-              {activeTableModal.seats.map((seat, i) => {
-                const angle = (i * 360) / 10 - 90;
-                const radius = 115; // px from center (160, 160)
-                const rad = (angle * Math.PI) / 180;
-                const x = Math.round(radius * Math.cos(rad));
-                const y = Math.round(radius * Math.sin(rad));
-
-                const isSelected = isSeatSelected(activeTableModal.id, seat.number);
-                const isTaken = seat.isOccupied || seat.isPending;
-
-                return (
-                  <button
-                    key={seat.number}
-                    type="button"
-                    disabled={isTaken}
-                    onClick={() => toggleSeat(activeTableModal, seat.number)}
-                    style={{
-                      left: `${160 + x - 24}px`,
-                      top: `${160 + y - 24}px`
-                    }}
-                    className={`absolute h-12 w-12 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-amber-400 text-slate-950 font-black shadow-2xl ring-4 ring-amber-400/80 z-20'
-                        : isTaken
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 opacity-60'
-                        : 'bg-emerald-600 hover:bg-emerald-500 hover:ring-4 hover:ring-emerald-400/50 text-white shadow-lg border-2 border-emerald-300 z-20'
-                    }`}
-                    title={isTaken ? `Silla #${seat.number} (Ocupada)` : `Silla #${seat.number} (Toca para elegir)`}
-                  >
-                    {isSelected ? (
-                      <Check className="h-4 w-4 stroke-[3]" />
-                    ) : (
-                      <Armchair className="h-4 w-4 shrink-0" />
-                    )}
-                    <span className="text-[11px] font-black leading-none mt-0.5">{seat.number}</span>
-                  </button>
-                );
-              })}
             </div>
 
             {/* Direct Quick 10-Chair Button Grid */}
-            <div className="mt-4 pt-3 border-t border-slate-800 text-left">
-              <span className="text-[11px] font-bold text-slate-400 block mb-2 text-center sm:text-left">
+            <div className="mt-2 sm:mt-4 pt-3 border-t border-slate-800 text-left">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 block mb-2 text-center sm:text-left">
                 Lista de las 10 Sillas de la Mesa {activeTableModal.id}:
               </span>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                 {activeTableModal.seats.map((seat) => {
                   const isSelected = isSeatSelected(activeTableModal.id, seat.number);
                   const isTaken = seat.isOccupied || seat.isPending;
@@ -466,7 +469,7 @@ export default function SeatingMap2D({
                       type="button"
                       disabled={isTaken}
                       onClick={() => toggleSeat(activeTableModal, seat.number)}
-                      className={`p-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
+                      className={`p-1.5 sm:p-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 sm:gap-1 ${
                         isSelected
                           ? 'bg-amber-400 text-slate-950 font-black ring-2 ring-amber-300 shadow-md'
                           : isTaken
@@ -474,10 +477,10 @@ export default function SeatingMap2D({
                           : 'bg-slate-950 text-slate-200 border border-slate-700 hover:border-emerald-400 hover:bg-emerald-950/40'
                       }`}
                     >
-                      <span className="text-[10px] opacity-75">Silla</span>
-                      <strong className="text-xs">#{seat.number}</strong>
-                      <span className="text-[9px]">
-                        {isSelected ? '✓ Elegida' : isTaken ? 'Ocupada' : 'Libre'}
+                      <span className="text-[9px] opacity-75">Silla</span>
+                      <strong className="text-[11px] sm:text-xs font-black">#{seat.number}</strong>
+                      <span className="text-[8px] sm:text-[9px] font-bold">
+                        {isSelected ? '✓' : isTaken ? '✕' : 'Libre'}
                       </span>
                     </button>
                   );
@@ -486,7 +489,7 @@ export default function SeatingMap2D({
             </div>
 
             {/* Modal Bottom Actions */}
-            <div className="mt-5 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="mt-4 pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5">
               <span className="text-xs text-slate-300">
                 Sillas elegidas en esta mesa: <strong className="text-amber-400 text-sm font-black">{selectedSeats.filter(s => s.tableId === activeTableModal.id).length}</strong>
               </span>
@@ -494,7 +497,7 @@ export default function SeatingMap2D({
               <button
                 type="button"
                 onClick={() => setActiveTableModal(null)}
-                className="w-full sm:w-auto rounded-2xl bg-amber-500 hover:bg-amber-400 px-8 py-3 text-xs font-black text-slate-950 transition-all shadow-xl shadow-amber-500/30"
+                className="w-full sm:w-auto rounded-2xl bg-amber-500 hover:bg-amber-400 px-6 sm:px-8 py-2.5 sm:py-3 text-xs font-black text-slate-950 transition-all shadow-xl shadow-amber-500/30"
               >
                 ✅ Confirmar Selección
               </button>
