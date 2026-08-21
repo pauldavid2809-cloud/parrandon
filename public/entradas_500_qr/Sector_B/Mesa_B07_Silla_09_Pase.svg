@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="920" viewBox="0 0 600 920" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#991b1b" />
+      <stop offset="50%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#065f46" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0b1120" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#000000" flood-opacity="0.7"/>
+    </filter>
+  </defs>
+
+  <!-- Ticket Outer Box -->
+  <rect x="15" y="15" width="570" height="890" rx="32" fill="url(#bgGrad)" stroke="#f59e0b" stroke-width="4" filter="url(#cardShadow)" />
+
+  <!-- Top Banner -->
+  <path d="M 17 45 Q 17 17 47 17 L 553 17 Q 583 17 583 45 L 583 145 L 17 145 Z" fill="url(#headerGrad)" />
+  <text x="300" y="50" font-family="'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" fill="#fef3c7" text-anchor="middle" letter-spacing="2">
+    SEMINARIO MAYOR SANTO TOMÁS DE AQUINO
+  </text>
+  <text x="300" y="88" font-family="'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="900" fill="#ffffff" text-anchor="middle">
+    PARRANDÓN NAVIDEÑO 2026
+  </text>
+  <text x="300" y="120" font-family="'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#fde68a" text-anchor="middle">
+    Sábado 12 de Diciembre • 6:00 PM • Bulevar Paramillo
+  </text>
+
+  <!-- Location Header Banner -->
+  <g transform="translate(50, 165)">
+    <rect x="0" y="0" width="500" height="85" rx="20" fill="#1e293b" stroke="#f59e0b" stroke-width="2.5" />
+    
+    <text x="130" y="32" font-family="'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#94a3b8" text-anchor="middle">
+      MESA
+    </text>
+    <text x="130" y="68" font-family="'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="900" fill="#ffffff" text-anchor="middle">
+      B7
+    </text>
+
+    <line x1="250" y1="15" x2="250" y2="70" stroke="#475569" stroke-width="2" />
+
+    <text x="370" y="32" font-family="'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#94a3b8" text-anchor="middle">
+      SILLA NUMERADA
+    </text>
+    <text x="370" y="68" font-family="'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="900" fill="#f59e0b" text-anchor="middle">
+      #9
+    </text>
+  </g>
+
+  <!-- QR Code Frame in Center (with Emblem) -->
+  <g transform="translate(125, 275)">
+    <rect x="0" y="0" width="350" height="350" rx="24" fill="#ffffff" stroke="#f59e0b" stroke-width="4" />
+    
+    <!-- Embed QR SVG scaled to 310x310 -->
+    <g transform="translate(20, 20) scale(0.3875)">
+      
+
+  <!-- Background QR Code Matrix -->
+  <g transform="scale(1)">
+    <path fill="#ffffff" d="M0 0h31v31H0z"/><path stroke="#0f172a" d="M3 3.5h7m1 0h3m4 0h1m2 0h7M3 4.5h1m5 0h1m2 0h3m1 0h3m2 0h1m5 0h1M3 5.5h1m1 0h3m1 0h1m1 0h2m3 0h3m2 0h1m1 0h3m1 0h1M3 6.5h1m1 0h3m1 0h1m3 0h2m2 0h1m3 0h1m1 0h3m1 0h1M3 7.5h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h1M3 8.5h1m5 0h1m2 0h1m1 0h1m1 0h1m1 0h2m1 0h1m5 0h1M3 9.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M11 10.5h2m2 0h2m1 0h1M8 11.5h2m2 0h2m1 0h1m2 0h1m2 0h1m1 0h1m1 0h1m1 0h1M3 12.5h1m1 0h1m1 0h1m2 0h4m1 0h1m4 0h1m1 0h5M4 13.5h3m2 0h1m10 0h4M3 14.5h1m2 0h1m1 0h1m3 0h2m2 0h1m1 0h1m2 0h1m1 0h5M3 15.5h1m1 0h1m1 0h4m1 0h4m5 0h3m1 0h2M3 16.5h1m2 0h1m1 0h1m2 0h1m4 0h2m2 0h1m1 0h2m2 0h1M3 17.5h1m2 0h1m1 0h4m1 0h1m2 0h9m1 0h1M3 18.5h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M3 19.5h1m2 0h1m1 0h3m3 0h1m3 0h7m1 0h2M11 20.5h1m7 0h1m3 0h1m1 0h1m1 0h1M3 21.5h7m2 0h1m2 0h5m1 0h1m1 0h1m3 0h1M3 22.5h1m5 0h1m1 0h1m2 0h2m2 0h2m3 0h1m3 0h1M3 23.5h1m1 0h3m1 0h1m3 0h2m1 0h2m1 0h7M3 24.5h1m1 0h3m1 0h1m2 0h2m1 0h1m6 0h1m1 0h2m1 0h1M3 25.5h1m1 0h3m1 0h1m2 0h1m4 0h1m1 0h1m1 0h1m2 0h1m2 0h1M3 26.5h1m5 0h1m2 0h1m2 0h2m4 0h1m2 0h2M3 27.5h7m3 0h3m1 0h5m2 0h1m1 0h2"/>
+
+  </g>
+
+  <!-- CENTER EMBLEM: MESA & SILLA (Embedded in QR matrix) -->
+  <g transform="translate(400, 400)">
+    <!-- Outer White Ring to clear QR dots -->
+    <circle cx="0" cy="0" r="105" fill="#ffffff" stroke="#f59e0b" stroke-width="6" />
+    
+    <!-- Inner Dark Navy/Burgundy Disc -->
+    <circle cx="0" cy="0" r="92" fill="#0f172a" stroke="#ffffff" stroke-width="3" />
+    
+    <!-- Table Sector Tag -->
+    <text x="0" y="-48" font-family="'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="900" fill="#f59e0b" text-anchor="middle" letter-spacing="2">
+      SECTOR B
+    </text>
+
+    <!-- Table ID in Big Bold -->
+    <text x="0" y="-12" font-family="'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">
+      MESA B7
+    </text>
+
+    <!-- Golden Divider Line -->
+    <line x1="-60" y1="2" x2="60" y2="2" stroke="#f59e0b" stroke-width="2" />
+
+    <!-- Seat Number in Cyan / Gold -->
+    <text x="0" y="32" font-family="'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="900" fill="#38bdf8" text-anchor="middle">
+      SILLA #9
+    </text>
+
+    <text x="0" y="58" font-family="'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#94a3b8" text-anchor="middle" letter-spacing="1">
+      PARRANDÓN 2026
+    </text>
+  </g>
+
+    </g>
+  </g>
+
+  <!-- Code details -->
+  <text x="300" y="665" font-family="'Courier New', monospace" font-size="16" font-weight="900" fill="#fde68a" text-anchor="middle" letter-spacing="2">
+    PARR-B7-S09-GD58
+  </text>
+  <text x="300" y="690" font-family="'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#64748b" text-anchor="middle">
+    PASE DIGITAL N° 169 DE 500 • SECTOR B
+  </text>
+
+  <!-- Meal inclusion box -->
+  <g transform="translate(50, 720)">
+    <rect x="0" y="0" width="500" height="52" rx="16" fill="#064e3b" stroke="#10b981" stroke-width="2" />
+    <text x="250" y="33" font-family="'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="800" fill="#6ee7b7" text-anchor="middle">
+      🍲 INCLUYE 1 PLATO NAVIDEÑO COMPLETO + PONCHE
+    </text>
+  </g>
+
+  <text x="300" y="810" font-family="'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="600" fill="#94a3b8" text-anchor="middle">
+    Presenta este código QR en la entrada del Seminario Santo Tomás.
+  </text>
+  <text x="300" y="830" font-family="'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="500" fill="#64748b" text-anchor="middle">
+    Válido para 1 sola persona • Escaneo único al ingreso • Paramillo, San Cristóbal
+  </text>
+</svg>

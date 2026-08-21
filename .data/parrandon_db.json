@@ -1,0 +1,248 @@
+{
+  "config": {
+    "eventName": "Parrandón Navideño 2026",
+    "subtitle": "Seminario Mayor Santo Tomás de Aquino",
+    "edition": "Gran Fiesta Tradicional y Familiar",
+    "date": "Sábado, 12 de Diciembre de 2026",
+    "time": "06:00 PM - 01:00 AM",
+    "venue": "Bulevar del Seminario Mayor Santo Tomás de Aquino",
+    "venueAddress": "Sede del Seminario Santo Tomás de Aquino, Maracaibo, Estado Zulia",
+    "totalQuota": 500,
+    "ticketPriceUsd": 20,
+    "childTicketPriceUsd": 10,
+    "currentRateBs": 897.82,
+    "description": "Una noche inolvidable en el Bulevar del Seminario Santo Tomás de Aquino de Maracaibo: gaitas en vivo, villancicos, bazar navideño, rifas y plato navideño completo.",
+    "includesMeal": true,
+    "mealName": "Plato Navideño Tradicional Completo",
+    "announcement": "¡Preventa especial activa! Asegura tu entrada y colabora con la formación de los futuros sacerdotes.",
+    "paymentDetails": {
+      "pagoMovil": {
+        "bank": "0102 - Banco de Venezuela",
+        "phone": "0414-7001122",
+        "docId": "J-30456789-0",
+        "holder": "Seminario Santo Tomás de Aquino"
+      },
+      "zelle": {
+        "email": "parrandonseminariosta@gmail.com",
+        "holder": "Seminario Santo Tomás de Aquino"
+      },
+      "binance": {
+        "payId": "89342019",
+        "email": "pagosbinance.seminario@gmail.com",
+        "network": "USDT (BEP20 / TRC20)",
+        "address": "0x71C28B89a42f5348911F7Db463Ab35f37E5a7201"
+      },
+      "cash": {
+        "location": "Oficina de Administración del Seminario",
+        "schedule": "Lunes a Viernes de 8:30 AM a 4:30 PM"
+      },
+      "paypal": {
+        "clientId": "BAAycXcLnxs_Yony3FAFx25j6r-6tmdRUKdvVQgyPb-6VTIgWmsgSBjWzNZtdy9TzJn5pnKaGEIUtfCVyg",
+        "paymentLink": "https://www.paypal.com/ncp/links/7Q68BFZ87W9QG",
+        "buttonId": "7Q68BFZ87W9QG"
+      }
+    },
+    "totalTables": 50,
+    "seatsPerTable": 10
+  },
+  "orders": [
+    {
+      "id": "ORD-7049E",
+      "createdAt": "2026-08-19T18:45:32.549Z",
+      "buyerName": "as",
+      "buyerEmail": "",
+      "buyerPhone": "321",
+      "buyerDocId": "sa",
+      "quantity": 1,
+      "seats": [
+        {
+          "tableId": "A1",
+          "seatNumber": 1,
+          "sector": "A"
+        }
+      ],
+      "attendees": [
+        {
+          "name": "as",
+          "docId": "",
+          "tableId": "B5",
+          "seatNumber": 6
+        }
+      ],
+      "paymentMethod": "paypal",
+      "paymentReference": "PAYPAL-321",
+      "paymentProofUrl": "",
+      "amountPaid": 21.5,
+      "currency": "USD",
+      "convertedUsd": 21.5,
+      "status": "approved",
+      "salesChannel": "online",
+      "notes": "",
+      "tickets": [
+        {
+          "id": "ORD-7049E-T1",
+          "orderId": "ORD-7049E",
+          "ticketCode": "PARR-A1-S01-22Q8",
+          "tableId": "A1",
+          "seatNumber": 1,
+          "sector": "A",
+          "attendeeName": "as",
+          "buyerName": "as",
+          "buyerPhone": "321",
+          "ticketNumber": 1,
+          "qrCodeDataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQCAYAAACAvzbMAAAAAklEQVR4AewaftIAAAkLSURBVO3BwZFcNxIFwKeK9gN32ADzYQPusISrm4InqYvSZ89sZv7x408BgDdVAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoeOVhY67we92z864xV76Ce3Y6xlx5yj07HWOudNyz85QxV/i97tl5SgUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKDhlS/inh1+NubKU+7ZedKYKx1jrvD13LPDz8Zc+XQVAGioAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhle+uTFXPt09O9/VmCsd9+x0jLnylHt2voIxVzru2fl0Y658unt2vqsKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoeAX+gTFXvrN7dj7dPTsdY67Af6ECAA0VAGioAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQ8Ar8A/fsPGnMlY57dp4y5krHPTsdY67AJ6kAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0vPLN3bPD7zPmSsc9O5/unp0n3bPTMebKd3XPDr9PBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhgoANFQAoOGVL2LMFX6fMVc67tnpGHOl456djjFX3nXPTseYKx337HxXY67w9VQAoKECAA0VAGioAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaXnnYPTt8PffswN+5Z4f/HxUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANDwyjc35sq77tnpGHPlK7hn511jrjzpnp2OMVc67tn5dGOuPGnMlXfds/MVjLnScc/OU8Zc6bhn5ykVAGioAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhlceNubKpxtz5Un37DxpzJV33bPzpDFXnjTmyrvu2XnSPTsdY6503LPzrjFXOu7ZedI9O/y6CgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQMMrD7tnp2PMFX425sqnG3Ol456dJ4258q4xV76Ce3Y+3Zgr39U9Ox337Hy6CgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQMMrX8Q9O08Zc6Xjnp2OMVc67tnh97lnp2PMlY4xVzru2ekYc+XT3bPzpDFX+EsFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACg4ZWHjbnScc/OU+7Z6RhzpeOenY4xV55yz86Txlz5ru7Z4Wf37HSMudJxzw6/rgIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABpeedg9Ox1jrnTcs/OuMVe+gnt2njLmCv+OMVeedM/OU+7Z4d8x5krHPTtPqQBAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADS88rAxVzru2ekYc+XTjbnypHt23nXPzpPGXPmu7tnh33HPTseYKx337LxrzJWOe3Y+XQUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKDhjx9/yhcw5krHPTvvGnPlSffsPGnMlU93z07HmCtPuWfnSWOudNyz8+nGXHnSPTsdY658unt2nlIBgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoeOVhY6503LPDz8Zc+XT37Dzpnp1PN+ZKxz07HWOuwH+hAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0PDHjz8F/saYK0+6Z+dJY6485Z6djjFXnnTPzqcbc+VJ9+y8a8yVjnt2Pl0FABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0vPKwMVf4ve7Zedc9Ox1jrjxpzJWn3LPTMeZKxz07HWOuPGXMlY57dp50z86nG3Ol456dp1QAoKECAA0VAGioAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaXvki7tnhZ2OuPGXMlY57dp50z07HmCv8unt2voIxVz7dPTufrgIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANDwyjc35sqnu2eHn4250nHPTsc9O+8ac+VJY648acwVfnbPDn+pAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhgoANLwC/8A9Ox1jrjxpzJWOe3bedc/Ok8Zc+XT37HSMudJxz86nG3Ol456dT1cBgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoeAX+gTFXvoJ7dp4y5krHPTtPumfnKWOudNyz0zHmSsc9Ox1jrrzrnp2OMVc67tl5SgUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADS88s3ds8Ovu2enY8yVjnt2OsZc6bhn51337HxnY668656djjFXOu7Z+XRjrnxXFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIZXvogxV+C/MubKu+7Z6RhzpeOenY4xVzru2XnXmCvf2T07Txlz5dNVAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGv748acAwJsqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCG/wFnu5in8GdFpQAAAABJRU5ErkJggg==",
+          "isUsed": false,
+          "mealServed": false
+        }
+      ]
+    },
+    {
+      "id": "ORD-7492A",
+      "createdAt": "2026-08-17T15:14:17.898Z",
+      "buyerName": "Carlos Eduardo Mendoza",
+      "buyerEmail": "carlos.mendoza@gmail.com",
+      "buyerPhone": "+58 414 7568921",
+      "buyerDocId": "V-18456789",
+      "quantity": 2,
+      "attendees": [
+        {
+          "name": "Carlos Eduardo Mendoza",
+          "docId": "V-18456789"
+        },
+        {
+          "name": "María Fernanda Mendoza",
+          "docId": "V-19876543"
+        }
+      ],
+      "paymentMethod": "pago_movil",
+      "paymentReference": "098234",
+      "paymentProofUrl": "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600",
+      "amountPaid": 970,
+      "currency": "VES",
+      "convertedUsd": 20,
+      "rateApplied": 48.5,
+      "status": "approved",
+      "verifiedAt": "2026-08-18T19:14:17.899Z",
+      "verifiedBy": "Anabella (Admin)",
+      "notes": "Pago verificado en cuenta Banesco/BDV",
+      "tickets": [
+        {
+          "id": "ORD-7492A-T1",
+          "orderId": "ORD-7492A",
+          "ticketCode": "PARR-ORD7492A-1-8LU3W4",
+          "attendeeName": "Carlos Eduardo Mendoza",
+          "buyerName": "Carlos Eduardo Mendoza",
+          "buyerPhone": "+58 414 7568921",
+          "ticketNumber": 1,
+          "qrCodeDataUrl": "data:image/png;base64,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T9yz87YxV564Z+eJe3Y+yZgrT9yz86YKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANX/kPGHPliXt23nTPzhNjrnyaMVc+yZgrb7pn57u7Z+eJMVfeNObKpxlz5Yl7dt405sp3VgGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhgoANFQAoOHX7z/Cf96YK2+6Z+eJMVeeuGfniTFXnrhn521jrjxxz84nGXPliXt2Ps2YK2+6Z+cnqQBAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0PCVf8GYK/yz7tl54p6dJ8ZceWLMlSfu2XlizJUn7tn5NPfsPDHmyhP37Dwx5sonGXPlqXt2fpIxV564Z+dNFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0PCVD3TPzk8y5spPM+bKJxlz5W337PDX7tn57sZceeKene+sAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAw1f+A8Zc+ST37HyaMVeeuGfnTWOuPHHPzpvu2XlqzJUnxlx54p6d72zMlZ/mnp033bPzSSoA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADR8Bf4HY6686Z4d/lljrjxxz84TY6686Z6dn2bMlSfu2fkkFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGr4C/4B7dt405sqb7tn5NGOuPHHPzpvu2XnTmCuf5p4d/loFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGr/wH3LPD37tn54kxV54Yc+VN9+w8MebKE2OuPHXPzhNjrnySMVeeuGfniTFXnrhn56kxV564Z+c7G3PliXt23lQBgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKDhKx9ozBX+b92z88SYK0/cs/PEmCtP3LPD37tn50337Lztnp0nxlx54p6dT3LPziepAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQ8Ov3HwGAhyoA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAw/8DlXcrh53MEucAAAAASUVORK5CYII=",
+          "isUsed": false,
+          "mealServed": false
+        },
+        {
+          "id": "ORD-7492A-T2",
+          "orderId": "ORD-7492A",
+          "ticketCode": "PARR-ORD7492A-2-WBSYQ6",
+          "attendeeName": "María Fernanda Mendoza",
+          "buyerName": "Carlos Eduardo Mendoza",
+          "buyerPhone": "+58 414 7568921",
+          "ticketNumber": 2,
+          "qrCodeDataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQCAYAAACAvzbMAAAAAklEQVR4AewaftIAAAqmSURBVO3Bwa1luXItwFWJ6wfntIHm0wbOaUn9GgrCVwM71fvpnO6I+PX7jwDAQxUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADT/5Dxhzhb/XPTufZMyVT3LPzhNjrnyae3aeGHPliXt2nhhz5Yl7dp4Yc4W/1z07b6oAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANDwkw90z86/yZgrn2bMlSfu2eHvNebKE/fsPDHmyre7Z+ffZMyVT1IBgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKDhJ/8AY658knt2vt09O28ac+VN9+y87Z6dJ8ZcedOYK0/cs/PEmCvfbsyVT3LPzjerAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQ8BP4AvfsPDHmyhP37Dw15soT9+x8kjFXnrhnB/6rCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADT/hX2HMlSfu2fkkY648cc/O2+7ZedOYK2+6Zwf+NyoA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADT85B/gnh3+2j07bxpz5Yl7dj7JmCtP3bPzpnt23jTmyhP37Hy7e3b4+1QAoKECAA0VAGioAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGj4yQcac4W/15grT9yz80nGXHninp1PM+bKE/fsPDHmyhP37Dwx5soT9+y8bcwV/u9UAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAw6/ff4R/vDFX3nTPzhNjrvB/654d+N+oAEBDBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQ8JN/gDFX3nTPzpvGXPl2Y658s3t2nhpz5Yl7dr7ZmCuf5p6dJ8ZceeKeHf5nFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGn79/iP/MmOuPHHPDn9tzJVPcs/OE2OuPHXPzpvGXHninh3+2pgrn+SenSfGXHninp03VQCgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaPjJf8CYK0/cs/PEmCtP3LPzxJgrn+aenSfGXHnTPTtPjLnySe7Z+XZjrjxxz86/zT07T4y58qYxV75ZBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhl+//8iHGXPlTffsvGnMlSfu2XlqzJU33bPzxJgr3+yenafGXHnTPTtPjLnypnt2nhhz5W337LxpzJUn7tn5N6kAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANDw6/cf+TBjrjxxz86bxlz5dvfs8F3GXHninp1PMubKE/fsfLsxV564Z+ebVQCgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaPj1+4+8bMyVJ+7ZedOYK0/cs/Npxlx54p6dJ8ZceeKenSfGXHninp0nxlx54p6dt425wt/rnp1vNubKE/fsfJIKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANv37/kZeNufKme3a+2Zgrb7tn501jrjxxz84TY6686Z6dbzfmyhP37Dwx5sqb7tl525grT9yz80nGXHninp03VQCgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQMNPPtA9O28ac+WJe3bedM8Of+2enSfGXHnbmCtvumfniXt2nhhz5ZOMufLtxlz5N6kAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANDw6/cf+XJjrnySe3aeGHPl292z88SYK2+6Z+eJMVeeumfnTWOuPHHPzpvGXPl29+w8MebKE/fsvGnMlSfu2XlTBQAaKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhp98oDFXnrhn54kxVz7JPTtvG3PliXt2Psk9O2+6Z+dtY668acyVT3LPzhNjrrxtzJUn7tnhf1YBgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKDhJ/8BY648cc/OE2OuPHHPzhNjrjwx5sqnuWfniTFXvtmYK2+7Z+dN9+w8MebKm+7Z+TT37HySMVeeuGfniXt2PkkFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGn/wH3LPzpnt2nhhz5U337LxtzJVPcs/OE2OuPDHmypvu2XlqzJUn7tl50z07T4y58qYxVz7NmCtP3LPzpjFX3nTPzpsqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0/Pr9Rz7MmCtP3LPzxJgrT9yz88SYK2+7Z+dNY6686Z6dJ8Zc+TT37LxpzJU33bPzxJgr/LV7dv5NKgDQUAGAhgoANFQAoKECAA0VAGioAEBDBQAaKgDQUAGAhgoANPzkA92z86Z7dt50z86nGXPliXt2nhhz5YkxV564Z4fvcs/Opxlz5ZuNufLEPTtvqgBAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0PCT/4AxV/h73bPzpjFXnrhn54kxV54Yc+WJe3Y+zZgrb7pn54kxVz7JmCtP3bPzScZceeKenW9WAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADT/5QPfs/JuMufK2e3beNObKE/fsfLsxV950z86b7tl5YsyVN92z82nu2XlizJU33bPzSSoA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADT85B9gzJVPcs/Otxtz5Yl7dt405sqb7tl52z07T4y58sQ9O0+MufKmMVe+3ZgrT9yz88SYK2+6Z+dNFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGn7Cv8KYK0/cs/NJ7tn5dmOuPHHPzhNjrjxxz863G3PlTffsPDHmyhP37HyzCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADT+B/48xV564Z+eJMVc+yT07b7tn54kxV564Z+eJMVeeuGfniTFXnrhn52337Dwx5soT9+y8acyVJ+7ZeVMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGn/wD3LPDX7tn501jrjxxz84nGXMF/rt7dt405so3qwBAQwUAGioA0FABgIYKADRUAKChAgANFQBoqABAQwUAGioA0PCTDzTmCt/lnp03jbnCXxtz5Yl7dp4Yc4W/NubKE/fsfLMKADRUAKChAgANFQBoqABAQwUAGioA0FABgIYKADRUAKChAgANv37/EQB4qAIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0VACgoQIADRUAaKgAQEMFABoqANBQAYCGCgA0/D8HGUcZz9bk6AAAAABJRU5ErkJggg==",
+          "isUsed": false,
+          "mealServed": false
+        }
+      ]
+    },
+    {
+      "id": "ORD-5183B",
+      "createdAt": "2026-08-19T10:14:17.899Z",
+      "buyerName": "Gabriela Lucía Ramírez",
+      "buyerEmail": "gabriela.ramirez@hotmail.com",
+      "buyerPhone": "+58 424 7123984",
+      "buyerDocId": "V-22345678",
+      "quantity": 1,
+      "attendees": [
+        {
+          "name": "Gabriela Lucía Ramírez",
+          "docId": "V-22345678"
+        }
+      ],
+      "paymentMethod": "zelle",
+      "paymentReference": "ZEL-9823104",
+      "paymentProofUrl": "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&q=80&w=600",
+      "amountPaid": 10,
+      "currency": "USD",
+      "convertedUsd": 10,
+      "status": "approved",
+      "verifiedAt": "2026-08-19T12:14:17.899Z",
+      "verifiedBy": "Anabella (Admin)",
+      "tickets": [
+        {
+          "id": "ORD-5183B-T1",
+          "orderId": "ORD-5183B",
+          "ticketCode": "PARR-ORD5183B-1-XVXLN4",
+          "attendeeName": "Gabriela Lucía Ramírez",
+          "buyerName": "Gabriela Lucía Ramírez",
+          "buyerPhone": "+58 424 7123984",
+          "ticketNumber": 3,
+          "qrCodeDataUrl": "data:image/png;base64,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",
+          "isUsed": false,
+          "mealServed": false
+        }
+      ]
+    },
+    {
+      "id": "ORD-9304C",
+      "createdAt": "2026-08-19T14:14:17.899Z",
+      "buyerName": "Padre José Gregorio Silva",
+      "buyerEmail": "jgregorio.silva@diocesis.org",
+      "buyerPhone": "+58 412 6543210",
+      "buyerDocId": "V-14234567",
+      "quantity": 3,
+      "attendees": [
+        {
+          "name": "Padre José Gregorio Silva"
+        },
+        {
+          "name": "Hermano Andrés Colmenares"
+        },
+        {
+          "name": "Hermano Daniel Morales"
+        }
+      ],
+      "paymentMethod": "binance",
+      "paymentReference": "BIN-48291048",
+      "paymentProofUrl": "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?auto=format&fit=crop&q=80&w=600",
+      "amountPaid": 30,
+      "currency": "USDT",
+      "convertedUsd": 30,
+      "status": "pending",
+      "tickets": []
+    },
+    {
+      "id": "ORD-2918D",
+      "createdAt": "2026-08-19T13:14:17.899Z",
+      "buyerName": "Adriana Pérez de Chacón",
+      "buyerEmail": "adriana.chacon@gmail.com",
+      "buyerPhone": "+58 414 7894561",
+      "buyerDocId": "V-16987654",
+      "quantity": 2,
+      "attendees": [
+        {
+          "name": "Adriana Pérez de Chacón"
+        },
+        {
+          "name": "Roberto Chacón"
+        }
+      ],
+      "paymentMethod": "pago_movil",
+      "paymentReference": "004512",
+      "paymentProofUrl": "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600",
+      "amountPaid": 970,
+      "currency": "VES",
+      "convertedUsd": 20,
+      "rateApplied": 48.5,
+      "status": "pending",
+      "tickets": []
+    }
+  ]
+}
