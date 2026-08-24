@@ -69,6 +69,11 @@ export default function ComprarPage() {
     loadConfig();
   }, []);
 
+  // Smooth scroll to top whenever the wizard step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
+
   const ticketCount = selectedSeats.length > 0 ? selectedSeats.length : quantity;
   const ticketPrice = config?.ticketPriceUsd || 20;
   const rateBs = config?.currentRateBs || 48.50;
