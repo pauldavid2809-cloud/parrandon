@@ -280,7 +280,7 @@ export default function OrderStatusPage() {
             <span>¿Tienes alguna duda sobre tu pago o entrada? Escríbenos a soporte:</span>
           </div>
           <a
-            href={`https://wa.me/584147001122?text=Hola,%20tengo%20una%20consulta%20sobre%20mi%20orden%20${order.id}`}
+            href={`https://wa.me/584120308674?text=Hola,%20tengo%20una%20consulta%20sobre%20mi%20orden%20${order.id}`}
             target="_blank"
             rel="noreferrer"
             className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white transition-colors shrink-0"

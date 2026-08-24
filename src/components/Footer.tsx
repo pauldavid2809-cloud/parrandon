@@ -53,7 +53,9 @@ export default function Footer() {
               </p>
               <p className="flex items-center gap-2 pt-1">
                 <Phone className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span className="text-slate-300 font-bold">+58 414 700-1122</span>
+                <a href="https://wa.me/584120308674" target="_blank" rel="noreferrer" className="text-slate-300 hover:text-emerald-400 font-bold transition-colors">
+                  +58 412 030-8674
+                </a>
               </p>
             </div>
           </div>
@@ -78,7 +80,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://wa.me/584147001122?text=Hola,%20tengo%20una%20consulta%20sobre%20el%20Parrandón%20Navideño"
+                  href="https://wa.me/584120308674?text=Hola,%20tengo%20una%20consulta%20sobre%20el%20Parrandón%20Navideño"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90 font-medium"

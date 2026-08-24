@@ -29,7 +29,7 @@ export const DEFAULT_CONFIG: EventConfig = {
   paymentDetails: {
     pagoMovil: {
       bank: "0102 - Banco de Venezuela",
-      phone: "0414-7001122",
+      phone: "0412-0308674",
       docId: "J-30456789-0",
       holder: "Seminario Santo Tomás de Aquino"
     },
