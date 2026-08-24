@@ -153,34 +153,42 @@ export default function SeatingMap2D({
         </div>
       </div>
 
-      {/* Sector Tabs Filter */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        <button
-          type="button"
-          onClick={() => setActiveSector('ALL')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all shrink-0 ${
-            activeSector === 'ALL'
-              ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
-              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-          }`}
-        >
-          Todo el Bulevar (50 Mesas)
-        </button>
-        {sectors.map((sec) => (
-          <button
-            key={sec}
-            type="button"
-            onClick={() => setActiveSector(sec)}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all shrink-0 ${
-              activeSector === sec
-                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
-                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-            }`}
-          >
-            Sector {sec} ({sec}1 - {sec}10)
-          </button>
-        ))}
-      </div>
+      {/* Selected Seats Top Inline Strip */}
+      {selectedSeats.length > 0 && (
+        <div className="rounded-3xl border-2 border-amber-400 bg-slate-900/95 p-4 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+              <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                Tus Sillas Seleccionadas ({selectedSeats.length} de {maxSelectable} máx):
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+              {selectedSeats.map((seat) => (
+                <span
+                  key={`${seat.tableId}-${seat.seatNumber}`}
+                  className="inline-flex items-center gap-1 rounded-xl bg-amber-500/20 border border-amber-400/40 px-2.5 py-1 text-xs font-bold text-amber-200"
+                >
+                  <Armchair className="h-3 w-3 text-amber-400" />
+                  <span>Mesa {seat.tableId} • Silla #{seat.seatNumber}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedSeat(seat.tableId, seat.seatNumber)}
+                    className="hover:text-rose-400 ml-1 text-slate-400"
+                    title="Quitar silla"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="text-right shrink-0 bg-slate-950 px-4 py-2 rounded-2xl border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-bold">Subtotal:</span>
+            <span className="text-lg font-black text-emerald-400 font-mono">${selectedSeats.length * 20}.00 USD</span>
+          </div>
+        </div>
+      )}
 
       {/* MAIN REALISTIC BULEVAR ENVIRONMENT WRAPPER */}
       <div className="relative rounded-3xl border-2 border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
@@ -441,46 +449,6 @@ export default function SeatingMap2D({
         </div>
 
       </div>
-
-      {/* SELECTED SEATS FLOATING SUMMARY BAR */}
-      {selectedSeats.length > 0 && (
-        <div className="sticky bottom-4 z-40 rounded-3xl border-2 border-amber-400 bg-slate-950/95 backdrop-blur-xl p-5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-400 animate-ping" />
-              <span className="text-xs uppercase font-black tracking-wider text-amber-400">
-                Tus Sillas Seleccionadas ({selectedSeats.length} de {maxSelectable} máx):
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2.5">
-              {selectedSeats.map((seat) => (
-                <span
-                  key={`${seat.tableId}-${seat.seatNumber}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 border border-amber-400/50 px-3 py-1.5 text-xs font-black text-amber-300 shadow-md"
-                >
-                  <Armchair className="h-3.5 w-3.5 text-amber-400" />
-                  <span>Mesa {seat.tableId} • Silla #{seat.seatNumber}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeSelectedSeat(seat.tableId, seat.seatNumber)}
-                    className="hover:text-rose-400 ml-1 text-slate-400 active:scale-90"
-                    title="Eliminar asiento"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="text-right shrink-0 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-inner w-full sm:w-auto">
-            <span className="text-xs text-slate-400 block font-bold">Total a Pagar ($20 c/u):</span>
-            <span className="text-2xl font-black text-emerald-400 font-mono">
-              ${selectedSeats.length * 20}.00 USD
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* ROUND TABLE SEAT SELECTION MODAL (EMIL KOWALSKI POLISH) */}
       {activeTableModal && (

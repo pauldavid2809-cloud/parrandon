@@ -345,8 +345,8 @@ export default function ComprarPage() {
   }
 
   return (
-    <div className="min-h-screen pt-8 pb-32 px-4 sm:px-6 bg-slate-950">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen pt-8 pb-44 px-4 sm:px-6 bg-slate-950">
+      <div className="max-w-5xl mx-auto">
         
         {/* Step Indicator */}
         <div className="mb-6 sm:mb-8">
