@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllOrders, createOrder, searchOrdersOrTickets } from '@/lib/db';
 import { sendWhatsAppNotificationForOrder } from '@/lib/whatsapp';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -13,11 +16,19 @@ export async function GET(request: NextRequest) {
         success: true,
         orders: results.orders,
         ticketMatch: results.ticketMatch
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+        }
       });
     }
 
     const orders = await getAllOrders();
-    return NextResponse.json({ success: true, orders });
+    return NextResponse.json({ success: true, orders }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      }
+    });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json({ success: false, error: 'Error al obtener órdenes' }, { status: 500 });
