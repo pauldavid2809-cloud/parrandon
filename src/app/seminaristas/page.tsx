@@ -539,13 +539,13 @@ export default function SeminaristasPage() {
                 <label className="block text-xs font-bold uppercase text-amber-400 mb-2">
                   ¿Cuántas entradas desea el feligrés?
                 </label>
-                <div className="grid grid-cols-6 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {[1, 2, 3, 4, 5, 10].map(n => (
                     <button
                       key={n}
                       type="button"
                       onClick={() => setQuantity(n)}
-                      className={`py-3 rounded-2xl font-black text-sm transition-all ${
+                      className={`py-3 rounded-2xl font-black text-xs sm:text-sm transition-all active:scale-95 whitespace-nowrap min-h-[44px] flex items-center justify-center ${
                         quantity === n
                           ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
                           : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-700'

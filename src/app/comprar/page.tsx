@@ -444,7 +444,7 @@ export default function ComprarPage() {
 
         {/* FLOATING ACTION BAR FOR STEP 1 */}
         {step === 1 && selectedSeats.length > 0 && (
-          <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 border-t-2 border-amber-500/80 p-3 sm:p-4 shadow-2xl backdrop-blur-lg animate-fadeIn">
+          <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 border-t-2 border-amber-500/80 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] px-3.5 sm:p-4 shadow-2xl backdrop-blur-lg animate-fadeIn">
             <div className="max-w-4xl mx-auto flex flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-xs sm:text-sm shrink-0 border border-amber-500/40">

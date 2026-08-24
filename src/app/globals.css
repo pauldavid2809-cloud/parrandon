@@ -17,11 +17,15 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* Emil Kowalski Button & Interactive Press Feedback */
 button, a, [role="button"], input[type="submit"] {
-  transition: transform 150ms var(--ease-active-press), opacity 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  transition: transform 140ms var(--ease-active-press), opacity 140ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 button:active, a:active, [role="button"]:active {
