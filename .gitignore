@@ -41,3 +41,5 @@ next-env.d.ts
 
 # WhatsApp bot session credentials
 .data/whatsapp_auth/
+whatsapp-service/node_modules/
+whatsapp-service/auth_info/

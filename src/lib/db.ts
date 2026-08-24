@@ -838,8 +838,6 @@ export async function scanTicket(ticketCode: string, scannedBy: string = 'Person
       ticket.isUsed = true;
       ticket.scannedAt = now;
       ticket.scannedBy = scannedBy;
-      ticket.mealServed = true;
-      ticket.mealServedAt = now;
 
       order.tickets[ticketIndex] = ticket;
 

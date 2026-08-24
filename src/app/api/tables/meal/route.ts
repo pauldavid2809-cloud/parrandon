@@ -136,11 +136,6 @@ export async function POST(request: NextRequest) {
           if (t.tableId?.toUpperCase() === cleanTableId) {
             t.mealServed = isNowServed;
             t.mealServedAt = isNowServed ? now : undefined;
-            if (isNowServed && !t.isUsed) {
-              t.isUsed = true;
-              t.scannedAt = now;
-              t.scannedBy = 'Estación de Cocina (Despacho de Mesa)';
-            }
             updatedTicketsCount++;
             orderChanged = true;
           }
