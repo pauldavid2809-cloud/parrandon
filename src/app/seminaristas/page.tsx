@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Order, Ticket, SeatSelection } from '@/types';
 import { formatCurrency, formatDate, cleanPhoneForWhatsApp } from '@/lib/utils';
 import { 
@@ -19,7 +19,13 @@ import {
   Check, 
   QrCode,
   Users,
-  MapPin
+  MapPin,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  X,
+  Eye,
+  AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -64,8 +70,18 @@ export default function SeminaristasPage() {
   const [buyerPhone, setBuyerPhone] = useState('');
   const [buyerDocId, setBuyerDocId] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pago_movil' | 'zelle'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'pago_movil' | 'zelle' | 'binance' | 'transferencia'>('cash');
   const [paymentRef, setPaymentRef] = useState('');
+  
+  // Photo & Capture upload state
+  const [paymentProofUrl, setPaymentProofUrl] = useState<string>('');
+  const [proofFileName, setProofFileName] = useState<string>('');
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [rateBs, setRateBs] = useState<number>(897.82);
@@ -73,7 +89,6 @@ export default function SeminaristasPage() {
 
   // Stats for the active session
   const [mySales, setMySales] = useState<Order[]>([]);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     async function loadConfig() {
@@ -103,6 +118,58 @@ export default function SeminaristasPage() {
     setIsSessionActive(true);
   };
 
+  const handleCaptureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert("La foto no debe superar 8MB.");
+      return;
+    }
+
+    setProofFileName(file.name);
+    setUploadingProof(true);
+
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProofPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('orderId', `SEMINARISTA_${buyerPhone.replace(/\D/g, '') || Date.now()}`);
+
+      const res = await fetch('/api/upload-proof', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        setPaymentProofUrl(data.url);
+      } else {
+        // Fallback to data url if api fails
+        if (proofPreview) setPaymentProofUrl(proofPreview);
+      }
+    } catch (err) {
+      console.error("Error subiendo comprobante:", err);
+      if (proofPreview) setPaymentProofUrl(proofPreview);
+    } finally {
+      setUploadingProof(false);
+    }
+  };
+
+  const handleRemoveProof = () => {
+    setPaymentProofUrl('');
+    setProofPreview(null);
+    setProofFileName('');
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleProcessParishSale = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyerName.trim() || !buyerPhone.trim()) {
@@ -123,7 +190,8 @@ export default function SeminaristasPage() {
         buyerDocId,
         quantity,
         paymentMethod,
-        paymentReference: paymentRef || (paymentMethod === 'cash' ? `EFECTIVO-${parishName.slice(0, 10)}` : 'PARROQUIA-TRANSF'),
+        paymentReference: paymentRef || (paymentMethod === 'cash' ? `EFECTIVO-${parishName.slice(0, 10)}` : 'PARROQUIA-CAPTURE'),
+        paymentProofUrl: paymentMethod !== 'cash' ? (paymentProofUrl || proofPreview || '') : '',
         amountPaid: paymentMethod === 'pago_movil' ? totalBs : totalUsd,
         currency: paymentMethod === 'pago_movil' ? 'VES' : 'USD',
         convertedUsd: totalUsd,
@@ -151,7 +219,12 @@ export default function SeminaristasPage() {
         setBuyerPhone('');
         setBuyerDocId('');
         setPaymentRef('');
+        setPaymentProofUrl('');
+        setProofPreview(null);
+        setProofFileName('');
         setQuantity(1);
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        if (fileInputRef.current) fileInputRef.current.value = '';
       } else {
         alert(data.error || "Error al procesar la venta.");
       }
@@ -357,6 +430,12 @@ export default function SeminaristasPage() {
                       {lastOrder.tickets.map(t => `Mesa ${t.tableId} (Silla ${t.seatNumber})`).join(', ')}
                     </span>
                   </div>
+                  {lastOrder.paymentProofUrl && (
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[11px] text-sky-300">
+                      <span>Capture de Pago:</span>
+                      <span className="font-bold">📸 Guardado en el Sistema</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 1-Click WhatsApp Buttons */}
@@ -496,7 +575,7 @@ export default function SeminaristasPage() {
                   <input
                     type="tel"
                     required
-                    placeholder="Ej: 0414-1234567 o 0412 1234567 (sin código +58)"
+                    placeholder="Ej: 0414-1234567 o 0412 1234567"
                     value={buyerPhone}
                     onChange={(e) => setBuyerPhone(e.target.value)}
                     className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
@@ -526,24 +605,128 @@ export default function SeminaristasPage() {
                     className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="cash">💵 Efectivo en mano ($ o Bs)</option>
-                    <option value="pago_movil">📱 Pago Móvil a la cuenta del Seminario</option>
-                    <option value="zelle">💵 Zelle a la cuenta del Seminario</option>
+                    <option value="pago_movil">📱 Pago Móvil (Banesco / BCV)</option>
+                    <option value="zelle">💵 Zelle al Seminario</option>
+                    <option value="binance">🪙 Binance Pay (USDT)</option>
+                    <option value="transferencia">🏦 Transferencia Bancaria</option>
                   </select>
                 </div>
               </div>
 
+              {/* PHOTO / SCREENSHOT CAPTURE FOR NON-CASH METHODS */}
               {paymentMethod !== 'cash' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Número de Referencia Bancaria (o últimos 4 dígitos)
-                  </label>
+                <div className="rounded-2xl bg-slate-950 p-4 border-2 border-amber-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                      <Camera className="h-4 w-4 text-amber-400" />
+                      <span>Capture / Foto del Comprobante de Pago</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">Recomendado para arqueo</span>
+                  </div>
+
+                  {/* Hidden file inputs */}
                   <input
-                    type="text"
-                    placeholder="Ej: 098234"
-                    value={paymentRef}
-                    onChange={(e) => setPaymentRef(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white uppercase font-mono"
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleCaptureUpload}
                   />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCaptureUpload}
+                  />
+
+                  {/* Photo Action Buttons or Preview */}
+                  {!proofPreview && !paymentProofUrl ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        disabled={uploadingProof}
+                        className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-bold border border-blue-400/40 shadow-lg active:scale-95 transition-all"
+                      >
+                        <Camera className="h-4 w-4 text-amber-300" />
+                        <span>📸 Tomar Foto con Cámara</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingProof}
+                        className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold border border-slate-700 active:scale-95 transition-all"
+                      >
+                        <Upload className="h-4 w-4 text-emerald-400" />
+                        <span>🖼️ Subir Capture de Galería</span>
+                      </button>
+                    </div>
+                  ) : (
+                    /* Photo Uploaded Preview Card */
+                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-emerald-500/40 animate-fadeIn">
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-12 w-12 rounded-lg overflow-hidden border border-emerald-400/50 bg-black shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={proofPreview || paymentProofUrl}
+                            alt="Capture de pago"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Capture guardado con éxito</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono truncate max-w-[180px] block">
+                            {proofFileName || 'comprobante_pago.jpg'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => cameraInputRef.current?.click()}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white text-[11px] font-semibold border border-slate-700"
+                        >
+                          Cambiar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveProof}
+                          className="p-1.5 rounded-lg bg-rose-950/60 text-rose-400 hover:bg-rose-900 border border-rose-800"
+                          title="Eliminar capture"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadingProof && (
+                    <div className="flex items-center gap-2 text-xs text-amber-300 animate-pulse pt-1">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Subiendo capture de pago...</span>
+                    </div>
+                  )}
+
+                  {/* Reference Number input */}
+                  <div className="pt-2">
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Número de Referencia Bancaria (o últimos 4 dígitos)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 098234"
+                      value={paymentRef}
+                      onChange={(e) => setPaymentRef(e.target.value)}
+                      className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-xs text-white uppercase font-mono focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -563,8 +746,8 @@ export default function SeminaristasPage() {
 
               <button
                 type="submit"
-                disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 py-4 text-sm font-black text-slate-950 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50"
+                disabled={submitting || uploadingProof}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 py-4 text-sm font-black text-slate-950 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50 active:scale-[0.98]"
               >
                 {submitting ? (
                   <>
@@ -594,6 +777,11 @@ export default function SeminaristasPage() {
                         <span className="text-[10px] text-slate-400">
                           {s.quantity} {s.quantity === 1 ? 'entrada' : 'entradas'} • {s.seats.map(st => `Mesa ${st.tableId}-S${st.seatNumber}`).join(', ')}
                         </span>
+                        {s.paymentProofUrl && (
+                          <span className="text-[9px] text-emerald-400 block font-semibold mt-0.5">
+                            📸 Capture adjunto
+                          </span>
+                        )}
                       </div>
                       <span className="text-emerald-400 font-bold font-mono">
                         ${s.convertedUsd} USD
