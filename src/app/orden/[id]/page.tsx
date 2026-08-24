@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Order } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import TicketCard from '@/components/TicketCard';
+import { generateTicketPdf } from '@/lib/export';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -18,7 +19,9 @@ import {
   MapPin, 
   CreditCard, 
   Hash, 
-  Phone 
+  Phone,
+  FileDown,
+  Printer
 } from 'lucide-react';
 
 export default function OrderStatusPage() {
@@ -29,6 +32,7 @@ export default function OrderStatusPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   const fetchOrder = async () => {
     if (!orderId) return;
@@ -57,6 +61,18 @@ export default function OrderStatusPage() {
     }, 12000);
     return () => clearInterval(interval);
   }, [orderId, order?.status]);
+
+  const handleDownloadAllPdf = async () => {
+    if (!order || !order.tickets || order.tickets.length === 0) return;
+    setDownloadingAll(true);
+    for (let i = 0; i < order.tickets.length; i++) {
+      const ticket = order.tickets[i];
+      generateTicketPdf(ticket, order.buyerName, order.buyerPhone);
+      // Small delay between downloads so browser doesn't block multiple files
+      await new Promise(res => setTimeout(res, 400));
+    }
+    setDownloadingAll(false);
+  };
 
   if (loading) {
     return (
@@ -171,7 +187,7 @@ export default function OrderStatusPage() {
 
                 <p className="text-xs text-slate-300 mt-1 max-w-xl">
                   {isApproved
-                    ? 'Tus entradas digitales con código QR ya están disponibles a continuación. Preséntalas el día del evento en tu celular o impresas.'
+                    ? 'Tus entradas digitales con código QR ya están disponibles a continuación. Preséntalas el día del evento en tu celular o descárgalas en PDF.'
                     : isRejected
                     ? `Motivo: ${order.rejectionReason || 'Comprobante no coincide con los registros bancarios.'} Por favor contáctanos al WhatsApp de administración.`
                     : 'Anabella y el equipo de administración del Seminario están validando tu transferencia bancaria. Una vez confirmada, tus QR se activarán automáticamente.'}
@@ -184,7 +200,7 @@ export default function OrderStatusPage() {
         {/* IF APPROVED: SHOW DIGITAL TICKETS */}
         {isApproved && order.tickets && order.tickets.length > 0 && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-amber-400" />
@@ -194,6 +210,17 @@ export default function OrderStatusPage() {
                   Cada entrada cuenta con su propio código QR para el control de acceso y plato navideño.
                 </p>
               </div>
+
+              {order.tickets.length > 1 && (
+                <button
+                  onClick={handleDownloadAllPdf}
+                  disabled={downloadingAll}
+                  className="flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 transition-all shadow-lg shadow-amber-500/20 shrink-0"
+                >
+                  <FileDown className="h-4 w-4" />
+                  <span>{downloadingAll ? 'Generando PDFs...' : `Descargar ${order.tickets.length} Pases en PDF`}</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

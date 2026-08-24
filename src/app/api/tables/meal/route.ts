@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTablesState, getAllOrders } from '@/lib/db';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import fs from 'fs';
 import path from 'path';
 
@@ -18,7 +19,6 @@ export async function GET() {
     let servedTablesCount = 0;
 
     const tablesMealData = tables.map(table => {
-      // Find all tickets belonging to this table
       const tableTickets: Array<{
         seatNumber: number;
         attendeeName: string;
@@ -38,7 +38,6 @@ export async function GET() {
           totalPlatesConfirmed++;
         }
 
-        // Find ticket
         for (const order of orders) {
           if (order.status === 'rejected') continue;
           const t = order.tickets?.find(ticket => ticket.tableId === table.id && ticket.seatNumber === seat.number);
@@ -61,7 +60,6 @@ export async function GET() {
         }
       });
 
-      // A table is considered "Served" if it was dispatched
       const isMealServed = tableOccupiedCount > 0 
         ? tableServedCount >= tableOccupiedCount 
         : tableServedCount > 0;
@@ -75,7 +73,7 @@ export async function GET() {
         sector: table.sector,
         number: table.number,
         totalSeats: 10,
-        occupiedSeats: tableOccupiedCount || 10, // default 10 capacity
+        occupiedSeats: tableOccupiedCount || 10,
         servedPlatesCount: tableServedCount,
         isMealServed,
         mealServedAt: lastMealServedAt,
@@ -109,21 +107,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'tableId es requerido (ej: A1)' }, { status: 400 });
     }
 
-    if (!fs.existsSync(DB_FILE)) {
-      return NextResponse.json({ success: false, error: 'Base de datos no encontrada' }, { status: 500 });
-    }
-
-    const raw = fs.readFileSync(DB_FILE, 'utf-8');
-    const db = JSON.parse(raw);
     const cleanTableId = tableId.trim().toUpperCase();
     const isNowServed = served !== undefined ? served : true;
     const now = new Date().toISOString();
 
     let updatedTicketsCount = 0;
+    const allOrders = await getAllOrders();
 
-    for (let orderIndex = 0; orderIndex < db.orders.length; orderIndex++) {
-      const order = db.orders[orderIndex];
+    for (const order of allOrders) {
       if (order.status === 'rejected') continue;
+      let orderChanged = false;
 
       if (order.tickets && Array.isArray(order.tickets)) {
         for (let tIndex = 0; tIndex < order.tickets.length; tIndex++) {
@@ -132,18 +125,51 @@ export async function POST(request: NextRequest) {
             t.mealServed = isNowServed;
             t.mealServedAt = isNowServed ? now : undefined;
             if (isNowServed && !t.isUsed) {
-              // Auto mark entry as attended when serving food
               t.isUsed = true;
               t.scannedAt = now;
               t.scannedBy = 'Estación de Cocina (Despacho de Mesa)';
             }
             updatedTicketsCount++;
+            orderChanged = true;
           }
+        }
+      }
+
+      if (orderChanged) {
+        if (isSupabaseConfigured && supabase) {
+          try {
+            await supabase.from('orders').upsert({
+              id: order.id,
+              tickets: order.tickets
+            });
+          } catch (e) {}
         }
       }
     }
 
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
+    // Also update local file if exists
+    try {
+      if (fs.existsSync(DB_FILE)) {
+        const raw = fs.readFileSync(DB_FILE, 'utf-8');
+        const db = JSON.parse(raw);
+        for (const order of db.orders) {
+          if (order.tickets && Array.isArray(order.tickets)) {
+            for (const t of order.tickets) {
+              if (t.tableId?.toUpperCase() === cleanTableId) {
+                t.mealServed = isNowServed;
+                t.mealServedAt = isNowServed ? now : undefined;
+                if (isNowServed && !t.isUsed) {
+                  t.isUsed = true;
+                  t.scannedAt = now;
+                  t.scannedBy = 'Estación de Cocina (Despacho de Mesa)';
+                }
+              }
+            }
+          }
+        }
+        fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
+      }
+    } catch (e) {}
 
     return NextResponse.json({
       success: true,

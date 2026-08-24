@@ -3,11 +3,12 @@ import path from 'path';
 import { EventConfig, Order, Ticket, EventStats, ScanResult, OrderStatus, TableInfo, SeatSelection, SalesChannel, PaymentMethod, Currency } from '@/types';
 import { generateOrderId, generateTicketCodeWithSeat } from './utils';
 import { generateQrDataUrl } from './qr';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 const DATA_DIR = path.join(process.cwd(), '.data');
 const DB_FILE = path.join(DATA_DIR, 'parrandon_db.json');
 
-const DEFAULT_CONFIG: EventConfig = {
+export const DEFAULT_CONFIG: EventConfig = {
   eventName: "Parrandón Navideño 2026",
   subtitle: "Seminario Mayor Santo Tomás de Aquino",
   edition: "Gran Fiesta Tradicional y Familiar",
@@ -20,7 +21,7 @@ const DEFAULT_CONFIG: EventConfig = {
   seatsPerTable: 10,
   ticketPriceUsd: 20,
   childTicketPriceUsd: 10,
-  currentRateBs: 48.50,
+  currentRateBs: 897.82,
   description: "Una noche inolvidable en el Bulevar del Seminario Santo Tomás de Aquino de Maracaibo: gaitas en vivo, villancicos, bazar navideño, rifas y plato navideño completo.",
   includesMeal: true,
   mealName: "Plato Navideño Tradicional Completo",
@@ -63,6 +64,66 @@ function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
+}
+
+function mapDbRowToOrder(row: any): Order {
+  return {
+    id: row.id,
+    createdAt: row.created_at || new Date().toISOString(),
+    buyerName: row.buyer_name,
+    buyerEmail: row.buyer_email || '',
+    buyerPhone: row.buyer_phone,
+    buyerDocId: row.buyer_doc_id || '',
+    quantity: Number(row.quantity) || 1,
+    seats: row.seats || [],
+    attendees: row.attendees || [],
+    paymentMethod: row.payment_method as PaymentMethod,
+    paymentReference: row.payment_reference || 'N/A',
+    paymentProofUrl: row.payment_proof_url,
+    amountPaid: Number(row.amount_paid) || 0,
+    currency: row.currency as Currency,
+    convertedUsd: Number(row.converted_usd) || 0,
+    rateApplied: row.rate_applied ? Number(row.rate_applied) : undefined,
+    status: row.status as OrderStatus,
+    salesChannel: row.sales_channel as SalesChannel,
+    sellerName: row.seller_name,
+    parishName: row.parish_name,
+    rejectionReason: row.rejection_reason,
+    verifiedAt: row.verified_at,
+    verifiedBy: row.verified_by,
+    notes: row.notes,
+    tickets: row.tickets || []
+  };
+}
+
+function mapOrderToDbRow(order: Order): any {
+  return {
+    id: order.id,
+    created_at: order.createdAt,
+    buyer_name: order.buyerName,
+    buyer_email: order.buyerEmail,
+    buyer_phone: order.buyerPhone,
+    buyer_doc_id: order.buyerDocId,
+    quantity: order.quantity,
+    seats: order.seats,
+    attendees: order.attendees,
+    payment_method: order.paymentMethod,
+    payment_reference: order.paymentReference,
+    payment_proof_url: order.paymentProofUrl,
+    amount_paid: order.amountPaid,
+    currency: order.currency,
+    converted_usd: order.convertedUsd,
+    rate_applied: order.rateApplied,
+    status: order.status,
+    sales_channel: order.salesChannel,
+    seller_name: order.sellerName,
+    parish_name: order.parishName,
+    rejection_reason: order.rejectionReason,
+    verified_at: order.verifiedAt,
+    verified_by: order.verifiedBy,
+    notes: order.notes,
+    tickets: order.tickets
+  };
 }
 
 // Generate all 50 tables with 10 seats
@@ -239,7 +300,7 @@ async function getSeedOrders(): Promise<Order[]> {
       status: "approved",
       salesChannel: "seminarista_parroquia",
       sellerName: "Hno. Daniel Colmenares",
-      parishName: "Parroquia Santísimo Salvador",
+      parishName: "Basílica de Nuestra Señora de Chiquinquirá (La Chinita)",
       notes: "Venta presencial domingo en misa",
       tickets: [
         {
@@ -291,12 +352,6 @@ async function readDb(): Promise<DatabaseSchema> {
   try {
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
     const data = JSON.parse(raw) as DatabaseSchema;
-    if (data.config.totalQuota !== 500) {
-      data.config.totalQuota = 500;
-      data.config.totalTables = 50;
-      data.config.seatsPerTable = 10;
-      writeDb(data);
-    }
     return data;
   } catch (err) {
     console.error('Error reading db file, restoring fallback:', err);
@@ -313,11 +368,89 @@ function writeDb(data: DatabaseSchema) {
 }
 
 export async function getEventConfig(): Promise<EventConfig> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('event_config')
+        .select('*')
+        .eq('id', 1)
+        .single();
+
+      if (data && !error) {
+        return {
+          eventName: data.event_name,
+          subtitle: data.subtitle,
+          edition: data.edition,
+          date: data.date,
+          time: data.time,
+          venue: data.venue,
+          venueAddress: data.venue_address,
+          totalQuota: data.total_quota,
+          totalTables: data.total_tables,
+          seatsPerTable: data.seats_per_table,
+          ticketPriceUsd: Number(data.ticket_price_usd),
+          childTicketPriceUsd: Number(data.child_ticket_price_usd),
+          currentRateBs: Number(data.current_rate_bs),
+          description: data.description,
+          includesMeal: data.includes_meal,
+          mealName: data.meal_name,
+          announcement: data.announcement,
+          paymentDetails: data.payment_details || DEFAULT_CONFIG.paymentDetails
+        };
+      }
+    } catch (e) {
+      console.warn('Fallo consulta Supabase config, fallback a local:', e);
+    }
+  }
+
   const db = await readDb();
   return db.config || DEFAULT_CONFIG;
 }
 
 export async function updateEventConfig(updated: Partial<EventConfig>): Promise<EventConfig> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const current = await getEventConfig();
+      const merged: EventConfig = {
+        ...current,
+        ...updated,
+        paymentDetails: {
+          ...current.paymentDetails,
+          ...(updated.paymentDetails || {})
+        }
+      };
+
+      const { error } = await supabase
+        .from('event_config')
+        .upsert({
+          id: 1,
+          event_name: merged.eventName,
+          subtitle: merged.subtitle,
+          edition: merged.edition,
+          date: merged.date,
+          time: merged.time,
+          venue: merged.venue,
+          venue_address: merged.venueAddress,
+          total_quota: merged.totalQuota,
+          total_tables: merged.totalTables,
+          seats_per_table: merged.seatsPerTable,
+          ticket_price_usd: merged.ticketPriceUsd,
+          child_ticket_price_usd: merged.childTicketPriceUsd,
+          current_rate_bs: merged.currentRateBs,
+          description: merged.description,
+          includes_meal: merged.includesMeal,
+          meal_name: merged.mealName,
+          announcement: merged.announcement,
+          payment_details: merged.paymentDetails,
+          updated_at: new Date().toISOString()
+        });
+
+      if (!error) return merged;
+    } catch (e) {
+      console.warn('Error actualizando config en Supabase, fallback a local:', e);
+    }
+  }
+
   const db = await readDb();
   db.config = {
     ...db.config,
@@ -332,19 +465,52 @@ export async function updateEventConfig(updated: Partial<EventConfig>): Promise<
 }
 
 export async function getAllOrders(): Promise<Order[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (data && !error) {
+        return data.map(mapDbRowToOrder);
+      }
+    } catch (e) {
+      console.warn('Fallo consulta Supabase orders, fallback a local:', e);
+    }
+  }
+
   const db = await readDb();
   return db.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
+  const cleanId = id.trim().toUpperCase();
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .ilike('id', cleanId)
+        .single();
+
+      if (data && !error) {
+        return mapDbRowToOrder(data);
+      }
+    } catch (e) {
+      console.warn('Fallo getOrderById Supabase:', e);
+    }
+  }
+
   const db = await readDb();
-  return db.orders.find(o => o.id.toUpperCase() === id.toUpperCase()) || null;
+  return db.orders.find(o => o.id.toUpperCase() === cleanId) || null;
 }
 
 export async function getOrderByTicketCode(code: string): Promise<{ order: Order; ticket: Ticket } | null> {
-  const db = await readDb();
-  for (const order of db.orders) {
-    const ticket = order.tickets?.find(t => t.ticketCode.toUpperCase() === code.toUpperCase());
+  const clean = code.trim().toUpperCase();
+  const orders = await getAllOrders();
+  for (const order of orders) {
+    const ticket = order.tickets?.find(t => t.ticketCode.toUpperCase() === clean);
     if (ticket) {
       return { order, ticket };
     }
@@ -352,12 +518,48 @@ export async function getOrderByTicketCode(code: string): Promise<{ order: Order
   return null;
 }
 
+// Global search: Order ID, Ticket Code, Cedula, or Phone
+export async function searchOrdersOrTickets(query: string): Promise<{
+  orders: Order[];
+  ticketMatch?: { order: Order; ticket: Ticket } | null;
+}> {
+  const clean = query.trim().toUpperCase();
+  if (!clean) return { orders: [], ticketMatch: null };
+
+  const allOrders = await getAllOrders();
+  const normalizedQuery = clean.replace(/[^A-Z0-9]/g, '');
+
+  // 1. Check exact ticket match
+  const ticketMatch = await getOrderByTicketCode(clean);
+
+  // 2. Filter matching orders
+  const matchedOrders = allOrders.filter(order => {
+    const orderIdNorm = order.id.replace(/[^A-Z0-9]/g, '');
+    const docIdNorm = (order.buyerDocId || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const phoneNorm = (order.buyerPhone || '').replace(/[^0-9]/g, '');
+    const queryDigits = clean.replace(/\D/g, '');
+
+    const matchId = orderIdNorm.includes(normalizedQuery);
+    const matchDoc = docIdNorm.length > 3 && (docIdNorm.includes(normalizedQuery) || normalizedQuery.includes(docIdNorm));
+    const matchPhone = queryDigits.length >= 6 && phoneNorm.includes(queryDigits);
+    const matchBuyer = order.buyerName.toUpperCase().includes(clean);
+    const matchTicket = order.tickets?.some(t => t.ticketCode.toUpperCase().includes(clean));
+
+    return matchId || matchDoc || matchPhone || matchBuyer || matchTicket;
+  });
+
+  return {
+    orders: matchedOrders,
+    ticketMatch
+  };
+}
+
 // Get the full 50 tables state with individual 10 seats status
 export async function getTablesState(): Promise<TableInfo[]> {
-  const db = await readDb();
+  const orders = await getAllOrders();
   const tables = generateAllTables();
 
-  for (const order of db.orders) {
+  for (const order of orders) {
     if (order.status === 'rejected') continue;
     const isPending = order.status === 'pending';
 
@@ -387,7 +589,6 @@ export async function autoAssignSeats(quantity: number): Promise<SeatSelection[]
   const tables = await getTablesState();
   const selected: SeatSelection[] = [];
 
-  // Sort tables strictly in natural order: A1, A2... A10, B1... E10
   const sortedTables = [...tables].sort((a, b) => {
     if (a.sector !== b.sector) {
       return a.sector.localeCompare(b.sector);
@@ -395,7 +596,6 @@ export async function autoAssignSeats(quantity: number): Promise<SeatSelection[]
     return a.number - b.number;
   });
 
-  // Assign available seats strictly in sequential order
   for (const table of sortedTables) {
     const sortedSeats = [...table.seats].sort((a, b) => a.number - b.number);
     for (const seat of sortedSeats) {
@@ -437,10 +637,8 @@ export async function createOrder(data: {
   status?: OrderStatus;
   notes?: string;
 }): Promise<Order> {
-  const db = await readDb();
   const id = generateOrderId();
 
-  // If seats are not provided, auto-assign
   let assignedSeats = data.seats || [];
   if (!assignedSeats || assignedSeats.length === 0) {
     assignedSeats = await autoAssignSeats(data.quantity);
@@ -496,12 +694,27 @@ export async function createOrder(data: {
     tickets
   };
 
-  db.orders.unshift(newOrder);
-  writeDb(db);
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const row = mapOrderToDbRow(newOrder);
+      const { error } = await supabase.from('orders').insert(row);
+      if (error) console.error('Error insertando orden en Supabase:', error);
+    } catch (e) {
+      console.error('Error guardando en Supabase:', e);
+    }
+  }
+
+  // Also persist in local fallback
+  try {
+    const db = await readDb();
+    db.orders.unshift(newOrder);
+    writeDb(db);
+  } catch (e) {}
+
   return newOrder;
 }
 
-async function generateTicketsForSeats(
+export async function generateTicketsForSeats(
   orderId: string,
   seats: SeatSelection[],
   attendees: Array<{ name: string; docId?: string; tableId?: string; seatNumber?: number }>,
@@ -541,11 +754,9 @@ export async function updateOrderStatus(
   status: OrderStatus,
   options?: { rejectionReason?: string; verifiedBy?: string; notes?: string }
 ): Promise<Order | null> {
-  const db = await readDb();
-  const orderIndex = db.orders.findIndex(o => o.id.toUpperCase() === orderId.toUpperCase());
-  if (orderIndex === -1) return null;
+  const order = await getOrderById(orderId);
+  if (!order) return null;
 
-  const order = db.orders[orderIndex];
   order.status = status;
   order.verifiedAt = new Date().toISOString();
   order.verifiedBy = options?.verifiedBy || 'Anabella (Admin)';
@@ -562,17 +773,32 @@ export async function updateOrderStatus(
     );
   }
 
-  db.orders[orderIndex] = order;
-  writeDb(db);
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const row = mapOrderToDbRow(order);
+      await supabase.from('orders').upsert(row);
+    } catch (e) {
+      console.error('Error actualizando status en Supabase:', e);
+    }
+  }
+
+  try {
+    const db = await readDb();
+    const idx = db.orders.findIndex(o => o.id.toUpperCase() === orderId.toUpperCase());
+    if (idx !== -1) {
+      db.orders[idx] = order;
+      writeDb(db);
+    }
+  } catch (e) {}
+
   return order;
 }
 
 export async function scanTicket(ticketCode: string, scannedBy: string = 'Personal de Puerta'): Promise<ScanResult> {
-  const db = await readDb();
   const cleanCode = ticketCode.trim().toUpperCase();
+  const allOrders = await getAllOrders();
 
-  for (let orderIndex = 0; orderIndex < db.orders.length; orderIndex++) {
-    const order = db.orders[orderIndex];
+  for (const order of allOrders) {
     const ticketIndex = order.tickets?.findIndex(t => t.ticketCode.toUpperCase() === cleanCode);
 
     if (ticketIndex !== undefined && ticketIndex !== -1) {
@@ -616,8 +842,24 @@ export async function scanTicket(ticketCode: string, scannedBy: string = 'Person
       ticket.mealServedAt = now;
 
       order.tickets[ticketIndex] = ticket;
-      db.orders[orderIndex] = order;
-      writeDb(db);
+
+      // Update in Supabase
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const row = mapOrderToDbRow(order);
+          await supabase.from('orders').upsert(row);
+        } catch (e) {}
+      }
+
+      // Update local db
+      try {
+        const db = await readDb();
+        const oIdx = db.orders.findIndex(o => o.id === order.id);
+        if (oIdx !== -1) {
+          db.orders[oIdx] = order;
+          writeDb(db);
+        }
+      } catch (e) {}
 
       return {
         success: true,
@@ -642,9 +884,8 @@ export async function scanTicket(ticketCode: string, scannedBy: string = 'Person
 }
 
 export async function getEventStats(): Promise<EventStats> {
-  const db = await readDb();
-  const config = db.config || DEFAULT_CONFIG;
-  const orders = db.orders;
+  const config = await getEventConfig();
+  const orders = await getAllOrders();
 
   let totalSoldTickets = 0;
   let confirmedTickets = 0;

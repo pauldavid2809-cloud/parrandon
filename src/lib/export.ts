@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import { Order, EventStats } from '@/types';
+import { Order, Ticket, EventStats } from '@/types';
 import { formatDate } from './utils';
 
 export function exportOrdersToExcel(orders: Order[], filename = 'Parrandon_Navideno_Ventas.xlsx') {
@@ -94,6 +94,109 @@ export function export500SeatsToExcel(seats: any[], filename = 'Parrandon_500_As
   const ws = XLSX.utils.json_to_sheet(data);
   XLSX.utils.book_append_sheet(wb, ws, '500 Asientos Bulevar');
   XLSX.writeFile(wb, filename);
+}
+
+// Generate Individual Ticket PDF Pass
+export function generateTicketPdf(ticket: Ticket, buyerName?: string, buyerPhone?: string) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [105, 148] // A6 card size format
+  });
+
+  // Background Card
+  doc.setFillColor(15, 23, 42); // slate-950
+  doc.rect(0, 0, 105, 148, 'F');
+
+  // Top Navy Festive Header
+  doc.setFillColor(23, 37, 84); // blue-950
+  doc.rect(0, 0, 105, 30, 'F');
+
+  doc.setTextColor(245, 158, 11); // amber-500
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SEMINARIO MAYOR SANTO TOMÁS DE AQUINO', 52.5, 9, { align: 'center' });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.text('PARRANDÓN NAVIDEÑO 2026', 52.5, 17, { align: 'center' });
+
+  doc.setTextColor(186, 230, 253); // sky-200
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sábado 12 Dic 2026 • 6:00 PM • Bulevar del Seminario', 52.5, 24, { align: 'center' });
+
+  // Gold accent bar
+  doc.setFillColor(245, 158, 11);
+  doc.rect(0, 29, 105, 1.5, 'F');
+
+  // Seating Box
+  doc.setFillColor(30, 41, 59); // slate-800
+  doc.roundedRect(8, 35, 89, 18, 3, 3, 'F');
+
+  doc.setTextColor(245, 158, 11);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('UBICACIÓN ASIGNADA EN EL BULEVAR', 52.5, 40, { align: 'center' });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.text(`MESA: ${ticket.tableId}`, 22, 48, { align: 'center' });
+  doc.setTextColor(245, 158, 11);
+  doc.text(`SILLA: #${ticket.seatNumber}`, 52.5, 48, { align: 'center' });
+  doc.setTextColor(52, 211, 153); // emerald-400
+  doc.text(`SECTOR: ${ticket.sector || 'A'}`, 83, 48, { align: 'center' });
+
+  // Attendee Info
+  doc.setFillColor(2, 6, 23); // slate-950
+  doc.roundedRect(8, 56, 89, 14, 2, 2, 'F');
+
+  doc.setTextColor(148, 163, 184);
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('ASISTENTE:', 12, 61);
+  doc.text('PASE / REF:', 12, 66);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(ticket.attendeeName || 'Invitado', 30, 61);
+
+  doc.setTextColor(245, 158, 11);
+  doc.text(`#${ticket.ticketNumber} • ${ticket.ticketCode}`, 30, 66);
+
+  // QR Code
+  if (ticket.qrCodeDataUrl) {
+    try {
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(30, 73, 45, 45, 3, 3, 'F');
+      doc.addImage(ticket.qrCodeDataUrl, 'PNG', 32.5, 75.5, 40, 40);
+    } catch (e) {
+      console.error('Error dibujando QR en PDF:', e);
+    }
+  }
+
+  // Token code text under QR
+  doc.setTextColor(148, 163, 184);
+  doc.setFontSize(7);
+  doc.setFont('courier', 'bold');
+  doc.text(ticket.ticketCode, 52.5, 122, { align: 'center' });
+
+  // Meal inclusion badge
+  doc.setFillColor(6, 78, 59); // emerald-900
+  doc.roundedRect(8, 126, 89, 8, 2, 2, 'F');
+  doc.setTextColor(167, 243, 208); // emerald-200
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('🍽️ INCLUYE 1 PLATO NAVIDEÑO TRADICIONAL COMPLETO', 52.5, 131.5, { align: 'center' });
+
+  // Footer text
+  doc.setTextColor(100, 116, 139);
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Presenta este pase digital o impreso al ingresar al evento • No transferible tras escaneo', 52.5, 142, { align: 'center' });
+
+  doc.save(`Pase_Parrandon_${ticket.ticketCode}.pdf`);
 }
 
 export function exportExecutiveReportPdf(stats: EventStats, orders: Order[]) {

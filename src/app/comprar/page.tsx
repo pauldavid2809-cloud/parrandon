@@ -232,7 +232,7 @@ export default function ComprarPage() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -242,6 +242,27 @@ export default function ComprarPage() {
     }
 
     setProofFileName(file.name);
+
+    // Intentar subida a Supabase Storage mediante /api/upload-proof
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('orderId', `ONLINE_${buyerPhone.replace(/\D/g, '') || Date.now()}`);
+
+      const res = await fetch('/api/upload-proof', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        setPaymentProofUrl(data.url);
+        return;
+      }
+    } catch (err) {
+      console.warn('Error subiendo comprobante a Storage, usando fallback base64:', err);
+    }
+
+    // Fallback local a base64
     const reader = new FileReader();
     reader.onload = () => {
       setPaymentProofUrl(reader.result as string);

@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const DATA_DIR = path.join(process.cwd(), '.data');
-const DB_FILE = path.join(DATA_DIR, 'parrandon_db.json');
+import { getEventConfig, updateEventConfig } from '@/lib/db';
 
 let cachedRate: number | null = null;
 let lastFetchTime: number = 0;
@@ -26,7 +22,9 @@ export async function fetchLiveEuroRate(): Promise<number> {
       if (data && typeof data.promedio === 'number' && data.promedio > 0) {
         cachedRate = Number(data.promedio.toFixed(2));
         lastFetchTime = now;
-        updateDbRate(cachedRate);
+        try {
+          await updateEventConfig({ currentRateBs: cachedRate });
+        } catch (e) {}
         return cachedRate;
       }
     }
@@ -45,7 +43,9 @@ export async function fetchLiveEuroRate(): Promise<number> {
       if (data?.rates?.VES && typeof data.rates.VES === 'number' && data.rates.VES > 0) {
         cachedRate = Number(data.rates.VES.toFixed(2));
         lastFetchTime = now;
-        updateDbRate(cachedRate);
+        try {
+          await updateEventConfig({ currentRateBs: cachedRate });
+        } catch (e) {}
         return cachedRate;
       }
     }
@@ -53,31 +53,15 @@ export async function fetchLiveEuroRate(): Promise<number> {
     console.error('Fallo consulta a fallback de tasas:', err);
   }
 
-  // 3. Last Fallback from DB or default
-  if (fs.existsSync(DB_FILE)) {
-    try {
-      const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
-      if (db.config?.currentRateBs) {
-        return db.config.currentRateBs;
-      }
-    } catch (e) {}
-  }
+  // 3. Fallback from DB configuration
+  try {
+    const config = await getEventConfig();
+    if (config.currentRateBs) {
+      return config.currentRateBs;
+    }
+  } catch (e) {}
 
   return cachedRate || 897.82;
-}
-
-function updateDbRate(rate: number) {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
-      if (db.config) {
-        db.config.currentRateBs = rate;
-        fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
-      }
-    }
-  } catch (e) {
-    console.error('Error guardando tasa en db:', e);
-  }
 }
 
 export async function GET() {
@@ -87,7 +71,7 @@ export async function GET() {
       success: true,
       rate,
       currency: 'VES',
-      source: 'Tasa Oficial del Día (BCV)',
+      source: 'Tasa Oficial del Día (Euro BCV)',
       updatedAt: new Date().toISOString()
     });
   } catch (error) {

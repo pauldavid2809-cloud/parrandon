@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, Ticket, Home, Lock, ShieldCheck } from 'lucide-react';
+import { Sparkles, Ticket, Home, Search, ArrowLeft } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -31,7 +31,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Public Navigation */}
+        {/* Navigation */}
         <nav className="flex items-center gap-1.5 sm:gap-3">
           {!isAdmin ? (
             <>
@@ -47,6 +47,15 @@ export default function Navbar() {
               </Link>
               
               <Link
+                href="/#consultar"
+                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                title="Buscar entradas o comprobar orden"
+              >
+                <Search className="h-3.5 w-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Buscar Entradas</span>
+              </Link>
+
+              <Link
                 href="/comprar"
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-xl transition-all shadow-md ${
                   pathname === '/comprar'
@@ -57,19 +66,6 @@ export default function Navbar() {
                 <Ticket className="h-3.5 w-3.5" />
                 <span>Comprar<span className="hidden sm:inline"> Entradas</span></span>
               </Link>
-
-              <Link
-                href="/administracion-interna"
-                className={`flex items-center gap-1 p-1.5 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-colors ${
-                  pathname.startsWith('/administracion-interna')
-                    ? 'bg-blue-950 text-sky-300 border border-sky-500/40'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                }`}
-                title="Acceso exclusivo para el personal del Seminario"
-              >
-                <Lock className="h-3.5 w-3.5 text-amber-400" />
-                <span className="hidden md:inline">Administración Interna</span>
-              </Link>
             </>
           ) : (
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -77,14 +73,14 @@ export default function Navbar() {
                 href="/administracion-interna"
                 className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
               >
-                <Lock className="h-3.5 w-3.5 text-amber-400" />
-                <span className="hidden sm:inline">Administración Interna</span>
+                <span>Hub Operativo</span>
               </Link>
               <Link
                 href="/"
                 className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
               >
-                ← <span className="hidden sm:inline">Portada</span>
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Portada</span>
               </Link>
             </div>
           )}

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Ticket } from '@/types';
-import { Utensils, Calendar, MapPin, Share2, Download, Printer, CheckCircle2, AlertTriangle, Sparkles, Armchair } from 'lucide-react';
+import { generateTicketPdf } from '@/lib/export';
+import { Utensils, Calendar, MapPin, Share2, Download, Printer, CheckCircle2, AlertTriangle, Sparkles, Armchair, FileDown } from 'lucide-react';
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -12,6 +13,7 @@ interface TicketCardProps {
 
 export default function TicketCard({ ticket, buyerName, buyerPhone }: TicketCardProps) {
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const ticketUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/ticket/${ticket.ticketCode}` 
@@ -23,6 +25,18 @@ export default function TicketCard({ ticket, buyerName, buyerPhone }: TicketCard
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = () => {
+    setDownloading(true);
+    try {
+      generateTicketPdf(ticket, buyerName, buyerPhone);
+    } catch (e) {
+      console.error(e);
+      window.print();
+    } finally {
+      setTimeout(() => setDownloading(false), 1000);
+    }
   };
 
   const handleCopyLink = () => {
@@ -147,11 +161,12 @@ export default function TicketCard({ ticket, buyerName, buyerPhone }: TicketCard
         </a>
 
         <button
-          onClick={handlePrint}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition-colors"
+          onClick={handleDownloadPdf}
+          disabled={downloading}
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 px-3 py-2.5 text-xs font-bold text-slate-950 transition-colors shadow-lg shadow-amber-500/20"
         >
-          <Printer className="h-3.5 w-3.5 text-amber-400" />
-          <span>Imprimir / PDF</span>
+          <FileDown className="h-3.5 w-3.5" />
+          <span>{downloading ? 'Descargando...' : 'Descargar PDF'}</span>
         </button>
 
         <button

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import LiveCuposBadge from '@/components/LiveCuposBadge';
+import CountdownTimer from '@/components/CountdownTimer';
 import { 
   Sparkles, 
   Calendar, 
@@ -15,25 +16,68 @@ import {
   Search, 
   ArrowRight,
   Lock,
-  Armchair
+  Armchair,
+  Loader2,
+  AlertCircle,
+  Ticket as TicketIcon
 } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
-  const [searchCode, setSearchCode] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
 
-  const handleSearchOrder = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchCode.trim()) return;
-    const clean = searchCode.trim().toUpperCase();
-    if (clean.startsWith('ORD-') || clean.startsWith('PARR-')) {
-      if (clean.startsWith('PARR-')) {
-        router.push(`/ticket/${clean}`);
-      } else {
-        router.push(`/orden/${clean}`);
-      }
-    } else {
+    if (!searchQuery.trim()) return;
+
+    setSearching(true);
+    setSearchError(null);
+    setSearchResults(null);
+
+    const clean = searchQuery.trim().toUpperCase();
+
+    // Fast direct routing for exact standard prefixes
+    if (clean.startsWith('PARR-')) {
+      router.push(`/ticket/${clean}`);
+      return;
+    }
+    if (clean.startsWith('ORD-') && clean.length >= 8) {
       router.push(`/orden/${clean}`);
+      return;
+    }
+
+    // Query the search API
+    try {
+      const res = await fetch(`/api/orders?search=${encodeURIComponent(clean)}`);
+      const data = await res.json();
+
+      if (data.success) {
+        if (data.ticketMatch?.ticket) {
+          router.push(`/ticket/${data.ticketMatch.ticket.ticketCode}`);
+          return;
+        }
+
+        if (data.orders && data.orders.length === 1) {
+          router.push(`/orden/${data.orders[0].id}`);
+          return;
+        }
+
+        if (data.orders && data.orders.length > 1) {
+          setSearchResults(data.orders);
+        } else {
+          setSearchError(`No encontramos órdenes asociadas a "${searchQuery}". Verifica el número de orden, cédula o teléfono.`);
+        }
+      } else {
+        setSearchError('Error al realizar la búsqueda.');
+      }
+    } catch (err) {
+      console.error(err);
+      setSearchError('Error de conexión al consultar.');
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -45,13 +89,13 @@ export default function Home() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-8 pb-16 sm:pt-16 sm:pb-24 border-b border-slate-800/80">
+      <section className="relative overflow-hidden pt-8 pb-14 sm:pt-14 sm:pb-20 border-b border-slate-800/80">
         {/* Background glow effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] sm:w-[600px] h-[250px] sm:h-[350px] bg-gradient-to-tr from-blue-600/10 via-amber-500/10 to-blue-900/10 blur-[90px] sm:blur-[120px] rounded-full pointer-events-none" />
 
         <div className="container mx-auto max-w-6xl px-3 sm:px-6 relative z-10 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-blue-950/60 px-3 py-1 sm:px-4 sm:py-1.5 text-[10px] sm:text-xs font-bold text-amber-300 mb-4 sm:mb-6 shadow-lg">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-blue-950/60 px-3 py-1 sm:px-4 sm:py-1.5 text-[10px] sm:text-xs font-bold text-amber-300 mb-4 sm:mb-5 shadow-lg">
             <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400 shrink-0" />
             <span>Fiesta Navideña Tradicional y Familiar • 2026</span>
           </div>
@@ -64,12 +108,15 @@ export default function Home() {
             Seminario Mayor Santo Tomás de Aquino
           </p>
 
-          <p className="mt-4 sm:mt-6 text-xs sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed px-2">
+          <p className="mt-3 sm:mt-5 text-xs sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed px-2">
             Ven a celebrar en familia con gaitas en vivo, ambiente fraterno, bazar y el tradicional plato navideño completo. Elige tu mesa y sillas en el croquis 2D del bulevar.
           </p>
 
+          {/* Live Countdown Timer */}
+          <CountdownTimer />
+
           {/* Real-time availability indicator */}
-          <div className="mt-6 mb-8 sm:mt-8 sm:mb-10">
+          <div className="mt-4 mb-6 sm:mt-6 sm:mb-8">
             <LiveCuposBadge />
           </div>
 
@@ -119,32 +166,70 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Ticket Lookup Box */}
-      <section className="py-8 sm:py-10 bg-slate-950 border-b border-slate-800">
+      {/* Enhanced Ticket Lookup Box */}
+      <section id="consultar" className="py-8 sm:py-12 bg-slate-950 border-b border-slate-800">
         <div className="container mx-auto max-w-3xl px-3 sm:px-4 text-center">
-          <h3 className="text-sm sm:text-base font-bold text-white mb-1.5 flex items-center justify-center gap-2">
-            <Search className="h-4 w-4 text-amber-400" />
+          <h3 className="text-base sm:text-lg font-bold text-white mb-1.5 flex items-center justify-center gap-2">
+            <Search className="h-5 w-5 text-amber-400" />
             ¿Ya compraste tus entradas? Consulta tu orden o descarga tu QR
           </h3>
-          <p className="text-[11px] sm:text-xs text-slate-400 mb-4">
-            Ingresa tu número de orden (ej: <code className="text-amber-300 font-mono">ORD-7492A</code>) o código de ticket para ver tus pases digitales:
+          <p className="text-xs text-slate-400 mb-4 max-w-xl mx-auto">
+            Ingresa tu número de orden (ej: <code className="text-amber-300 font-mono">ORD-7492A</code>), código de entrada, tu <strong>Cédula / DNI</strong> o tu <strong>Teléfono WhatsApp</strong>:
           </p>
 
-          <form onSubmit={handleSearchOrder} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto px-2">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto px-2">
             <input
               type="text"
-              placeholder="Ej: ORD-7492A o PARR-..."
-              value={searchCode}
-              onChange={(e) => setSearchCode(e.target.value)}
-              className="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-4 py-2.5 text-xs text-white uppercase focus:outline-none focus:border-amber-400 font-mono text-center sm:text-left"
+              placeholder="Ej: ORD-7492A, V-18234567 o 04141234567"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 rounded-2xl bg-slate-900 border border-slate-700 px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-400 text-center sm:text-left"
             />
             <button
               type="submit"
-              className="rounded-xl bg-amber-500 hover:bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 transition-colors"
+              disabled={searching}
+              className="rounded-2xl bg-amber-500 hover:bg-amber-400 px-6 py-3 text-xs font-bold text-slate-950 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
             >
-              Consultar
+              {searching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Buscando...</span>
+                </>
+              ) : (
+                <span>Consultar</span>
+              )}
             </button>
           </form>
+
+          {searchError && (
+            <div className="mt-4 max-w-md mx-auto rounded-2xl bg-rose-950/70 border border-rose-500/40 p-3 text-xs text-rose-300 flex items-center gap-2 text-left">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{searchError}</span>
+            </div>
+          )}
+
+          {searchResults && searchResults.length > 1 && (
+            <div className="mt-4 max-w-md mx-auto rounded-2xl bg-slate-900 border border-slate-700 p-4 text-left space-y-2">
+              <span className="text-xs font-bold text-amber-300 block">
+                Se encontraron {searchResults.length} órdenes asociadas:
+              </span>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {searchResults.map((ord: any) => (
+                  <Link
+                    key={ord.id}
+                    href={`/orden/${ord.id}`}
+                    className="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 hover:border-amber-400 text-xs transition-colors"
+                  >
+                    <div>
+                      <strong className="text-white font-mono">{ord.id}</strong>
+                      <span className="text-slate-400 text-[11px] block">{ord.buyerName} • {ord.quantity} entrada(s)</span>
+                    </div>
+                    <span className="text-amber-400 font-semibold text-[11px]">Ver Pase →</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -228,20 +313,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Discrete Footer with Internal Admin Link */}
-      <footer className="py-8 border-t border-slate-800 bg-slate-950 text-center text-xs text-slate-500 space-y-2">
-        <p>© 2026 Seminario Mayor Santo Tomás de Aquino. Todos los derechos reservados.</p>
-        <div>
-          <Link
-            href="/administracion-interna"
-            className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-400 text-[11px] transition-colors"
-          >
-            <Lock className="h-3 w-3" />
-            <span>Administración Interna</span>
-          </Link>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllOrders, createOrder } from '@/lib/db';
+import { getAllOrders, createOrder, searchOrdersOrTickets } from '@/lib/db';
 import { sendWhatsAppNotificationForOrder } from '@/lib/whatsapp';
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const search = searchParams.get('search');
+
+    if (search && search.trim()) {
+      const results = await searchOrdersOrTickets(search);
+      return NextResponse.json({
+        success: true,
+        orders: results.orders,
+        ticketMatch: results.ticketMatch
+      });
+    }
+
     const orders = await getAllOrders();
     return NextResponse.json({ success: true, orders });
   } catch (error) {
@@ -21,6 +33,7 @@ export async function POST(request: NextRequest) {
       buyerPhone,
       buyerDocId,
       quantity,
+      seats,
       attendees,
       paymentMethod,
       paymentReference,
@@ -29,6 +42,10 @@ export async function POST(request: NextRequest) {
       currency,
       convertedUsd,
       rateApplied,
+      salesChannel,
+      sellerName,
+      parishName,
+      status,
       notes
     } = body;
 
@@ -45,6 +62,7 @@ export async function POST(request: NextRequest) {
       buyerPhone,
       buyerDocId: buyerDocId || '',
       quantity: Number(quantity),
+      seats: Array.isArray(seats) ? seats : [],
       attendees: Array.isArray(attendees) ? attendees : [],
       paymentMethod,
       paymentReference: paymentReference || '',
@@ -53,6 +71,10 @@ export async function POST(request: NextRequest) {
       currency: currency || 'USD',
       convertedUsd: Number(convertedUsd),
       rateApplied: rateApplied ? Number(rateApplied) : undefined,
+      salesChannel: salesChannel || 'online',
+      sellerName,
+      parishName,
+      status,
       notes
     });
 

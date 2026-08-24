@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Order, Ticket } from '@/types';
 import { cleanPhoneForWhatsApp } from '@/lib/utils';
+import { exportOrdersToExcel } from '@/lib/export';
 import { 
   Users, 
   Search, 
@@ -16,7 +17,9 @@ import {
   RefreshCw,
   Phone,
   Copy,
-  Check
+  Check,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface AttendeeRow {
@@ -50,7 +53,6 @@ export default function AsistentesPage() {
     fetchOrders();
   }, []);
 
-  // Flatten tickets with order data
   const attendeeRows: AttendeeRow[] = [];
   orders.forEach(order => {
     (order.tickets || []).forEach(ticket => {
@@ -83,6 +85,10 @@ export default function AsistentesPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  const handleExportExcel = () => {
+    exportOrdersToExcel(orders, `Asistentes_Parrandon_2026_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -97,13 +103,23 @@ export default function AsistentesPage() {
           </p>
         </div>
 
-        <button
-          onClick={fetchOrders}
-          className="flex items-center gap-1.5 rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-300 hover:text-white"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
-          <span>Actualizar</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white transition-colors shadow-md"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span>Exportar a Excel</span>
+          </button>
+
+          <button
+            onClick={fetchOrders}
+            className="flex items-center gap-1.5 rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-300 hover:text-white"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+            <span>Actualizar</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search */}
@@ -155,6 +171,7 @@ export default function AsistentesPage() {
               <tr>
                 <th className="px-4 py-3">Código QR</th>
                 <th className="px-4 py-3">Nombre del Asistente</th>
+                <th className="px-4 py-3">Ubicación</th>
                 <th className="px-4 py-3">Comprador</th>
                 <th className="px-4 py-3">WhatsApp</th>
                 <th className="px-4 py-3">Plato Navideño</th>
@@ -165,7 +182,7 @@ export default function AsistentesPage() {
             <tbody className="divide-y divide-slate-800">
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                     No se encontraron asistentes registrados con estos filtros.
                   </td>
                 </tr>
@@ -182,6 +199,12 @@ export default function AsistentesPage() {
                       <td className="px-4 py-3">
                         <strong className="text-white text-sm block">{ticket.attendeeName}</strong>
                         <span className="text-[10px] text-slate-400">Pase #{ticket.ticketNumber} • Orden {order.id}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-amber-300 font-bold font-mono text-xs">
+                          Mesa {ticket.tableId} • Silla #{ticket.seatNumber}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">Sector {ticket.sector || 'A'}</span>
                       </td>
                       <td className="px-4 py-3 text-slate-300">
                         {order.buyerName}
