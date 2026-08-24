@@ -289,15 +289,10 @@ export default function ComprarPage() {
 
     const refToUse = paymentMethod === 'paypal'
       ? (paymentReference.trim() || `PAYPAL-${buyerPhone.replace(/\D/g, '').slice(-8) || Date.now().toString().slice(-6)}`)
-      : paymentReference.trim();
-
-    if (paymentMethod !== 'paypal' && !refToUse) {
-      setErrorMessage("Por favor ingresa el número o ID de confirmación de tu pago.");
-      return;
-    }
+      : (paymentReference.trim() || `${paymentMethod.toUpperCase()}-CAPTURE-${buyerPhone.replace(/\D/g, '').slice(-4) || Date.now().toString().slice(-4)}`);
 
     if (paymentMethod !== 'paypal' && !paymentProofUrl) {
-      setErrorMessage("⚠️ Es OBLIGATORIO adjuntar la foto o capture del comprobante de pago para procesar tu orden.");
+      setErrorMessage("⚠️ Es OBLIGATORIO adjuntar el capture o foto del comprobante de pago para procesar tu orden.");
       return;
     }
 
@@ -757,36 +752,6 @@ export default function ComprarPage() {
                 </div>
               )}
             </div>
-
-            {/* Reference Input (Solo para transferencias manuales) */}
-            {paymentMethod !== 'paypal' && (
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-slate-300">
-                  {paymentMethod === 'pago_movil'
-                    ? 'Número de Referencia de Pago Móvil'
-                    : paymentMethod === 'zelle'
-                    ? 'Nombre del Titular Zelle o Confirmación'
-                    : 'ID de Orden / Referencia Binance Pay'} <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={
-                    paymentMethod === 'pago_movil'
-                      ? 'Ej: Últimos 4 o 6 dígitos de la referencia bancaria'
-                      : paymentMethod === 'zelle'
-                      ? 'Ej: Nombre del titular o código Zelle'
-                      : 'Ej: ID de Orden Binance'
-                  }
-                  value={paymentReference}
-                  onChange={(e) => setPaymentReference(e.target.value)}
-                  className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-3 text-xs text-white uppercase font-mono focus:outline-none focus:border-amber-400"
-                />
-                <span className="text-[10px] text-slate-400 block">
-                  Ingresa el número de referencia para verificar tu pago.
-                </span>
-              </div>
-            )}
 
             {/* MANDATORY PAYMENT PROOF / CAPTURE */}
             {paymentMethod !== 'paypal' && (
