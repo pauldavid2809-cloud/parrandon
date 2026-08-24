@@ -47,14 +47,19 @@ export default function EscanearPage() {
     const data: ScanResult = await res.json();
 
     if (data.success && data.ticket) {
-      setRecentScans(prev => [
-        {
-          name: data.ticket!.attendeeName,
-          ticketCode: data.ticket!.ticketCode,
-          time: new Date().toLocaleTimeString('es-VE')
-        },
-        ...prev.slice(0, 7)
-      ]);
+      setRecentScans(prev => {
+        if (prev.length > 0 && prev[0].ticketCode === data.ticket!.ticketCode) {
+          return prev;
+        }
+        return [
+          {
+            name: data.ticket!.attendeeName,
+            ticketCode: data.ticket!.ticketCode,
+            time: new Date().toLocaleTimeString('es-VE')
+          },
+          ...prev.slice(0, 7)
+        ];
+      });
       fetchStats();
     }
 
