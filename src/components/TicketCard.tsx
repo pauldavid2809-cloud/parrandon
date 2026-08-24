@@ -47,22 +47,32 @@ export default function TicketCard({ ticket, buyerName, buyerPhone }: TicketCard
 
   return (
     <div className="w-full max-w-md mx-auto overflow-hidden rounded-3xl border border-amber-500/40 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 shadow-2xl transition-all hover:border-amber-400/70">
-      {/* Header Banner en Azul Marino */}
-      <div className="relative bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 border-b border-amber-500/40 p-5 text-white">
-        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-slate-950/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-amber-500/30">
-          <Sparkles className="h-3 w-3 text-amber-300" />
-          <span>Bulevar 2026</span>
+      {/* Header Banner en Azul Marino con Escudo Oficial */}
+      <div className="relative bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 border-b border-amber-500/40 p-5 text-white flex items-center gap-3.5">
+        <div className="relative h-12 w-10 shrink-0 filter drop-shadow-[0_2px_6px_rgba(245,158,11,0.3)]">
+          <img
+            src="/images/seminario-logo.png"
+            alt="Escudo Seminario Santo Tomás de Aquino"
+            className="w-full h-full object-contain"
+          />
         </div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-          Seminario Mayor Santo Tomás de Aquino
-        </p>
-        <h3 className="text-xl font-extrabold tracking-tight mt-0.5 flex items-center gap-1.5 text-white">
-          Parrandón Navideño
-        </h3>
-        <p className="text-xs text-sky-200 mt-1 flex items-center gap-1">
-          <Calendar className="h-3.5 w-3.5 text-amber-300" />
-          Sábado 12 Dic 2026 • 6:00 PM
-        </p>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+              Seminario Santo Tomás de Aquino
+            </p>
+            <span className="rounded-full bg-slate-950/80 px-2 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-300 border border-amber-500/30">
+              2026
+            </span>
+          </div>
+          <h3 className="text-xl font-black tracking-tight text-white mt-0.5">
+            Parrandón Navideño
+          </h3>
+          <p className="text-xs text-sky-200 mt-0.5 flex items-center gap-1">
+            <Calendar className="h-3.5 w-3.5 text-amber-300" />
+            <span>Sábado 12 Dic 2026 • 6:00 PM</span>
+          </p>
+        </div>
       </div>
 
       {/* Ticket Body */}

@@ -1,32 +1,47 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Sparkles, Ticket, Home, Search, ArrowLeft } from 'lucide-react';
+import { Sparkles, Ticket, Home, Search, ArrowLeft, ShieldCheck, Heart } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith('/admin');
+  const isAdmin = pathname.startsWith('/admin') || pathname === '/administracion-interna' || pathname === '/escanear' || pathname === '/cocina';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-amber-500/20 bg-slate-950/95 backdrop-blur-md">
-      <div className="container mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
-        {/* Logo / Branding */}
-        <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
-          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-900 via-amber-500 to-blue-950 p-0.5 shadow-lg shadow-blue-950/40 group-hover:scale-105 transition-transform">
-            <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-slate-950">
-              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
-            </div>
+    <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-slate-950/85 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
+      {/* Top micro ribbon */}
+      <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 text-amber-300 text-[10px] font-bold py-1 px-3 text-center border-b border-amber-500/15 flex items-center justify-center gap-2">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+        <span>Gran Parrandón Navideño 2026 • Seminario Mayor Santo Tomás de Aquino</span>
+        <span className="hidden sm:inline text-sky-400 font-mono text-[9px] bg-sky-950/80 px-2 py-0.2 rounded border border-sky-500/20">SACERDOS LUX</span>
+      </div>
+
+      <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
+        {/* Logo / Branding with Official Coat of Arms */}
+        <Link href="/" className="flex items-center gap-3 group shrink-0">
+          <div className="relative h-10 w-8 sm:h-12 sm:w-10 shrink-0 transition-transform duration-200 group-hover:scale-105 filter drop-shadow-[0_2px_8px_rgba(245,158,11,0.25)]">
+            <Image
+              src="/images/seminario-logo.png"
+              alt="Escudo Oficial Seminario Mayor Santo Tomás de Aquino"
+              fill
+              sizes="48px"
+              className="object-contain"
+              priority
+            />
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-base font-bold tracking-tight text-white group-hover:text-amber-400 transition-colors flex items-center gap-1 sm:gap-1.5">
-              Parrandón <span className="hidden xs:inline">Navideño</span>
-              <span className="rounded-full bg-amber-500/20 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-semibold text-amber-300 border border-amber-500/30">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm sm:text-base font-black tracking-tight text-white group-hover:text-amber-400 transition-colors">
+                Parrandón <span className="text-amber-400">Navideño</span>
+              </span>
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-extrabold text-amber-300 border border-amber-500/30 font-mono">
                 2026
               </span>
-            </span>
-            <span className="text-[9px] sm:text-[11px] text-sky-200/80 truncate max-w-[130px] xs:max-w-[200px] sm:max-w-none">
-              Seminario Sto. Tomás de Aquino
+            </div>
+            <span className="text-[10px] sm:text-xs text-sky-300/90 font-medium tracking-tight truncate max-w-[160px] xs:max-w-[240px] sm:max-w-none">
+              Seminario Mayor Santo Tomás de Aquino
             </span>
           </div>
         </Link>
@@ -37,50 +52,53 @@ export default function Navbar() {
             <>
               <Link
                 href="/"
-                className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-colors ${
-                  pathname === '/' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all ${
+                  pathname === '/'
+                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-inner'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
                 }`}
                 title="Inicio"
               >
-                <Home className="h-3.5 w-3.5" />
+                <Home className="h-4 w-4" />
                 <span className="hidden sm:inline">Inicio</span>
               </Link>
               
               <Link
                 href="/#consultar"
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all"
                 title="Buscar entradas o comprobar orden"
               >
-                <Search className="h-3.5 w-3.5 text-amber-400" />
+                <Search className="h-4 w-4 text-amber-400" />
                 <span className="hidden sm:inline">Buscar Entradas</span>
               </Link>
 
               <Link
                 href="/comprar"
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-xl transition-all shadow-md ${
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black rounded-xl transition-all shadow-lg ${
                   pathname === '/comprar'
-                    ? 'bg-amber-500 text-slate-950 shadow-amber-500/30 ring-2 ring-amber-400'
-                    : 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:brightness-110'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-amber-500/30 ring-2 ring-amber-300 scale-105'
+                    : 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 hover:brightness-110 shadow-amber-500/20'
                 }`}
               >
-                <Ticket className="h-3.5 w-3.5" />
+                <Ticket className="h-4 w-4" />
                 <span>Comprar<span className="hidden sm:inline"> Entradas</span></span>
               </Link>
             </>
           ) : (
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-2">
               <Link
                 href="/administracion-interna"
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-900 border border-slate-700 text-amber-300 hover:text-white shadow-md"
               >
+                <ShieldCheck className="h-4 w-4 text-amber-400" />
                 <span>Hub Operativo</span>
               </Link>
               <Link
                 href="/"
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Portada</span>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Ver Portada</span>
               </Link>
             </div>
           )}

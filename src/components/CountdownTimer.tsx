@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Sparkles } from 'lucide-react';
+import { Clock, Sparkles } from 'lucide-react';
 
 interface TimeLeft {
   days: number;
@@ -44,7 +44,10 @@ export default function CountdownTimer({ targetDate = '2026-12-12T18:00:00-04:00
   if (!timeLeft) {
     return (
       <div className="h-16 sm:h-20 flex items-center justify-center text-slate-500 text-xs">
-        Cargando cuenta regresiva...
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+          <span>Sincronizando cuenta regresiva oficial...</span>
+        </div>
       </div>
     );
   }
@@ -59,40 +62,47 @@ export default function CountdownTimer({ targetDate = '2026-12-12T18:00:00-04:00
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto my-4">
-      <div className="rounded-3xl border border-amber-500/30 bg-slate-900/80 backdrop-blur-md p-3.5 sm:p-4 shadow-xl">
-        <div className="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-400 mb-2.5">
-          <Clock className="h-3.5 w-3.5 text-amber-400 animate-spin" style={{ animationDuration: '8s' }} />
-          <span>Cuenta Regresiva para la Gran Noche</span>
+    <div className="w-full max-w-xl mx-auto my-5">
+      <div className="rounded-3xl border border-white/[0.1] bg-slate-900/80 backdrop-blur-xl p-4 sm:p-5 shadow-2xl relative overflow-hidden group">
+        {/* Ambient background refraction */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-amber-500/10 to-blue-600/5 pointer-events-none" />
+
+        <div className="flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-wider text-amber-300 mb-3 relative z-10">
+          <Clock className="h-4 w-4 text-amber-400 animate-spin" style={{ animationDuration: '12s' }} />
+          <span>Cuenta Regresiva para la Gran Noche de Gala</span>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
-          <div className="rounded-2xl bg-slate-950/90 border border-slate-800 p-2 sm:p-2.5">
-            <span className="text-xl sm:text-3xl font-black text-white font-mono block leading-tight">
+        <div className="grid grid-cols-4 gap-2.5 sm:gap-3.5 text-center relative z-10">
+          {/* Days */}
+          <div className="rounded-2xl bg-slate-950/90 border border-slate-800/90 p-2.5 sm:p-3 shadow-inner hover:border-amber-500/30 transition-colors">
+            <span className="text-2xl sm:text-4xl font-black text-white font-mono block leading-none tracking-tight">
               {timeLeft.days}
             </span>
-            <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Días</span>
+            <span className="text-[10px] uppercase font-extrabold text-slate-400 mt-1.5 block">Días</span>
           </div>
 
-          <div className="rounded-2xl bg-slate-950/90 border border-slate-800 p-2 sm:p-2.5">
-            <span className="text-xl sm:text-3xl font-black text-amber-300 font-mono block leading-tight">
+          {/* Hours */}
+          <div className="rounded-2xl bg-slate-950/90 border border-slate-800/90 p-2.5 sm:p-3 shadow-inner hover:border-amber-500/30 transition-colors">
+            <span className="text-2xl sm:text-4xl font-black text-amber-300 font-mono block leading-none tracking-tight">
               {String(timeLeft.hours).padStart(2, '0')}
             </span>
-            <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Horas</span>
+            <span className="text-[10px] uppercase font-extrabold text-slate-400 mt-1.5 block">Horas</span>
           </div>
 
-          <div className="rounded-2xl bg-slate-950/90 border border-slate-800 p-2 sm:p-2.5">
-            <span className="text-xl sm:text-3xl font-black text-sky-300 font-mono block leading-tight">
+          {/* Minutes */}
+          <div className="rounded-2xl bg-slate-950/90 border border-slate-800/90 p-2.5 sm:p-3 shadow-inner hover:border-sky-500/30 transition-colors">
+            <span className="text-2xl sm:text-4xl font-black text-sky-300 font-mono block leading-none tracking-tight">
               {String(timeLeft.minutes).padStart(2, '0')}
             </span>
-            <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Min</span>
+            <span className="text-[10px] uppercase font-extrabold text-slate-400 mt-1.5 block">Min</span>
           </div>
 
-          <div className="rounded-2xl bg-slate-950/90 border border-slate-800 p-2 sm:p-2.5">
-            <span className="text-xl sm:text-3xl font-black text-emerald-400 font-mono block leading-tight">
+          {/* Seconds */}
+          <div className="rounded-2xl bg-slate-950/90 border border-slate-800/90 p-2.5 sm:p-3 shadow-inner hover:border-emerald-500/30 transition-colors">
+            <span className="text-2xl sm:text-4xl font-black text-emerald-400 font-mono block leading-none tracking-tight">
               {String(timeLeft.seconds).padStart(2, '0')}
             </span>
-            <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Seg</span>
+            <span className="text-[10px] uppercase font-extrabold text-slate-400 mt-1.5 block">Seg</span>
           </div>
         </div>
       </div>

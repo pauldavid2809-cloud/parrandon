@@ -76,26 +76,35 @@ export default function AdministracionInternaPage() {
         
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Volver a la Portada del Evento</span>
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
-              <Lock className="h-7 w-7 text-amber-400" />
-              Administración Interna
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Portal unificado de herramientas operativas para el personal del Seminario Mayor Santo Tomás de Aquino.
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="relative h-16 w-14 shrink-0 filter drop-shadow-[0_4px_12px_rgba(245,158,11,0.3)]">
+              <img
+                src="/images/seminario-logo.png"
+                alt="Escudo Seminario Santo Tomás"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Volver a la Portada del Evento</span>
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
+                <Lock className="h-6 w-6 text-amber-400" />
+                Centro Operativo del Seminario
+              </h1>
+              <p className="text-xs text-sky-300 font-medium">
+                Seminario Mayor Santo Tomás de Aquino • Sacerdos Lux
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-2xl bg-slate-900 border border-slate-800 px-4 py-2 text-right">
+          <div className="rounded-2xl bg-slate-900 border border-slate-800 px-4 py-2.5 text-right shadow-md">
             <span className="text-[10px] text-slate-400 block uppercase font-bold">Parrandón Navideño</span>
-            <span className="text-xs font-black text-amber-400">Edición 2026 • 500 Cupos</span>
+            <span className="text-xs font-black text-amber-400">Edición 2026 • 50 Mesas</span>
           </div>
         </div>
 
