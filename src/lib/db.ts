@@ -99,30 +99,30 @@ function mapDbRowToOrder(row: any): Order {
 function mapOrderToDbRow(order: Order): any {
   return {
     id: order.id,
-    created_at: order.createdAt,
-    buyer_name: order.buyerName,
-    buyer_email: order.buyerEmail,
-    buyer_phone: order.buyerPhone,
-    buyer_doc_id: order.buyerDocId,
-    quantity: order.quantity,
-    seats: order.seats,
-    attendees: order.attendees,
-    payment_method: order.paymentMethod,
-    payment_reference: order.paymentReference,
-    payment_proof_url: order.paymentProofUrl,
-    amount_paid: order.amountPaid,
-    currency: order.currency,
-    converted_usd: order.convertedUsd,
-    rate_applied: order.rateApplied,
-    status: order.status,
-    sales_channel: order.salesChannel,
-    seller_name: order.sellerName,
-    parish_name: order.parishName,
-    rejection_reason: order.rejectionReason,
-    verified_at: order.verifiedAt,
-    verified_by: order.verifiedBy,
-    notes: order.notes,
-    tickets: order.tickets
+    created_at: order.createdAt || new Date().toISOString(),
+    buyer_name: order.buyerName || 'Invitado',
+    buyer_email: order.buyerEmail || '',
+    buyer_phone: order.buyerPhone || '',
+    buyer_doc_id: order.buyerDocId || '',
+    quantity: Number(order.quantity) || 1,
+    seats: Array.isArray(order.seats) ? order.seats : [],
+    attendees: Array.isArray(order.attendees) ? order.attendees : [],
+    payment_method: order.paymentMethod || 'cash',
+    payment_reference: order.paymentReference || 'N/A',
+    payment_proof_url: order.paymentProofUrl || null,
+    amount_paid: Number(order.amountPaid) || 0,
+    currency: order.currency || 'USD',
+    converted_usd: Number(order.convertedUsd) || 0,
+    rate_applied: order.rateApplied ? Number(order.rateApplied) : null,
+    status: order.status || 'pending',
+    sales_channel: order.salesChannel || 'online',
+    seller_name: order.sellerName || null,
+    parish_name: order.parishName || null,
+    rejection_reason: order.rejectionReason || null,
+    verified_at: order.verifiedAt || null,
+    verified_by: order.verifiedBy || null,
+    notes: order.notes || null,
+    tickets: Array.isArray(order.tickets) ? order.tickets : []
   };
 }
 
@@ -847,8 +847,13 @@ export async function scanTicket(ticketCode: string, scannedBy: string = 'Person
       if (isSupabaseConfigured && supabase) {
         try {
           const row = mapOrderToDbRow(order);
-          await supabase.from('orders').upsert(row);
-        } catch (e) {}
+          const { error: sbError } = await supabase.from('orders').upsert(row);
+          if (sbError) {
+            console.error('Error al guardar escaneo en Supabase:', sbError);
+          }
+        } catch (e) {
+          console.error('Excepción al guardar escaneo en Supabase:', e);
+        }
       }
 
       // Update local db
