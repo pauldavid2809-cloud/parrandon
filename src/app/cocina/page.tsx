@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   ChefHat, 
   Utensils, 
@@ -53,9 +53,15 @@ export default function CocinaPage() {
   const [togglingTableId, setTogglingTableId] = useState<string | null>(null);
   const [recentMessage, setRecentMessage] = useState<string | null>(null);
 
-  const fetchTablesMeal = async () => {
+  const fetchTablesMeal = useCallback(async () => {
     try {
-      const res = await fetch('/api/tables/meal');
+      const res = await fetch(`/api/tables/meal?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await res.json();
       if (data.success && data.tables) {
         setTables(data.tables);
@@ -66,61 +72,71 @@ export default function CocinaPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTablesMeal();
-    const interval = setInterval(fetchTablesMeal, 8000); // Live sync every 8 seconds
+    const interval = setInterval(fetchTablesMeal, 6000); // Live sync every 6 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchTablesMeal]);
 
   const handleToggleTableMeal = async (tableId: string, currentServed: boolean) => {
     setTogglingTableId(tableId);
     setRecentMessage(null);
 
+    const targetServed = !currentServed;
+
+    // Immediate optimistic update of UI
+    setTables(prev => prev.map(t => {
+      if (t.tableId === tableId) {
+        return {
+          ...t,
+          isMealServed: targetServed,
+          mealServedAt: targetServed ? new Date().toISOString() : undefined,
+          servedPlatesCount: targetServed ? t.occupiedSeats : 0
+        };
+      }
+      return t;
+    }));
+
+    setStats(prev => {
+      const delta = targetServed ? 1 : -1;
+      const newServedTables = Math.max(0, Math.min(50, prev.servedTablesCount + delta));
+      return {
+        ...prev,
+        servedTablesCount: newServedTables,
+        pendingTablesCount: 50 - newServedTables
+      };
+    });
+
     try {
       const res = await fetch('/api/tables/meal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
         body: JSON.stringify({
           tableId,
-          served: !currentServed
+          served: targetServed
         })
       });
 
       const data = await res.json();
       if (data.success) {
         setRecentMessage(data.message);
-        // Optimistic update
-        setTables(prev => prev.map(t => {
-          if (t.tableId === tableId) {
-            return {
-              ...t,
-              isMealServed: !currentServed,
-              mealServedAt: !currentServed ? new Date().toISOString() : undefined,
-              servedPlatesCount: !currentServed ? t.occupiedSeats : 0
-            };
-          }
-          return t;
-        }));
-
-        // Refresh stats
+        setTimeout(fetchTablesMeal, 400);
+      } else {
+        alert(data.error || 'Error al actualizar el estado de la mesa.');
         fetchTablesMeal();
       }
     } catch (err) {
       console.error(err);
-      alert('Error al actualizar el estado de la mesa.');
+      alert('Error de conexión al actualizar la mesa.');
+      fetchTablesMeal();
     } finally {
       setTogglingTableId(null);
     }
-  };
-
-  const sectorNames: Record<string, string> = {
-    A: 'Sector A • Frente a Tarima',
-    B: 'Sector B • Zona Central',
-    C: 'Sector C • Zona Central',
-    D: 'Sector D • Zona Bazar',
-    E: 'Sector E • Zona Lateral'
   };
 
   const filteredTables = tables.filter(t => {
@@ -319,7 +335,7 @@ export default function CocinaPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-slate-400 px-1">
             <span>Mostrando <strong>{filteredTables.length}</strong> mesas:</span>
-            <span>Toca el botón de cada mesa para despachar sus 10 platos de una vez.</span>
+            <span>Toca el botón de cada mesa para despachar sus 10 platos o marcar pendiente.</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

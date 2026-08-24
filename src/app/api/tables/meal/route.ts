@@ -4,6 +4,9 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const DATA_DIR = path.join(process.cwd(), '.data');
 const DB_FILE = path.join(DATA_DIR, 'parrandon_db.json');
 
@@ -81,17 +84,26 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      stats: {
-        totalTables: 50,
-        servedTablesCount,
-        pendingTablesCount: 50 - servedTablesCount,
-        totalPlatesServed,
-        totalPlatesConfirmed: totalPlatesConfirmed || 500
+    return NextResponse.json(
+      {
+        success: true,
+        stats: {
+          totalTables: 50,
+          servedTablesCount,
+          pendingTablesCount: 50 - servedTablesCount,
+          totalPlatesServed,
+          totalPlatesConfirmed: totalPlatesConfirmed || 500
+        },
+        tables: tablesMealData
       },
-      tables: tablesMealData
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
+    );
   } catch (error) {
     console.error('Error fetching tables meal data:', error);
     return NextResponse.json({ success: false, error: 'Error al consultar estado de mesas en cocina' }, { status: 500 });
@@ -108,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanTableId = tableId.trim().toUpperCase();
-    const isNowServed = served !== undefined ? served : true;
+    const isNowServed = served !== undefined ? Boolean(served) : true;
     const now = new Date().toISOString();
 
     let updatedTicketsCount = 0;
@@ -138,11 +150,17 @@ export async function POST(request: NextRequest) {
       if (orderChanged) {
         if (isSupabaseConfigured && supabase) {
           try {
-            await supabase.from('orders').upsert({
-              id: order.id,
-              tickets: order.tickets
-            });
-          } catch (e) {}
+            const { error } = await supabase
+              .from('orders')
+              .update({ tickets: order.tickets })
+              .eq('id', order.id);
+
+            if (error) {
+              console.error('Error actualizando platos de mesa en Supabase:', error);
+            }
+          } catch (e) {
+            console.error('Excepción actualizando platos en Supabase:', e);
+          }
         }
       }
     }
