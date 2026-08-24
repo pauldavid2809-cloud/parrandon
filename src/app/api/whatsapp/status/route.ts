@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const BOT_URL = process.env.WHATSAPP_BOT_URL || 'http://127.0.0.1:3001';
+const BOT_URL = process.env.WHATSAPP_BOT_URL || 'https://parrandon-production.up.railway.app';
 
 export async function GET() {
   try {

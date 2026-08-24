@@ -1,6 +1,6 @@
 import { Order, Ticket } from '@/types';
 
-const BOT_URL = process.env.WHATSAPP_BOT_URL || 'http://127.0.0.1:3001';
+const BOT_URL = process.env.WHATSAPP_BOT_URL || 'https://parrandon-production.up.railway.app';
 
 export async function sendWhatsAppNotificationForOrder(order: Order, baseUrl?: string) {
   if (!order || !order.buyerPhone || !order.tickets || order.tickets.length === 0) {
