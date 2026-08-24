@@ -254,8 +254,8 @@ export default function SeatingMap2D({
                     </span>
                   </div>
 
-                  {/* 10 Realistic Banquet Tables in 2x5 Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
+                  {/* 10 Realistic Banquet Tables Grid (Clean Spacing & No Text Overlap) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                     {sectorTables.map((table) => {
                       const freeSeatsCount = table.seats.filter(s => !s.isOccupied && !s.isPending).length;
                       const tableSelectedCount = selectedSeats.filter(s => s.tableId === table.id).length;
@@ -265,21 +265,21 @@ export default function SeatingMap2D({
                         <div
                           key={table.id}
                           onClick={() => setActiveTableModal(table)}
-                          className={`group relative rounded-3xl p-4 text-center transition-all duration-150 border-2 cursor-pointer flex flex-col items-center justify-between shadow-xl ${
+                          className={`group relative rounded-3xl p-3 sm:p-4 text-center transition-all duration-150 border-2 cursor-pointer flex flex-col items-center justify-between shadow-xl min-w-0 ${
                             tableSelectedCount > 0
-                              ? 'border-amber-400 bg-amber-500/15 shadow-amber-500/20 ring-4 ring-amber-400/40 scale-[1.02]'
+                              ? 'border-amber-400 bg-amber-500/15 shadow-amber-500/20 ring-2 sm:ring-4 ring-amber-400/40 scale-[1.02]'
                               : isFullyOccupied
                               ? 'border-slate-800/80 bg-slate-950/70 opacity-60'
                               : 'border-slate-800 bg-gradient-to-b from-slate-900/90 via-slate-900 to-slate-950 hover:border-amber-400/80 hover:shadow-amber-500/15 hover:scale-[1.02]'
                           }`}
                         >
                           {/* REALISTIC ROUND BANQUET TABLE WITH 10 CHAIRS */}
-                          <div className="relative w-32 h-32 my-2 flex items-center justify-center">
+                          <div className="relative w-28 h-28 sm:w-32 sm:h-32 my-1 flex items-center justify-center shrink-0">
                             
                             {/* 10 Realistic Physical Chairs Surrounding the Table */}
                             {table.seats.map((seat, i) => {
                               const angle = (i * 360) / 10 - 90;
-                              const radius = 50; // px from center (64, 64)
+                              const radius = 46; // px from center
                               const rad = (angle * Math.PI) / 180;
                               const x = Math.round(radius * Math.cos(rad));
                               const y = Math.round(radius * Math.sin(rad));
@@ -291,10 +291,10 @@ export default function SeatingMap2D({
                                 <div
                                   key={seat.number}
                                   style={{
-                                    left: `${64 + x - 8}px`,
-                                    top: `${64 + y - 8}px`
+                                    left: `${56 + x - 7}px`,
+                                    top: `${56 + y - 7}px`
                                   }}
-                                  className={`absolute h-4 w-4 rounded-full border shadow-md transition-transform duration-150 ${
+                                  className={`absolute h-3.5 w-3.5 rounded-full border shadow-sm transition-transform duration-150 ${
                                     isSelected
                                       ? 'bg-amber-400 border-white ring-2 ring-amber-400 z-10 scale-125'
                                       : isTaken
@@ -308,7 +308,7 @@ export default function SeatingMap2D({
 
                             {/* Central Round Table with Fine Gala Navy Tablecloth & Golden Rim */}
                             <div
-                              className={`w-22 h-22 rounded-full flex flex-col items-center justify-center text-center shadow-2xl border-4 transition-all ${
+                              className={`w-20 h-20 rounded-full flex flex-col items-center justify-center text-center shadow-xl border-2 sm:border-4 transition-all ${
                                 tableSelectedCount > 0
                                   ? 'bg-gradient-to-br from-blue-900 via-amber-600 to-blue-950 border-amber-300 text-white shadow-amber-500/30'
                                   : isFullyOccupied
@@ -316,47 +316,47 @@ export default function SeatingMap2D({
                                   : 'bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 border-amber-400/70 text-white group-hover:border-amber-300 group-hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]'
                               }`}
                             >
-                              <div className="h-1.5 w-1.5 rounded-full bg-amber-400 mb-0.5 shadow-sm" />
-                              <span className="text-[10px] font-black tracking-tight leading-none text-sky-200 uppercase">
+                              <div className="h-1 w-1 rounded-full bg-amber-400 mb-0.5 shadow-sm" />
+                              <span className="text-[9px] font-black tracking-tight leading-none text-sky-200 uppercase">
                                 MESA
                               </span>
-                              <span className="text-base font-black text-amber-300 leading-tight">
+                              <span className="text-sm sm:text-base font-black text-amber-300 leading-tight">
                                 {table.id}
                               </span>
-                              <span className="text-[8px] font-bold text-slate-300 mt-0.5">
+                              <span className="text-[7px] sm:text-[8px] font-bold text-slate-300 mt-0.5">
                                 10 Sillas
                               </span>
                             </div>
                           </div>
 
-                          {/* Table Availability Badge */}
-                          <div className="mt-2 text-xs font-bold">
+                          {/* Table Availability Badge (No Wrap / No Overlap) */}
+                          <div className="mt-2 w-full flex items-center justify-center min-h-[26px]">
                             {tableSelectedCount > 0 ? (
-                              <span className="text-amber-300 font-black bg-amber-400/20 px-2.5 py-0.5 rounded-full border border-amber-400/40">
-                                ✓ {tableSelectedCount} {tableSelectedCount === 1 ? 'silla elegida' : 'sillas elegidas'}
+                              <span className="inline-flex items-center justify-center gap-1 text-amber-300 font-black bg-amber-400/20 px-2.5 py-1 rounded-full border border-amber-400/40 text-[10px] sm:text-[11px] whitespace-nowrap leading-none">
+                                ✓ {tableSelectedCount} {tableSelectedCount === 1 ? 'silla' : 'sillas'}
                               </span>
                             ) : isFullyOccupied ? (
-                              <span className="text-slate-500 font-semibold text-[11px]">
+                              <span className="text-slate-500 font-bold text-[10px] sm:text-[11px] whitespace-nowrap leading-none">
                                 Mesa Completa
                               </span>
                             ) : (
-                              <span className="text-emerald-400 font-bold text-[11px]">
+                              <span className="text-emerald-400 font-bold text-[10px] sm:text-[11px] whitespace-nowrap leading-none">
                                 {freeSeatsCount} de 10 libres
                               </span>
                             )}
                           </div>
 
-                          {/* Action Button */}
-                          <div className="w-full mt-3 pt-2 border-t border-slate-800">
+                          {/* Action Button (Single Line Fit) */}
+                          <div className="w-full mt-2.5 pt-2 border-t border-slate-800">
                             <button
                               type="button"
-                              className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 ${
+                              className={`w-full py-2 px-2 rounded-xl text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 whitespace-nowrap ${
                                 tableSelectedCount > 0
-                                  ? 'bg-amber-400 text-slate-950 font-black'
+                                  ? 'bg-amber-400 text-slate-950'
                                   : 'bg-slate-800 group-hover:bg-amber-500 group-hover:text-slate-950 text-slate-200'
                               }`}
                             >
-                              <Eye className="h-3.5 w-3.5" />
+                              <Eye className="h-3 w-3 shrink-0" />
                               <span>Elegir sillas</span>
                             </button>
                           </div>
