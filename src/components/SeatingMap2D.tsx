@@ -17,11 +17,10 @@ import {
   CheckCircle2,
   Lock,
   ArrowRight,
-  ArrowDownRight,
-  Flame,
-  Lamp,
+  CornerDownRight,
   Shield,
-  Layers
+  Layers,
+  Compass
 } from 'lucide-react';
 
 interface SeatingMap2DProps {
@@ -116,8 +115,8 @@ export default function SeatingMap2D({
     A: 'Sector A • Frente a Tarima de Gaitas',
     B: 'Sector B • Zona Central del Bulevar',
     C: 'Sector C • Zona Central',
-    D: 'Sector D • Zona Cercana a Bazar y Postres',
-    E: 'Sector E • Zona Lateral y Cruce Peatonal'
+    D: 'Sector D • Zona Bazar y Postres',
+    E: 'Sector E • Tramo Final hacia el Giro del Bulevar'
   };
 
   return (
@@ -209,24 +208,23 @@ export default function SeatingMap2D({
         <div className="relative flex">
 
           {/* 1. LEFT ARCHITECTURAL BLACK RAILING (BARANDA NEGRA DE HIERRO FORJADO CON FAROLES) */}
-          <div className="w-10 sm:w-16 shrink-0 bg-gradient-to-r from-slate-950 via-black to-slate-950 border-r-4 border-slate-900 relative flex flex-col justify-between items-center py-6 select-none">
-            {/* Repeating Iron Baluster Pattern */}
-            <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#475569_1px,transparent_1px)] [background-size:8px_8px]" />
+          <div className="w-12 sm:w-16 shrink-0 bg-gradient-to-r from-black via-slate-950 to-slate-900 border-r-4 border-black relative flex flex-col justify-between items-center py-6 select-none shadow-2xl">
+            {/* Iron Balusters Pattern */}
+            <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#64748b_1px,transparent_1px)] [background-size:6px_6px]" />
             
-            {/* Left Railing Posts with Colonial Lanterns */}
+            {/* Railing Posts with Glowing Lanterns */}
             <div className="flex flex-col justify-around h-full space-y-24 z-10">
               {[1, 2, 3, 4, 5, 6].map(post => (
                 <div key={post} className="flex flex-col items-center group">
-                  <div className="h-3 w-3 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.8)] animate-pulse" />
-                  <div className="w-1.5 h-10 bg-slate-700 rounded-sm mt-0.5" />
-                  <span className="text-[7px] text-slate-500 font-mono rotate-90 mt-2 hidden sm:block">BARANDA</span>
+                  <div className="h-3.5 w-3.5 rounded-full bg-amber-400 shadow-[0_0_14px_rgba(245,158,11,0.9)] animate-pulse border border-amber-200" />
+                  <div className="w-2 h-12 bg-black rounded-sm mt-0.5 border-x border-slate-700 shadow-md" />
                 </div>
               ))}
             </div>
 
-            {/* Vertical Label */}
-            <div className="absolute top-1/2 -translate-y-1/2 -rotate-90 text-[9px] sm:text-[10px] font-mono font-bold tracking-widest text-slate-500 uppercase whitespace-nowrap pointer-events-none">
-              BARANDA PERIMETRAL OESTE
+            {/* Vertical Railing Label */}
+            <div className="absolute top-1/2 -translate-y-1/2 -rotate-90 text-[9px] sm:text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase whitespace-nowrap pointer-events-none">
+              BARANDA NEGRA PERIMETRAL
             </div>
           </div>
 
@@ -365,50 +363,80 @@ export default function SeatingMap2D({
           </div>
 
           {/* 3. RIGHT ARCHITECTURAL GREY WALL (MURO GRIS PERIMETRAL DE PIEDRA CON JARDINES) */}
-          <div className="w-10 sm:w-16 shrink-0 bg-gradient-to-l from-slate-900 via-slate-800 to-slate-900 border-l-4 border-slate-700 relative flex flex-col justify-between items-center py-6 select-none shadow-2xl">
+          <div className="w-12 sm:w-16 shrink-0 bg-gradient-to-l from-slate-950 via-slate-800 to-slate-900 border-l-4 border-slate-600 relative flex flex-col justify-between items-center py-6 select-none shadow-2xl">
             {/* Concrete / Stone masonry pattern texture */}
-            <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_bottom,#000_2px,transparent_2px)] [background-size:100%_28px]" />
+            <div className="absolute inset-0 opacity-25 bg-[linear-gradient(to_bottom,#000_2px,transparent_2px)] [background-size:100%_32px]" />
 
             {/* Architectural wall buttresses */}
             <div className="flex flex-col justify-around h-full space-y-24 z-10">
               {[1, 2, 3, 4, 5, 6].map(block => (
                 <div key={block} className="flex flex-col items-center">
-                  <div className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-600 shadow-inner" />
-                  <div className="h-2 w-2 rounded-full bg-emerald-500/60 mt-1" title="Árboles y jardines" />
+                  <div className="w-5 h-8 bg-slate-700 rounded-sm border border-slate-500 shadow-md" />
+                  <div className="h-2 w-2 rounded-full bg-emerald-500/70 mt-1" title="Jardines del Seminario" />
                 </div>
               ))}
             </div>
 
-            {/* Vertical Label */}
-            <div className="absolute top-1/2 -translate-y-1/2 rotate-90 text-[9px] sm:text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase whitespace-nowrap pointer-events-none">
-              MURO PERIMETRAL ESTE
+            {/* Vertical Muro Label */}
+            <div className="absolute top-1/2 -translate-y-1/2 rotate-90 text-[9px] sm:text-[10px] font-mono font-black tracking-widest text-slate-300 uppercase whitespace-nowrap pointer-events-none">
+              MURO GRIS PERIMETRAL
             </div>
           </div>
 
         </div>
 
-        {/* BOTTOM: CRUCE A LA DERECHA (DONDE TERMINA EL BULEVAR) */}
-        <div className="relative w-full bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/40 p-6 border-t-4 border-amber-500/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-left">
-            <div className="h-12 w-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
-              <ArrowDownRight className="h-7 w-7" />
+        {/* BOTTOM: GRAPHICAL 90-DEGREE CURVE TO THE RIGHT (GIRO REALISTA Y FINAL DEL BULEVAR) */}
+        <div className="relative w-full bg-slate-950 border-t-4 border-slate-800">
+          
+          {/* Visual Pavement & Curving Walkway Architecture */}
+          <div className="relative flex items-stretch h-36 sm:h-44 overflow-hidden">
+            
+            {/* Bottom-Left Curved Black Railing (La baranda curva y cierra la esquina inferior izquierda) */}
+            <div className="w-12 sm:w-16 bg-black border-r-4 border-b-4 border-black relative flex items-end justify-center pb-4 rounded-bl-3xl">
+              <div className="h-4 w-4 rounded-full bg-amber-400 shadow-[0_0_16px_rgba(245,158,11,1)] animate-pulse" />
             </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
-                Fin del Bulevar • Cruce Peatonal
-              </span>
-              <h4 className="text-base sm:text-lg font-black text-white">
-                Salida y Conexión a Patios Interiores, Bazar y Estacionamiento ➔
-              </h4>
-              <p className="text-xs text-slate-400">
-                Punto de encuentro, stands de postres, pesebres y salida vehicular del Seminario.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 shrink-0 bg-slate-950 px-4 py-2.5 rounded-2xl border border-slate-800 text-xs font-bold text-sky-300">
-            <DoorOpen className="h-4 w-4 text-emerald-400" />
-            <span>Acceso Peatonal Señalizado</span>
+            {/* Center-to-Right Curving Paved Boulevard Floor (El piso del bulevar gira a la derecha) */}
+            <div className="flex-1 bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/60 p-4 sm:p-6 flex items-center justify-between border-b-4 border-black relative overflow-hidden">
+              
+              {/* Graphical Curved Paving Lines */}
+              <div className="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_bottom_left,#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
+              <div className="absolute -left-10 bottom-0 w-64 h-64 border-t-4 border-r-4 border-amber-500/30 rounded-tr-full pointer-events-none" />
+
+              {/* Turning Boulevard Narrative & Graphics */}
+              <div className="relative z-10 flex items-center gap-3.5">
+                <div className="h-14 w-14 rounded-2xl bg-amber-500/20 text-amber-400 border-2 border-amber-500/40 flex items-center justify-center shrink-0 shadow-lg animate-pulse">
+                  <CornerDownRight className="h-8 w-8" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px] font-black uppercase border border-amber-500/30 mb-1">
+                    <span>GIRO ARQUITECTÓNICO DEL BULEVAR</span>
+                  </div>
+                  <h4 className="text-base sm:text-xl font-black text-white leading-tight">
+                    El Bulevar gira hacia la derecha ➔
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Tramo final de mesas (Sector E) donde la caminería dobla a la derecha y concluye el trazado del evento.
+                  </p>
+                </div>
+              </div>
+
+              {/* Right End Terminal Boundary (El bulevar concluye en este extremo) */}
+              <div className="relative z-10 flex flex-col items-end text-right shrink-0 bg-slate-950/90 border border-amber-500/30 px-4 py-3 rounded-2xl shadow-xl">
+                <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider block">
+                  LÍMITE DEL BULEVAR
+                </span>
+                <span className="text-xs font-black text-white block mt-0.5">
+                  Fin del Paseo
+                </span>
+              </div>
+            </div>
+
+            {/* Right Wall Corner Opening */}
+            <div className="w-12 sm:w-16 bg-slate-800 border-l-4 border-slate-600 relative flex items-start justify-center pt-4">
+              <div className="w-5 h-8 bg-slate-700 rounded-sm border border-slate-500 shadow-md" />
+            </div>
+
           </div>
         </div>
 
