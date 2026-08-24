@@ -15,7 +15,13 @@ import {
   Eye,
   Armchair,
   CheckCircle2,
-  Lock
+  Lock,
+  ArrowRight,
+  ArrowDownRight,
+  Flame,
+  Lamp,
+  Shield,
+  Layers
 } from 'lucide-react';
 
 interface SeatingMap2DProps {
@@ -36,11 +42,10 @@ export default function SeatingMap2D({
 
   const fetchTables = async () => {
     try {
-      const res = await fetch('/api/tables');
+      const res = await fetch('/api/tables?t=' + Date.now(), { cache: 'no-store' });
       const data = await res.json();
       if (data.success && data.tables) {
         setTables(data.tables);
-        // If modal is open, refresh active table
         if (activeTableModal) {
           const fresh = data.tables.find((t: TableInfo) => t.id === activeTableModal.id);
           if (fresh) setActiveTableModal(fresh);
@@ -55,7 +60,7 @@ export default function SeatingMap2D({
 
   useEffect(() => {
     fetchTables();
-    const interval = setInterval(fetchTables, 15000);
+    const interval = setInterval(fetchTables, 12000);
     return () => clearInterval(interval);
   }, []);
 
@@ -83,6 +88,24 @@ export default function SeatingMap2D({
     }
   };
 
+  const selectEntireTable = (table: TableInfo) => {
+    const freeSeats = table.seats.filter(s => !s.isOccupied && !s.isPending);
+    const availableToTake = freeSeats.filter(s => !isSeatSelected(table.id, s.number));
+    
+    if (selectedSeats.length + availableToTake.length > maxSelectable) {
+      alert(`No puedes seleccionar ${availableToTake.length} sillas más. El límite máximo es de ${maxSelectable} entradas.`);
+      return;
+    }
+
+    const newSelections = availableToTake.map(s => ({
+      tableId: table.id,
+      seatNumber: s.number,
+      sector: table.sector
+    }));
+
+    onSeatsChange([...selectedSeats, ...newSelections]);
+  };
+
   const removeSelectedSeat = (tableId: string, seatNumber: number) => {
     onSeatsChange(selectedSeats.filter(s => !(s.tableId === tableId && s.seatNumber === seatNumber)));
   };
@@ -94,38 +117,38 @@ export default function SeatingMap2D({
     B: 'Sector B • Zona Central del Bulevar',
     C: 'Sector C • Zona Central',
     D: 'Sector D • Zona Cercana a Bazar y Postres',
-    E: 'Sector E • Zona Lateral Familiar'
+    E: 'Sector E • Zona Lateral y Cruce Peatonal'
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 select-none">
       
-      {/* Top Banner / Legend */}
-      <div className="rounded-3xl bg-slate-900/95 border-2 border-amber-500/30 p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+      {/* Top Banner & Interactive Legend */}
+      <div className="rounded-3xl bg-slate-900/90 border border-white/[0.08] p-4 sm:p-6 shadow-2xl backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-amber-400 animate-ping" />
-            <h3 className="text-base font-black text-white flex items-center gap-2">
-              Croquis 2D del Bulevar • 50 Mesas Redondas (500 Sillas)
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+            <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+              Croquis Arquitectónico del Bulevar • 50 Mesas de Banquete (500 Sillas)
             </h3>
           </div>
           <p className="text-xs text-amber-200/90 mt-1 font-medium">
-            👇 Haz clic sobre cualquier mesa para entrar y elegir tus sillas (1 a 10).
+            👇 Toca cualquier mesa para ver sus 10 sillas y reservar tus puestos con plato navideño incluido.
           </p>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-3 text-xs flex-wrap justify-center bg-slate-950/80 px-4 py-2 rounded-2xl border border-slate-800">
-          <span className="flex items-center gap-1.5 text-slate-300 font-semibold">
-            <span className="h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" />
+        <div className="flex items-center gap-3 text-xs flex-wrap justify-center bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-slate-800">
+          <span className="flex items-center gap-1.5 text-emerald-300 font-semibold">
+            <span className="h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30 shadow-sm" />
             Silla Libre
           </span>
-          <span className="flex items-center gap-1.5 text-amber-300 font-bold">
-            <span className="h-3.5 w-3.5 rounded-full bg-amber-400 ring-2 ring-amber-400/40" />
+          <span className="flex items-center gap-1.5 text-amber-300 font-black">
+            <span className="h-3.5 w-3.5 rounded-full bg-amber-400 ring-2 ring-amber-400/50 shadow-md animate-pulse" />
             Tu Selección ({selectedSeats.length})
           </span>
-          <span className="flex items-center gap-1.5 text-rose-400">
-            <span className="h-3.5 w-3.5 rounded-full bg-rose-900 border border-rose-700" />
+          <span className="flex items-center gap-1.5 text-slate-400">
+            <span className="h-3.5 w-3.5 rounded-full bg-slate-800 border border-slate-700" />
             Ocupada
           </span>
         </div>
@@ -136,9 +159,9 @@ export default function SeatingMap2D({
         <button
           type="button"
           onClick={() => setActiveSector('ALL')}
-          className={`px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 ${
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all shrink-0 ${
             activeSector === 'ALL'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
+              ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
               : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
           }`}
         >
@@ -149,199 +172,256 @@ export default function SeatingMap2D({
             key={sec}
             type="button"
             onClick={() => setActiveSector(sec)}
-            className={`px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all shrink-0 ${
               activeSector === sec
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
+                ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
                 : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
-            Sector {sec} (Mesas {sec}1 - {sec}10)
+            Sector {sec} ({sec}1 - {sec}10)
           </button>
         ))}
       </div>
 
-      {/* 2D BULEVAR MAP CONTAINER */}
-      <div className="relative rounded-3xl border-2 border-amber-500/40 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-8 shadow-2xl overflow-hidden">
+      {/* MAIN REALISTIC BULEVAR ENVIRONMENT WRAPPER */}
+      <div className="relative rounded-3xl border-2 border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
         
-        {/* STAGE (TARIMA PRINCIPAL) EN AZUL MARINO INSTITUCIONAL */}
-        <div className="w-full max-w-xl mx-auto rounded-3xl bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 p-4 text-center text-white mb-10 shadow-2xl border-2 border-amber-400/60">
-          <div className="flex items-center justify-center gap-2 text-sm font-black uppercase tracking-widest">
-            <Music className="h-5 w-5 text-amber-300 animate-bounce" />
-            <span>🎸 TARIMA PRINCIPAL & GAITAS EN VIVO 🎤</span>
-            <Music className="h-5 w-5 text-amber-300 animate-bounce" />
+        {/* TOP: ESCENARIO PRINCIPAL / TARIMA DE GAITAS */}
+        <div className="relative w-full bg-gradient-to-b from-blue-950 via-slate-900 to-slate-950 p-6 text-center border-b-4 border-amber-400/80 shadow-2xl">
+          {/* Spotlight aura beams radiating down */}
+          <div className="absolute inset-0 bg-radial from-amber-400/10 via-transparent to-transparent pointer-events-none" />
+          <div className="relative z-10 max-w-lg mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-950/80 border border-sky-400/40 px-4 py-1 text-xs font-black text-sky-200 mb-2">
+              <Music className="h-4 w-4 text-amber-400 animate-bounce" />
+              <span>TARIMA PRINCIPAL • GAITAS Y ACTOS CENTRALES</span>
+              <Music className="h-4 w-4 text-amber-400 animate-bounce" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              Escenario Frente al Sector A
+            </h2>
+            <p className="text-xs text-amber-300/90 font-medium mt-0.5">
+              Seminario Mayor Santo Tomás de Aquino (Maracaibo)
+            </p>
           </div>
-          <span className="text-xs text-sky-200 font-bold block mt-1">
-            Frente al Sector A • Seminario Santo Tomás de Aquino
-          </span>
         </div>
 
-        {/* BULEVAR LAYOUT - 50 TABLES IN ZIGZAG */}
-        <div className="space-y-10">
-          {sectors.map((sec) => {
-            if (activeSector !== 'ALL' && activeSector !== sec) return null;
-            const sectorTables = tables.filter(t => t.sector === sec);
+        {/* MIDDLE: THE BOULEVARD WITH LEFT BLACK RAILING & RIGHT GREY WALL */}
+        <div className="relative flex">
 
-            return (
-              <div key={sec} className="rounded-3xl border border-slate-800 bg-slate-950/80 p-4 sm:p-6 shadow-inner">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-6">
-                  <h4 className="text-sm font-black uppercase text-amber-400 tracking-wider flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-400" />
-                    {sectorNames[sec]}
-                  </h4>
-                  <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
-                    10 mesas • 100 comensales
-                  </span>
+          {/* 1. LEFT ARCHITECTURAL BLACK RAILING (BARANDA NEGRA DE HIERRO FORJADO CON FAROLES) */}
+          <div className="w-10 sm:w-16 shrink-0 bg-gradient-to-r from-slate-950 via-black to-slate-950 border-r-4 border-slate-900 relative flex flex-col justify-between items-center py-6 select-none">
+            {/* Repeating Iron Baluster Pattern */}
+            <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#475569_1px,transparent_1px)] [background-size:8px_8px]" />
+            
+            {/* Left Railing Posts with Colonial Lanterns */}
+            <div className="flex flex-col justify-around h-full space-y-24 z-10">
+              {[1, 2, 3, 4, 5, 6].map(post => (
+                <div key={post} className="flex flex-col items-center group">
+                  <div className="h-3 w-3 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.8)] animate-pulse" />
+                  <div className="w-1.5 h-10 bg-slate-700 rounded-sm mt-0.5" />
+                  <span className="text-[7px] text-slate-500 font-mono rotate-90 mt-2 hidden sm:block">BARANDA</span>
                 </div>
+              ))}
+            </div>
 
-                {/* ZIGZAG GRID OF TABLES */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-5">
-                  {sectorTables.map((table, index) => {
-                    const freeSeatsCount = table.seats.filter(s => !s.isOccupied && !s.isPending).length;
-                    const tableSelectedCount = selectedSeats.filter(s => s.tableId === table.id).length;
-                    const isFullyOccupied = freeSeatsCount === 0;
+            {/* Vertical Label */}
+            <div className="absolute top-1/2 -translate-y-1/2 -rotate-90 text-[9px] sm:text-[10px] font-mono font-bold tracking-widest text-slate-500 uppercase whitespace-nowrap pointer-events-none">
+              BARANDA PERIMETRAL OESTE
+            </div>
+          </div>
 
-                    // Zigzag offset for alternating tables
-                    const isZigzag = index % 2 === 1;
+          {/* 2. CENTER: THE 50 BANQUET TABLES ON THE BOULEVARD WALKWAY */}
+          <div className="flex-1 p-3 sm:p-8 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] space-y-10">
+            {sectors.map((sec) => {
+              if (activeSector !== 'ALL' && activeSector !== sec) return null;
+              const sectorTables = tables.filter(t => t.sector === sec);
 
-                    return (
-                      <div
-                        key={table.id}
-                        onClick={() => setActiveTableModal(table)}
-                        className={`group relative rounded-3xl p-4 text-center transition-all duration-200 border-2 cursor-pointer flex flex-col items-center justify-between ${
-                          isZigzag ? 'sm:translate-y-3' : ''
-                        } ${
-                          tableSelectedCount > 0
-                            ? 'border-amber-400 bg-amber-500/15 shadow-xl shadow-amber-500/25 ring-4 ring-amber-400/40'
-                            : isFullyOccupied
-                            ? 'border-slate-800 bg-slate-950/60 opacity-60'
-                            : 'border-slate-700 bg-gradient-to-b from-slate-900 to-slate-950 hover:border-amber-400 hover:shadow-xl hover:shadow-amber-500/20'
-                        }`}
-                      >
-                        {/* Realistic Banquet Round Table with 10 surrounding Chair Dots (Rock-solid Absolute Positioning) */}
-                        <div className="relative w-28 h-28 my-2 flex items-center justify-center">
-                          
-                          {/* 10 Mini Chair Dots positioned with explicit left/top */}
-                          {table.seats.map((seat, i) => {
-                            const angle = (i * 360) / 10 - 90;
-                            const radius = 46; // px from center (56, 56)
-                            const rad = (angle * Math.PI) / 180;
-                            const x = Math.round(radius * Math.cos(rad));
-                            const y = Math.round(radius * Math.sin(rad));
+              return (
+                <div key={sec} className="rounded-3xl border border-white/[0.08] bg-slate-950/90 p-4 sm:p-6 shadow-2xl backdrop-blur-md">
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-6">
+                    <h4 className="text-xs sm:text-sm font-black uppercase text-amber-400 tracking-wider flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-amber-400" />
+                      <span>{sectorNames[sec]}</span>
+                    </h4>
+                    <span className="text-[11px] text-slate-400 font-bold bg-slate-900 px-3 py-1 rounded-full border border-slate-800 font-mono">
+                      10 mesas • 100 comensales
+                    </span>
+                  </div>
 
-                            const isSelected = isSeatSelected(table.id, seat.number);
-                            const isTaken = seat.isOccupied || seat.isPending;
+                  {/* 10 Realistic Banquet Tables in 2x5 Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
+                    {sectorTables.map((table) => {
+                      const freeSeatsCount = table.seats.filter(s => !s.isOccupied && !s.isPending).length;
+                      const tableSelectedCount = selectedSeats.filter(s => s.tableId === table.id).length;
+                      const isFullyOccupied = freeSeatsCount === 0;
 
-                            return (
-                              <div
-                                key={seat.number}
-                                style={{
-                                  left: `${56 + x - 7}px`,
-                                  top: `${56 + y - 7}px`
-                                }}
-                                className={`absolute h-3.5 w-3.5 rounded-full border shadow-sm ${
-                                  isSelected
-                                    ? 'bg-amber-400 border-white ring-2 ring-amber-400 z-10'
-                                    : isTaken
-                                    ? 'bg-rose-900 border-rose-700'
-                                    : 'bg-emerald-500 border-emerald-300'
-                                }`}
-                                title={`Silla #${seat.number}`}
-                              />
-                            );
-                          })}
+                      return (
+                        <div
+                          key={table.id}
+                          onClick={() => setActiveTableModal(table)}
+                          className={`group relative rounded-3xl p-4 text-center transition-all duration-150 border-2 cursor-pointer flex flex-col items-center justify-between shadow-xl ${
+                            tableSelectedCount > 0
+                              ? 'border-amber-400 bg-amber-500/15 shadow-amber-500/20 ring-4 ring-amber-400/40 scale-[1.02]'
+                              : isFullyOccupied
+                              ? 'border-slate-800/80 bg-slate-950/70 opacity-60'
+                              : 'border-slate-800 bg-gradient-to-b from-slate-900/90 via-slate-900 to-slate-950 hover:border-amber-400/80 hover:shadow-amber-500/15 hover:scale-[1.02]'
+                          }`}
+                        >
+                          {/* REALISTIC ROUND BANQUET TABLE WITH 10 CHAIRS */}
+                          <div className="relative w-32 h-32 my-2 flex items-center justify-center">
+                            
+                            {/* 10 Realistic Physical Chairs Surrounding the Table */}
+                            {table.seats.map((seat, i) => {
+                              const angle = (i * 360) / 10 - 90;
+                              const radius = 50; // px from center (64, 64)
+                              const rad = (angle * Math.PI) / 180;
+                              const x = Math.round(radius * Math.cos(rad));
+                              const y = Math.round(radius * Math.sin(rad));
 
-                          {/* Central Round Table Surface */}
-                          <div
-                            className={`w-20 h-20 rounded-full flex flex-col items-center justify-center text-center shadow-2xl border-4 ${
-                              tableSelectedCount > 0
-                                ? 'bg-gradient-to-br from-blue-900 to-amber-500 border-amber-300 text-white'
-                                : isFullyOccupied
-                                ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 text-slate-400'
-                                : 'bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 border-amber-400/80 text-white group-hover:border-amber-300'
-                            }`}
-                          >
-                            <span className="text-xs font-black tracking-tight leading-none text-sky-200">
-                              MESA
-                            </span>
-                            <span className="text-base font-black text-amber-300">
-                              {table.id}
-                            </span>
-                            <span className="text-[8px] font-bold opacity-80 mt-0.5">
-                              10 Sillas
-                            </span>
+                              const isSelected = isSeatSelected(table.id, seat.number);
+                              const isTaken = seat.isOccupied || seat.isPending;
+
+                              return (
+                                <div
+                                  key={seat.number}
+                                  style={{
+                                    left: `${64 + x - 8}px`,
+                                    top: `${64 + y - 8}px`
+                                  }}
+                                  className={`absolute h-4 w-4 rounded-full border shadow-md transition-transform duration-150 ${
+                                    isSelected
+                                      ? 'bg-amber-400 border-white ring-2 ring-amber-400 z-10 scale-125'
+                                      : isTaken
+                                      ? 'bg-slate-800 border-slate-700'
+                                      : 'bg-emerald-500 border-emerald-300 group-hover:scale-110'
+                                  }`}
+                                  title={`Silla #${seat.number}`}
+                                />
+                              );
+                            })}
+
+                            {/* Central Round Table with Fine Gala Navy Tablecloth & Golden Rim */}
+                            <div
+                              className={`w-22 h-22 rounded-full flex flex-col items-center justify-center text-center shadow-2xl border-4 transition-all ${
+                                tableSelectedCount > 0
+                                  ? 'bg-gradient-to-br from-blue-900 via-amber-600 to-blue-950 border-amber-300 text-white shadow-amber-500/30'
+                                  : isFullyOccupied
+                                  ? 'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-slate-500'
+                                  : 'bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 border-amber-400/70 text-white group-hover:border-amber-300 group-hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+                              }`}
+                            >
+                              <div className="h-1.5 w-1.5 rounded-full bg-amber-400 mb-0.5 shadow-sm" />
+                              <span className="text-[10px] font-black tracking-tight leading-none text-sky-200 uppercase">
+                                MESA
+                              </span>
+                              <span className="text-base font-black text-amber-300 leading-tight">
+                                {table.id}
+                              </span>
+                              <span className="text-[8px] font-bold text-slate-300 mt-0.5">
+                                10 Sillas
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Availability Status */}
-                        <div className="mt-2 text-xs font-bold">
-                          {tableSelectedCount > 0 ? (
-                            <span className="text-amber-300 font-extrabold bg-amber-400/20 px-2 py-0.5 rounded-full border border-amber-400/40">
-                              ✓ {tableSelectedCount} {tableSelectedCount === 1 ? 'silla elegida' : 'sillas elegidas'}
-                            </span>
-                          ) : isFullyOccupied ? (
-                            <span className="text-rose-400 font-semibold text-[11px]">
-                              Mesa Completa
-                            </span>
-                          ) : (
-                            <span className="text-emerald-400 font-bold text-[11px]">
-                              {freeSeatsCount} de 10 libres
-                            </span>
-                          )}
-                        </div>
+                          {/* Table Availability Badge */}
+                          <div className="mt-2 text-xs font-bold">
+                            {tableSelectedCount > 0 ? (
+                              <span className="text-amber-300 font-black bg-amber-400/20 px-2.5 py-0.5 rounded-full border border-amber-400/40">
+                                ✓ {tableSelectedCount} {tableSelectedCount === 1 ? 'silla elegida' : 'sillas elegidas'}
+                              </span>
+                            ) : isFullyOccupied ? (
+                              <span className="text-slate-500 font-semibold text-[11px]">
+                                Mesa Completa
+                              </span>
+                            ) : (
+                              <span className="text-emerald-400 font-bold text-[11px]">
+                                {freeSeatsCount} de 10 libres
+                              </span>
+                            )}
+                          </div>
 
-                        {/* Big Interactive Call To Action Button */}
-                        <div className="w-full mt-3 pt-2 border-t border-slate-800">
-                          <button
-                            type="button"
-                            className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md ${
-                              tableSelectedCount > 0
-                                ? 'bg-amber-400 text-slate-950 font-black'
-                                : 'bg-slate-800 group-hover:bg-amber-500 group-hover:text-slate-950 text-slate-200'
-                            }`}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>Tocar para elegir sillas</span>
-                          </button>
-                        </div>
+                          {/* Action Button */}
+                          <div className="w-full mt-3 pt-2 border-t border-slate-800">
+                            <button
+                              type="button"
+                              className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 ${
+                                tableSelectedCount > 0
+                                  ? 'bg-amber-400 text-slate-950 font-black'
+                                  : 'bg-slate-800 group-hover:bg-amber-500 group-hover:text-slate-950 text-slate-200'
+                              }`}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>Elegir sillas</span>
+                            </button>
+                          </div>
 
-                      </div>
-                    );
-                  })}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* SIDE LANDMARKS */}
-        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-800 pt-6 text-xs text-slate-300">
-          <div className="flex items-center gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-            <DoorOpen className="h-6 w-6 text-emerald-400 shrink-0" />
-            <div>
-              <strong className="text-white text-sm block">Acceso Principal al Bulevar</strong>
-              <span className="text-slate-400">Recepción, Validación de QR y Bienvenida</span>
+          {/* 3. RIGHT ARCHITECTURAL GREY WALL (MURO GRIS PERIMETRAL DE PIEDRA CON JARDINES) */}
+          <div className="w-10 sm:w-16 shrink-0 bg-gradient-to-l from-slate-900 via-slate-800 to-slate-900 border-l-4 border-slate-700 relative flex flex-col justify-between items-center py-6 select-none shadow-2xl">
+            {/* Concrete / Stone masonry pattern texture */}
+            <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_bottom,#000_2px,transparent_2px)] [background-size:100%_28px]" />
+
+            {/* Architectural wall buttresses */}
+            <div className="flex flex-col justify-around h-full space-y-24 z-10">
+              {[1, 2, 3, 4, 5, 6].map(block => (
+                <div key={block} className="flex flex-col items-center">
+                  <div className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-600 shadow-inner" />
+                  <div className="h-2 w-2 rounded-full bg-emerald-500/60 mt-1" title="Árboles y jardines" />
+                </div>
+              ))}
+            </div>
+
+            {/* Vertical Label */}
+            <div className="absolute top-1/2 -translate-y-1/2 rotate-90 text-[9px] sm:text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase whitespace-nowrap pointer-events-none">
+              MURO PERIMETRAL ESTE
             </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-            <Utensils className="h-6 w-6 text-amber-400 shrink-0" />
-            <div>
-              <strong className="text-white text-sm block">Estación de Cocina y Comida</strong>
-              <span className="text-slate-400">Despacho de Hallacas, Pan de Jamón y Ponche</span>
+        </div>
+
+        {/* BOTTOM: CRUCE A LA DERECHA (DONDE TERMINA EL BULEVAR) */}
+        <div className="relative w-full bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/40 p-6 border-t-4 border-amber-500/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-left">
+            <div className="h-12 w-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <ArrowDownRight className="h-7 w-7" />
             </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
+                Fin del Bulevar • Cruce Peatonal
+              </span>
+              <h4 className="text-base sm:text-lg font-black text-white">
+                Salida y Conexión a Patios Interiores, Bazar y Estacionamiento ➔
+              </h4>
+              <p className="text-xs text-slate-400">
+                Punto de encuentro, stands de postres, pesebres y salida vehicular del Seminario.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 bg-slate-950 px-4 py-2.5 rounded-2xl border border-slate-800 text-xs font-bold text-sky-300">
+            <DoorOpen className="h-4 w-4 text-emerald-400" />
+            <span>Acceso Peatonal Señalizado</span>
           </div>
         </div>
 
       </div>
 
-      {/* SELECTED SEATS BAR (Summary of Choices) */}
+      {/* SELECTED SEATS FLOATING SUMMARY BAR */}
       {selectedSeats.length > 0 && (
-        <div className="rounded-3xl border-2 border-amber-500 bg-gradient-to-r from-slate-950 via-amber-950/50 to-slate-950 p-5 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+        <div className="sticky bottom-4 z-40 rounded-3xl border-2 border-amber-400 bg-slate-950/95 backdrop-blur-xl p-5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
           <div>
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="h-3 w-3 rounded-full bg-amber-400 animate-ping" />
               <span className="text-xs uppercase font-black tracking-wider text-amber-400">
-                Tus Asientos Seleccionados en el Bulevar ({selectedSeats.length}):
+                Tus Sillas Seleccionadas ({selectedSeats.length} de {maxSelectable} máx):
               </span>
             </div>
             <div className="flex flex-wrap gap-2 mt-2.5">
@@ -355,7 +435,7 @@ export default function SeatingMap2D({
                   <button
                     type="button"
                     onClick={() => removeSelectedSeat(seat.tableId, seat.seatNumber)}
-                    className="hover:text-rose-400 ml-1 text-slate-400"
+                    className="hover:text-rose-400 ml-1 text-slate-400 active:scale-90"
                     title="Eliminar asiento"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -365,56 +445,56 @@ export default function SeatingMap2D({
             </div>
           </div>
 
-          <div className="text-right shrink-0 bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800">
-            <span className="text-xs text-slate-400 block font-medium">Total a Pagar ($20 c/u):</span>
-            <span className="text-xl font-black text-emerald-400">
+          <div className="text-right shrink-0 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-inner w-full sm:w-auto">
+            <span className="text-xs text-slate-400 block font-bold">Total a Pagar ($20 c/u):</span>
+            <span className="text-2xl font-black text-emerald-400 font-mono">
               ${selectedSeats.length * 20}.00 USD
             </span>
           </div>
         </div>
       )}
 
-      {/* ROUND TABLE SEAT SELECTION MODAL (STABLE, JITTER-FREE, RESPONSIVE) */}
+      {/* ROUND TABLE SEAT SELECTION MODAL (EMIL KOWALSKI POLISH) */}
       {activeTableModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2 sm:p-4 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-xl max-h-[94vh] overflow-y-auto rounded-3xl border-2 border-amber-500/60 bg-slate-900 p-4 sm:p-7 shadow-2xl text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3 sm:p-4 backdrop-blur-xl animate-fadeIn">
+          <div className="relative w-full max-w-xl max-h-[94vh] overflow-y-auto rounded-3xl border-2 border-amber-500/60 bg-slate-900 p-5 sm:p-7 shadow-2xl text-center">
             
-            {/* Close */}
+            {/* Close Button */}
             <button
               type="button"
               onClick={() => setActiveTableModal(null)}
-              className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 rounded-full bg-slate-800 p-2 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors z-30"
+              className="absolute top-4 right-4 rounded-full bg-slate-800 p-2.5 text-slate-300 hover:text-white hover:bg-slate-700 transition-all active:scale-90 z-30"
               aria-label="Cerrar modal"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-black text-amber-300 mb-1 sm:mb-2">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-3.5 py-1 text-xs font-black text-amber-300 mb-2">
               <span>{sectorNames[activeTableModal.sector]}</span>
             </div>
 
-            <h3 className="text-xl sm:text-3xl font-black text-white">
+            <h3 className="text-2xl sm:text-4xl font-black text-white">
               Mesa {activeTableModal.id}
             </h3>
-            <p className="text-[11px] sm:text-xs text-amber-200 mt-0.5 sm:mt-1 font-semibold max-w-md mx-auto">
-              👇 Toca las sillas verdes o los botones de abajo para elegirlas:
+            <p className="text-xs text-slate-300 mt-1 font-medium max-w-md mx-auto">
+              👇 Toca las sillas verdes para reservarlas individualmente o pulsa <strong>"Seleccionar Mesa Completa"</strong>:
             </p>
 
-            {/* Circular Banquet Table Visualization - Responsive Scaled Container */}
-            <div className="w-full flex items-center justify-center overflow-hidden py-1">
-              <div className="relative w-[300px] h-[300px] sm:w-80 sm:h-80 flex items-center justify-center select-none scale-[0.88] xs:scale-95 sm:scale-100 origin-center shrink-0">
+            {/* Circular Banquet Table Graphic with 10 Chairs */}
+            <div className="w-full flex items-center justify-center overflow-hidden py-2">
+              <div className="relative w-[300px] h-[300px] sm:w-80 sm:h-80 flex items-center justify-center select-none scale-95 sm:scale-100 origin-center shrink-0">
                 
-                {/* Central Table Surface (Festive Navy Blue Tablecloth) */}
+                {/* Central Round Table Surface */}
                 <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 border-4 border-amber-400 shadow-2xl flex flex-col items-center justify-center text-white z-10 pointer-events-none">
-                  <span className="text-[9px] sm:text-[10px] uppercase font-bold text-sky-300 tracking-wider">Bulevar</span>
-                  <span className="text-xl sm:text-2xl font-black text-white">{activeTableModal.id}</span>
-                  <span className="text-[8px] sm:text-[9px] text-amber-300 font-bold mt-0.5">10 Comensales</span>
+                  <span className="text-[9px] uppercase font-bold text-sky-300 tracking-wider">Bulevar</span>
+                  <span className="text-2xl sm:text-3xl font-black text-amber-300">{activeTableModal.id}</span>
+                  <span className="text-[8px] font-bold text-slate-300 mt-0.5">10 Comensales</span>
                 </div>
 
-                {/* 10 Realistic Interactive Chairs with Rock-solid positioning */}
+                {/* 10 Interactive Physical Chairs */}
                 {activeTableModal.seats.map((seat, i) => {
                   const angle = (i * 360) / 10 - 90;
-                  const radius = 115; // px from center (160, 160)
+                  const radius = 118; // px from center (160, 160)
                   const rad = (angle * Math.PI) / 180;
                   const x = Math.round(radius * Math.cos(rad));
                   const y = Math.round(radius * Math.sin(rad));
@@ -432,9 +512,9 @@ export default function SeatingMap2D({
                         left: `${160 + x - 24}px`,
                         top: `${160 + y - 24}px`
                       }}
-                      className={`absolute h-11 w-11 sm:h-12 sm:w-12 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer ${
+                      className={`absolute h-12 w-12 rounded-full flex flex-col items-center justify-center transition-transform duration-150 active:scale-90 cursor-pointer ${
                         isSelected
-                          ? 'bg-amber-400 text-slate-950 font-black shadow-2xl ring-4 ring-amber-400/80 z-20'
+                          ? 'bg-amber-400 text-slate-950 font-black shadow-2xl ring-4 ring-amber-300 z-20 scale-110'
                           : isTaken
                           ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700 opacity-60'
                           : 'bg-emerald-600 hover:bg-emerald-500 hover:ring-4 hover:ring-emerald-400/50 text-white shadow-lg border-2 border-emerald-300 z-20'
@@ -446,19 +526,29 @@ export default function SeatingMap2D({
                       ) : (
                         <Armchair className="h-4 w-4 shrink-0" />
                       )}
-                      <span className="text-[10px] sm:text-[11px] font-black leading-none mt-0.5">{seat.number}</span>
+                      <span className="text-[10px] font-black leading-none mt-0.5">{seat.number}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Direct Quick 10-Chair Button Grid */}
-            <div className="mt-2 sm:mt-4 pt-3 border-t border-slate-800 text-left">
-              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 block mb-2 text-center sm:text-left">
-                Lista de las 10 Sillas de la Mesa {activeTableModal.id}:
-              </span>
-              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+            {/* Quick 10-Chair Button Matrix */}
+            <div className="mt-3 pt-3 border-t border-slate-800 text-left">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-300">
+                  Sillas de la Mesa {activeTableModal.id}:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => selectEntireTable(activeTableModal)}
+                  className="text-xs text-amber-400 hover:text-amber-300 font-bold underline"
+                >
+                  ⚡ Seleccionar Mesa Completa (10 Sillas)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-5 gap-2">
                 {activeTableModal.seats.map((seat) => {
                   const isSelected = isSeatSelected(activeTableModal.id, seat.number);
                   const isTaken = seat.isOccupied || seat.isPending;
@@ -469,7 +559,7 @@ export default function SeatingMap2D({
                       type="button"
                       disabled={isTaken}
                       onClick={() => toggleSeat(activeTableModal, seat.number)}
-                      className={`p-1.5 sm:p-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 sm:gap-1 ${
+                      className={`p-2 rounded-xl text-xs font-bold transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 ${
                         isSelected
                           ? 'bg-amber-400 text-slate-950 font-black ring-2 ring-amber-300 shadow-md'
                           : isTaken
@@ -478,8 +568,8 @@ export default function SeatingMap2D({
                       }`}
                     >
                       <span className="text-[9px] opacity-75">Silla</span>
-                      <strong className="text-[11px] sm:text-xs font-black">#{seat.number}</strong>
-                      <span className="text-[8px] sm:text-[9px] font-bold">
+                      <strong className="text-xs font-black">#{seat.number}</strong>
+                      <span className="text-[9px] font-bold">
                         {isSelected ? '✓' : isTaken ? '✕' : 'Libre'}
                       </span>
                     </button>
@@ -489,7 +579,7 @@ export default function SeatingMap2D({
             </div>
 
             {/* Modal Bottom Actions */}
-            <div className="mt-4 pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <div className="mt-5 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-xs text-slate-300">
                 Sillas elegidas en esta mesa: <strong className="text-amber-400 text-sm font-black">{selectedSeats.filter(s => s.tableId === activeTableModal.id).length}</strong>
               </span>
@@ -497,7 +587,7 @@ export default function SeatingMap2D({
               <button
                 type="button"
                 onClick={() => setActiveTableModal(null)}
-                className="w-full sm:w-auto rounded-2xl bg-amber-500 hover:bg-amber-400 px-6 sm:px-8 py-2.5 sm:py-3 text-xs font-black text-slate-950 transition-all shadow-xl shadow-amber-500/30"
+                className="w-full sm:w-auto rounded-2xl bg-amber-400 hover:bg-amber-300 px-8 py-3 text-xs font-black text-slate-950 transition-all shadow-xl shadow-amber-500/30 active:scale-95"
               >
                 ✅ Confirmar Selección
               </button>
