@@ -177,6 +177,11 @@ export default function SeminaristasPage() {
       return;
     }
 
+    if (paymentMethod !== 'cash' && !paymentProofUrl && !proofPreview) {
+      alert("⚠️ Es OBLIGATORIO tomar la foto o adjuntar el capture del comprobante de pago para métodos que no sean efectivo.");
+      return;
+    }
+
     setSubmitting(true);
     setLastOrder(null);
 
@@ -579,19 +584,6 @@ export default function SeminaristasPage() {
                     value={buyerPhone}
                     onChange={(e) => setBuyerPhone(e.target.value)}
                     className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">
-                    Cédula / DNI (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej: V-12345678"
-                    value={buyerDocId}
-                    onChange={(e) => setBuyerDocId(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white uppercase focus:outline-none focus:border-amber-400"
                   />
                 </div>
 

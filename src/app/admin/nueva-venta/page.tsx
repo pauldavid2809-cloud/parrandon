@@ -157,17 +157,6 @@ export default function NuevaVentaPage() {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">Cédula / DNI</label>
-            <input
-              type="text"
-              placeholder="Ej: V-15432987"
-              value={buyerDocId}
-              onChange={(e) => setBuyerDocId(e.target.value)}
-              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2 text-xs text-white uppercase focus:outline-none focus:border-amber-400"
-            />
-          </div>
-
-          <div>
             <label className="block font-semibold text-slate-300 mb-1">Teléfono WhatsApp *</label>
             <input
               type="tel"

@@ -365,13 +365,13 @@ export default function Home() {
             ¿Ya compraste tus entradas?
           </h3>
           <p className="text-xs sm:text-sm text-slate-400 mb-6 max-w-xl mx-auto">
-            Ingresa tu número de orden (ej: <code className="text-amber-300 font-mono font-bold">ORD-7492A</code>), tu <strong>Cédula / DNI</strong> o tu <strong>Teléfono WhatsApp</strong> para abrir tu pase QR:
+            Ingresa tu número de orden (ej: <code className="text-amber-300 font-mono font-bold">ORD-7492A</code>) o tu <strong>Teléfono WhatsApp</strong> para abrir tu pase QR:
           </p>
 
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2.5 max-w-lg mx-auto">
             <input
               type="text"
-              placeholder="Ej: ORD-7492A, V-18234567 o 04141234567"
+              placeholder="Ej: ORD-7492A o 04141234567"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 rounded-2xl bg-slate-900 border border-slate-700 px-5 py-3.5 text-sm text-white focus:outline-none focus:border-amber-400 text-center sm:text-left shadow-inner"
