@@ -483,7 +483,7 @@ export default function SeatingMap2D({
       {/* ROUND TABLE SEAT SELECTION MODAL (EMIL KOWALSKI POLISH) */}
       {activeTableModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/90 p-0 sm:p-4 backdrop-blur-xl animate-fadeIn">
-          <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border-t-2 sm:border-2 border-amber-500/60 bg-slate-900 p-4 sm:p-7 shadow-2xl text-center">
+          <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border-t-2 sm:border-2 border-amber-500/60 bg-slate-900 p-4 sm:p-7 shadow-2xl text-center animate-modal-pop">
             
             {/* Mobile Sheet Pull Indicator Handle */}
             <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
