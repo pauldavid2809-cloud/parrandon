@@ -274,12 +274,12 @@ export default function SeatingMap2D({
                           }`}
                         >
                           {/* REALISTIC ROUND BANQUET TABLE WITH 10 CHAIRS */}
-                          <div className="relative w-28 h-28 sm:w-32 sm:h-32 my-1 flex items-center justify-center shrink-0">
+                          <div className="relative w-32 h-32 my-1 flex items-center justify-center shrink-0">
                             
-                            {/* 10 Realistic Physical Chairs Surrounding the Table */}
+                            {/* 10 Realistic Physical Chairs Surrounding the Table (100% Concéntricas) */}
                             {table.seats.map((seat, i) => {
                               const angle = (i * 360) / 10 - 90;
-                              const radius = 46; // px from center
+                              const radius = 50; // px exactos desde el centro
                               const rad = (angle * Math.PI) / 180;
                               const x = Math.round(radius * Math.cos(rad));
                               const y = Math.round(radius * Math.sin(rad));
@@ -291,8 +291,9 @@ export default function SeatingMap2D({
                                 <div
                                   key={seat.number}
                                   style={{
-                                    left: `${56 + x - 7}px`,
-                                    top: `${56 + y - 7}px`
+                                    left: `calc(50% + ${x}px)`,
+                                    top: `calc(50% + ${y}px)`,
+                                    transform: 'translate(-50%, -50%)'
                                   }}
                                   className={`absolute h-3.5 w-3.5 rounded-full border shadow-sm transition-transform duration-150 ${
                                     isSelected
@@ -308,7 +309,7 @@ export default function SeatingMap2D({
 
                             {/* Central Round Table with Fine Gala Navy Tablecloth & Golden Rim */}
                             <div
-                              className={`w-20 h-20 rounded-full flex flex-col items-center justify-center text-center shadow-xl border-2 sm:border-4 transition-all ${
+                              className={`w-20 h-20 rounded-full flex flex-col items-center justify-center text-center shadow-xl border-2 sm:border-4 transition-all z-10 ${
                                 tableSelectedCount > 0
                                   ? 'bg-gradient-to-br from-blue-900 via-amber-600 to-blue-950 border-amber-300 text-white shadow-amber-500/30'
                                   : isFullyOccupied
@@ -487,10 +488,10 @@ export default function SeatingMap2D({
                   <span className="text-[8px] font-bold text-slate-300 mt-0.5">10 Comensales</span>
                 </div>
 
-                {/* 10 Interactive Physical Chairs */}
+                {/* 10 Interactive Physical Chairs (100% Concéntricas) */}
                 {activeTableModal.seats.map((seat, i) => {
                   const angle = (i * 360) / 10 - 90;
-                  const radius = 118; // px from center (160, 160)
+                  const radius = 118; // px desde el centro
                   const rad = (angle * Math.PI) / 180;
                   const x = Math.round(radius * Math.cos(rad));
                   const y = Math.round(radius * Math.sin(rad));
@@ -505,8 +506,9 @@ export default function SeatingMap2D({
                       disabled={isTaken}
                       onClick={() => toggleSeat(activeTableModal, seat.number)}
                       style={{
-                        left: `${160 + x - 24}px`,
-                        top: `${160 + y - 24}px`
+                        left: `calc(50% + ${x}px)`,
+                        top: `calc(50% + ${y}px)`,
+                        transform: 'translate(-50%, -50%)'
                       }}
                       className={`absolute h-12 w-12 rounded-full flex flex-col items-center justify-center transition-transform duration-150 active:scale-90 cursor-pointer ${
                         isSelected
