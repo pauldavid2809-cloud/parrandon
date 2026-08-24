@@ -1,0 +1,20 @@
+{
+  "name": "parrandon-whatsapp-service",
+  "version": "1.0.0",
+  "description": "Microservicio autónomo 24/7 de WhatsApp con Baileys para el Parrandón Navideño 2026",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.19",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

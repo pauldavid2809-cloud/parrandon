@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
-const BOT_URL = 'http://127.0.0.1:3001';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const BOT_URL = process.env.WHATSAPP_BOT_URL || 'http://127.0.0.1:3001';
 
 export async function GET() {
   try {
@@ -15,7 +18,7 @@ export async function GET() {
         success: false,
         isConnected: false,
         state: 'offline',
-        error: 'El servicio de WhatsApp Bot no está respondiendo en el puerto 3001'
+        error: 'El microservicio de WhatsApp Bot no está respondiendo en la URL configurada'
       });
     }
 
@@ -26,7 +29,7 @@ export async function GET() {
       success: false,
       isConnected: false,
       state: 'offline',
-      error: 'Servicio de WhatsApp Bot apagado o no iniciado'
+      error: 'Microservicio de WhatsApp Bot apagado o no alcanzable'
     });
   }
 }

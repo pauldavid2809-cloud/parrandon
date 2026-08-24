@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
-const BOT_URL = 'http://127.0.0.1:3001';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const BOT_URL = process.env.WHATSAPP_BOT_URL || 'http://127.0.0.1:3001';
 
 export async function POST() {
   try {
