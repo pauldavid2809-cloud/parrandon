@@ -11,26 +11,11 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-slate-950/85 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
-      {/* Top micro ribbon with live contact */}
-      <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 text-amber-300 text-[10px] sm:text-[11px] font-bold py-1.5 px-3 border-b border-amber-500/15">
-        <div className="container mx-auto max-w-7xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-200">Gran Parrandón Navideño 2026 •</span>
-            <span className="text-amber-400 font-bold">Sáb 12 Diciembre • 6:00 PM</span>
-            <span className="hidden md:inline text-sky-400 font-mono text-[9px] bg-sky-950/80 px-2 py-0.5 rounded border border-sky-500/20">SACERDOS LUX</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="https://wa.me/584120308674?text=Hola%2C%20tengo%20una%20consulta%20sobre%20el%20Gran%20Parrand%C3%B3n%20Navide%C3%B1o%202026"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-bold transition-colors font-mono"
-            >
-              <span>WhatsApp: 0412-0308674</span>
-            </a>
-          </div>
-        </div>
+      {/* Top micro ribbon */}
+      <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 text-amber-300 text-[10px] font-bold py-1 px-3 text-center border-b border-amber-500/15 flex items-center justify-center gap-2">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+        <span>Gran Parrandón Navideño 2026 • Seminario Mayor Santo Tomás de Aquino</span>
+        <span className="hidden sm:inline text-sky-400 font-mono text-[9px] bg-sky-950/80 px-2 py-0.2 rounded border border-sky-500/20">SACERDOS LUX</span>
       </div>
 
       <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
@@ -78,20 +63,6 @@ export default function Navbar() {
                 <span className="hidden sm:inline">Inicio</span>
               </Link>
               
-              <Link
-                href="/#sobre-evento"
-                className="hidden lg:flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent transition-all"
-              >
-                <span>La Tradición</span>
-              </Link>
-
-              <Link
-                href="/#sectores"
-                className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent transition-all"
-              >
-                <span>Sectores</span>
-              </Link>
-
               <Link
                 href="/#consultar"
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all"
