@@ -28,18 +28,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
-
-const SEMINARISTAS_LIST = [
-  'Hno. Daniel Colmenares',
-  'Hno. Juan Carlos Pérez',
-  'Hno. Andrés Morales',
-  'Hno. Gabriel Rivas',
-  'Hno. José Luis Duque',
-  'Hno. Miguel Ángel Parra',
-  'Hno. Ricardo Becerra',
-  'Hno. Sebastián Gómez',
-  'Padre Formador / Encargado'
-];
+import { SEMINARISTAS_DIRECTORY, SEMINARY_STAGES } from '@/lib/seminaristas';
 
 const PARISHES_LIST = [
   'Basílica de Nuestra Señora de Chiquinquirá (La Chinita)',
@@ -310,11 +299,25 @@ export default function SeminaristasPage() {
                   onChange={(e) => setSelectedSeminarista(e.target.value)}
                   className="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-xs text-white focus:outline-none focus:border-amber-400"
                 >
-                  <option value="">-- Selecciona tu nombre --</option>
-                  {SEMINARISTAS_LIST.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                  <option value="Otro">Otro (Escribir nombre)...</option>
+                  <option value="">-- Selecciona tu nombre en la lista --</option>
+                  {SEMINARY_STAGES.map(stage => {
+                    const group = SEMINARISTAS_DIRECTORY.filter(s => s.stage === stage);
+                    if (group.length === 0) return null;
+                    return (
+                      <optgroup key={stage} label={`── ${stage.toUpperCase()} (${group.length}) ──`} className="bg-slate-900 text-amber-300 font-bold">
+                        {group.map(s => (
+                          <option key={s.id} value={s.name} className="bg-slate-950 text-white font-normal">
+                            {s.name} ({s.diocese})
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
+                  <optgroup label="── OTRAS OPCIONES ──" className="bg-slate-900 text-slate-400 font-bold">
+                    <option value="Equipo de Propedéutico" className="bg-slate-950 text-white font-normal">Equipo de Propedéutico (Maracaibo)</option>
+                    <option value="Padre Formador / Encargado" className="bg-slate-950 text-white font-normal">Padre Formador / Encargado</option>
+                    <option value="Otro" className="bg-slate-950 text-white font-normal">Otro (Escribir nombre)...</option>
+                  </optgroup>
                 </select>
               </div>
 
