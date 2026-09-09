@@ -23,8 +23,10 @@ import {
   QrCode,
   CheckCircle2,
   Users,
-  Compass
+  Compass,
+  Heart
 } from 'lucide-react';
+import DonationModal from '@/components/DonationModal';
 
 export default function Home() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function Home() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [isDonationOpen, setIsDonationOpen] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,23 +141,45 @@ export default function Home() {
           </div>
 
           {/* Call to Action Button Row */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-lg mx-auto mt-6 px-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-2xl mx-auto mt-6 px-2">
             <Link
               href="/comprar"
-              className="w-full sm:w-auto flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 px-8 py-4 text-base font-black text-slate-950 shadow-2xl shadow-amber-500/30 transition-all hover:scale-105"
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 px-7 py-4 text-sm sm:text-base font-black text-slate-950 shadow-2xl shadow-amber-500/30 transition-all hover:scale-105"
             >
               <Armchair className="h-5 w-5" />
               <span>Elegir Mesa en Croquis 2D</span>
               <ArrowRight className="h-5 w-5" />
             </Link>
 
+            <button
+              type="button"
+              onClick={() => setIsDonationOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 hover:from-rose-500 hover:to-rose-400 px-6 py-4 text-sm font-black text-white shadow-xl shadow-rose-900/30 border border-rose-400/40 transition-all hover:scale-105 active:scale-95"
+            >
+              <Heart className="h-4 w-4 fill-white/20 text-rose-200 animate-pulse" />
+              <span>Hacer Donación (Fila Cero)</span>
+            </button>
+
             <Link
               href="#consultar"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-slate-900/90 border border-slate-700 hover:border-amber-400 hover:bg-slate-800 px-6 py-4 text-sm font-bold text-slate-200 transition-all"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-slate-900/90 border border-slate-700 hover:border-amber-400 hover:bg-slate-800 px-5 py-4 text-sm font-bold text-slate-200 transition-all"
             >
               <Search className="h-4 w-4 text-amber-400" />
-              <span>Consultar mi Entrada</span>
+              <span>Consultar</span>
             </Link>
+          </div>
+
+          {/* Direct Donation Banner */}
+          <div className="mt-4 flex justify-center px-2">
+            <button
+              type="button"
+              onClick={() => setIsDonationOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-950/40 hover:bg-rose-900/50 px-4 py-1.5 text-xs text-rose-200 transition-all shadow-md group backdrop-blur-md"
+            >
+              <Heart className="h-3.5 w-3.5 text-rose-400 fill-rose-400/20 group-hover:scale-110 transition-transform" />
+              <span>¿No puedes asistir el 12 de Dic? <strong>Apoya la formación sacerdotal con tu donación directa</strong></span>
+              <ArrowRight className="h-3 w-3 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
+            </button>
           </div>
 
           {/* 3 Quick Pillar Cards */}
@@ -464,6 +489,12 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Direct Donation Modal */}
+      <DonationModal
+        isOpen={isDonationOpen}
+        onClose={() => setIsDonationOpen(false)}
+      />
 
     </div>
   );

@@ -7,6 +7,7 @@ import { Order } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import TicketCard from '@/components/TicketCard';
 import { generateTicketPdf } from '@/lib/export';
+import Image from 'next/image';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -21,7 +22,8 @@ import {
   Hash, 
   Phone,
   FileDown,
-  Printer
+  Printer,
+  Heart
 } from 'lucide-react';
 
 export default function OrderStatusPage() {
@@ -178,15 +180,27 @@ export default function OrderStatusPage() {
                 </div>
 
                 <h1 className="text-xl sm:text-2xl font-extrabold text-white mt-1.5">
-                  {isApproved
+                  {order.isDonation
+                    ? (isApproved
+                      ? '¡Ofrenda Confirmada y Agradecida!'
+                      : isRejected
+                      ? 'Ofrenda no verificada'
+                      : 'Ofrenda recibida y en verificación')
+                    : (isApproved
                     ? '¡Tu pago ha sido verificado con éxito!'
                     : isRejected
                     ? 'No se pudo verificar el pago'
-                    : 'Comprobante recibido y en revisión'}
+                    : 'Comprobante recibido y en revisión')}
                 </h1>
 
                 <p className="text-xs text-slate-300 mt-1 max-w-xl">
-                  {isApproved
+                  {order.isDonation
+                    ? isApproved
+                      ? 'Tu donación benéfica ha sido confirmada por la administración del Seminario. ¡Que Dios bendiga y multiplique abundantemente tu generosidad para la formación sacerdotal!'
+                      : isRejected
+                      ? `Motivo: ${order.rejectionReason || 'Comprobante no coincide con los registros bancarios.'} Por favor contáctanos al WhatsApp de administración.`
+                      : 'El equipo de administración del Seminario está validando tu comprobante de pago. Una vez verificado, se emitirá tu certificado oficial definitivo.'
+                    : isApproved
                     ? 'Tus entradas digitales con código QR ya están disponibles a continuación. Preséntalas el día del evento en tu celular o descárgalas en PDF.'
                     : isRejected
                     ? `Motivo: ${order.rejectionReason || 'Comprobante no coincide con los registros bancarios.'} Por favor contáctanos al WhatsApp de administración.`
@@ -197,8 +211,68 @@ export default function OrderStatusPage() {
           </div>
         </div>
 
-        {/* IF APPROVED: SHOW DIGITAL TICKETS */}
-        {isApproved && order.tickets && order.tickets.length > 0 && (
+        {/* IF DONATION: SHOW SEMINARY GRATITUDE CERTIFICATE */}
+        {order.isDonation && (
+          <div className="rounded-3xl border-2 border-rose-500/30 bg-gradient-to-br from-rose-950/20 via-slate-900/90 to-slate-950 p-6 sm:p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative h-20 w-16 mx-auto filter drop-shadow-[0_4px_16px_rgba(244,63,94,0.3)]">
+              <Image
+                src="/images/seminario-logo.png"
+                alt="Escudo Seminario Mayor Santo Tomás de Aquino"
+                fill
+                sizes="64px"
+                className="object-contain"
+              />
+            </div>
+
+            <div className="space-y-2 max-w-lg mx-auto">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold uppercase tracking-wider">
+                <Heart className="h-3.5 w-3.5 fill-rose-400/30" />
+                Certificado de Ofrenda Benéfica
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Seminario Mayor Santo Tomás de Aquino
+              </h2>
+              <p className="text-xs text-slate-400">
+                Arquidiócesis de Maracaibo • Parrandón Navideño 2026
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-rose-500/20 bg-slate-950/80 p-5 max-w-md mx-auto space-y-3 text-xs leading-relaxed text-slate-300">
+              <p>
+                Hacemos constar y agradecemos profundamente la ofrenda generosa de:
+              </p>
+              <div className="text-base font-black text-white uppercase tracking-wide py-1 border-y border-slate-800">
+                {order.buyerName}
+              </div>
+              <div className="text-rose-400 font-mono text-xl font-black">
+                ${order.convertedUsd || order.amountPaid || order.donationAmount} USD
+              </div>
+              <p className="text-[11px] text-slate-400 italic">
+                &ldquo;Cada uno dé como propuso en su corazón: no con tristeza, ni por necesidad, porque Dios ama al dador alegre.&rdquo; (2 Corintios 9:7)
+              </p>
+            </div>
+
+            {/* Share blessing via WhatsApp */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto pt-2">
+              <a
+                href={`https://api.whatsapp.com/send?phone=584120308674&text=${encodeURIComponent(
+                  `❤️ *GRACIAS POR TU DONACIÓN AL SEMINARIO*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡La paz del Señor esté contigo, estimado(a) *${order.buyerName}*!\n\nAgradecemos tu ofrenda de *$${order.convertedUsd || order.amountPaid || order.donationAmount} USD* para la formación sacerdotal.\n\nComprobante: #${order.id}\nEnlace: https://parrandon.vercel.app/orden/${order.id}\n\n¡Dios bendiga a tu familia! 🙏`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-6 py-3 text-xs font-bold text-white shadow-lg transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+                <span>Compartir Bendición por WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* IF APPROVED TICKETS: SHOW DIGITAL TICKETS */}
+        {!order.isDonation && isApproved && order.tickets && order.tickets.length > 0 && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
@@ -239,14 +313,14 @@ export default function OrderStatusPage() {
         {/* Order Details Breakdown */}
         <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
           <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">
-            Detalles de la Compra
+            {order.isDonation ? 'Detalles de la Ofrenda' : 'Detalles de la Compra'}
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
             <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Comprador</span>
+              <span className="text-slate-400 block text-[11px]">{order.isDonation ? 'Donante' : 'Comprador'}</span>
               <strong className="text-white text-sm block mt-0.5">{order.buyerName}</strong>
-              <span className="text-slate-400 text-[10px]">{order.buyerDocId}</span>
+              <span className="text-slate-400 text-[10px]">{order.isDonation ? 'Fila Cero (Sin mesa)' : (order.buyerDocId || '')}</span>
             </div>
 
             <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
@@ -262,12 +336,14 @@ export default function OrderStatusPage() {
             </div>
 
             <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Monto Pagado</span>
+              <span className="text-slate-400 block text-[11px]">{order.isDonation ? 'Monto Donado' : 'Monto Pagado'}</span>
               <strong className="text-emerald-400 text-sm block mt-0.5">
                 {formatCurrency(order.amountPaid, order.currency)}
               </strong>
               <span className="text-slate-400 text-[10px]">
-                {order.quantity} {order.quantity === 1 ? 'entrada' : 'entradas'} (${order.convertedUsd} USD)
+                {order.isDonation
+                  ? `Ofrenda Benéfica ($${order.convertedUsd} USD)`
+                  : `${order.quantity} ${order.quantity === 1 ? 'entrada' : 'entradas'} ($${order.convertedUsd} USD)`}
               </span>
             </div>
           </div>

@@ -73,6 +73,19 @@ export default function Navbar() {
               </Link>
 
               <Link
+                href="/donar"
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all border ${
+                  pathname === '/donar'
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-inner'
+                    : 'text-rose-300/90 hover:text-white hover:bg-rose-950/40 border-rose-500/20 hover:border-rose-500/40'
+                }`}
+                title="Hacer una donación benéfica (Fila Cero)"
+              >
+                <Heart className="h-3.5 w-3.5 text-rose-400 fill-rose-400/20" />
+                <span>Donar</span>
+              </Link>
+
+              <Link
                 href="/comprar"
                 className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black rounded-xl transition-all shadow-lg ${
                   pathname === '/comprar'

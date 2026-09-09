@@ -3,7 +3,10 @@ import { Order, Ticket } from '@/types';
 const BOT_URL = process.env.WHATSAPP_BOT_URL || 'https://parrandon-production.up.railway.app';
 
 export async function sendWhatsAppNotificationForOrder(order: Order, baseUrl?: string) {
-  if (!order || !order.buyerPhone || !order.tickets || order.tickets.length === 0) {
+  if (!order || !order.buyerPhone) {
+    return;
+  }
+  if (!order.isDonation && (!order.tickets || order.tickets.length === 0)) {
     return;
   }
 
@@ -12,7 +15,16 @@ export async function sendWhatsAppNotificationForOrder(order: Order, baseUrl?: s
 
   let message = '';
 
-  if (order.tickets.length === 1) {
+  if (order.isDonation) {
+    message = `❤️ *GRACIAS POR TU DONACIÓN BENÉFICA*\n` +
+      `🏛️ *Seminario Mayor Santo Tomás de Aquino (Maracaibo)*\n\n` +
+      `¡La paz del Señor esté contigo, estimado(a) *${order.buyerName}*!\n\n` +
+      `Hemos recibido tu generosa ofrenda de *$${order.convertedUsd || order.amountPaid || order.donationAmount} USD* para la formación de los futuros sacerdotes de nuestra Diócesis.\n\n` +
+      `📋 *Comprobante de Ofrenda:* #${order.id}\n` +
+      `🙏 Tu intención y la de tu familia han sido encomendadas en la oración comunitaria y la Santa Misa del Seminario.\n\n` +
+      `👉 *Puedes consultar tu comprobante aquí:*\n${orderUrl}\n\n` +
+      `¡Que Dios todopoderoso bendiga y multiplique tu generosidad! ✨`;
+  } else if (order.tickets.length === 1) {
     const t = order.tickets[0];
     const ticketUrl = `${domain}/ticket/${t.ticketCode}`;
     message = `🎄 *Parrandón Navideño 2026 - Seminario Mayor Santo Tomás de Aquino (Maracaibo)*\n\n` +
