@@ -111,6 +111,51 @@ button:active, a:active, [role="button"]:active {
   animation: festive-shimmer 3.5s infinite;
 }
 
+/* Nocturnal Gala Luminescence Animations */
+@keyframes bokeh-drift {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate(15px, -15px) scale(1.1);
+    opacity: 0.65;
+  }
+}
+
+.animate-bokeh-drift {
+  animation: bokeh-drift 8s ease-in-out infinite alternate;
+}
+
+@keyframes starlight-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 0.9; transform: scale(1.2); }
+}
+
+.animate-starlight {
+  animation: starlight-twinkle 3s ease-in-out infinite;
+}
+
+.glass-gala {
+  background: rgba(14, 22, 40, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(251, 191, 36, 0.25);
+}
+
+.glass-gala-hover {
+  transition: transform 220ms var(--ease-out-spring), border-color 220ms ease, box-shadow 220ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-gala-hover:hover {
+    transform: translateY(-3px);
+    border-color: rgba(251, 191, 36, 0.45);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 25px -3px rgba(245, 158, 11, 0.2);
+  }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
