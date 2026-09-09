@@ -3,147 +3,35 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Sparkles, Ticket, Home, Search, ArrowLeft, ShieldCheck, Heart } from 'lucide-react';
+import { Ticket, Home, Search, ArrowLeft, ShieldCheck, Heart, Music2 } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith('/admin') || pathname === '/administracion-interna' || pathname === '/escanear' || pathname === '/cocina';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-primary/20 bg-background/95 backdrop-blur-xl shadow-lg shadow-black/10">
-      {/* Top micro ribbon with live contact */}
-      <div className="bg-secondary text-primary text-[10px] sm:text-[11px] font-bold py-1.5 px-3 border-b border-primary/15">
-        <div className="container mx-auto max-w-7xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-200">Gran Parrandón Navideño 2026 •</span>
-            <span className="text-amber-400 font-bold">Sáb 12 Diciembre • 6:00 PM</span>
-            <span className="hidden md:inline text-sky-400 font-mono text-[9px] bg-sky-950/80 px-2 py-0.5 rounded border border-sky-500/20">SACERDOS LUX</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="https://wa.me/584120308674?text=Hola%2C%20tengo%20una%20consulta%20sobre%20el%20Gran%20Parrand%C3%B3n%20Navide%C3%B1o%202026"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-bold transition-colors font-mono"
-            >
-              <span>WhatsApp: 0412-0308674</span>
-            </a>
-          </div>
+    <header className="sticky top-0 z-50 w-full border-b border-primary/25 bg-background/95 backdrop-blur-md">
+      <div className="border-b border-primary/20 bg-secondary px-4 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-primary">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <span className="inline-flex items-center gap-2"><Music2 className="size-3" /> La navidad se celebra en comunidad</span>
+          <span className="hidden sm:inline text-secondary-foreground/70">12 de diciembre · 6:00 p. m.</span>
         </div>
       </div>
-
-      <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
-        {/* Logo / Branding with Official Coat of Arms */}
-        <Link href="/" className="flex items-center gap-3 group shrink-0">
-          <div className="relative h-10 w-8 sm:h-12 sm:w-10 shrink-0 transition-transform duration-200 group-hover:scale-105 filter drop-shadow-[0_2px_8px_rgba(245,158,11,0.25)]">
-            <Image
-              src="/images/seminario-logo.png"
-              alt="Escudo Oficial Seminario Mayor Santo Tomás de Aquino"
-              fill
-              sizes="48px"
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm sm:text-base font-black tracking-tight text-white group-hover:text-amber-400 transition-colors">
-                Parrandón <span className="text-amber-400">Navideño</span>
-              </span>
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-extrabold text-amber-300 border border-amber-500/30 font-mono">
-                2026
-              </span>
-            </div>
-            <span className="text-[10px] sm:text-xs text-sky-300/90 font-medium tracking-tight truncate max-w-[160px] xs:max-w-[240px] sm:max-w-none">
-              Seminario Mayor Santo Tomás de Aquino
-            </span>
+      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href="/" className="group flex min-w-0 items-center gap-3">
+          <div className="relative size-11 shrink-0 sm:size-12"><Image src="/images/seminario-logo.png" alt="Escudo del Seminario Mayor Santo Tomás de Aquino" fill sizes="48px" className="object-contain" priority /></div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2"><span className="font-serif text-base font-bold tracking-tight text-foreground sm:text-lg">Parrandón</span><span className="bg-primary px-1.5 py-0.5 text-[9px] font-black text-primary-foreground">2026</span></div>
+            <span className="block truncate text-[10px] uppercase tracking-[.1em] text-muted-foreground">Seminario Mayor Santo Tomás</span>
           </div>
         </Link>
-
-        {/* Navigation */}
-        <nav className="flex items-center gap-1.5 sm:gap-3">
-          {!isAdmin ? (
-            <>
-              <Link
-                href="/"
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all ${
-                  pathname === '/'
-                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-inner'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
-                }`}
-                title="Inicio"
-              >
-                <Home className="h-4 w-4" />
-                <span className="hidden sm:inline">Inicio</span>
-              </Link>
-              
-              <Link
-                href="/#sobre-evento"
-                className="hidden lg:flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent transition-all"
-              >
-                <span>La Tradición</span>
-              </Link>
-
-              <Link
-                href="/#sectores"
-                className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent transition-all"
-              >
-                <span>Sectores</span>
-              </Link>
-
-              <Link
-                href="/#consultar"
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all"
-                title="Buscar entradas o comprobar orden"
-              >
-                <Search className="h-4 w-4 text-amber-400" />
-                <span className="hidden sm:inline">Buscar Entradas</span>
-              </Link>
-
-              <Link
-                href="/donar"
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all border ${
-                  pathname === '/donar'
-                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-inner'
-                    : 'text-rose-300/90 hover:text-white hover:bg-rose-950/40 border-rose-500/20 hover:border-rose-500/40'
-                }`}
-                title="Hacer una donación benéfica (Fila Cero)"
-              >
-                <Heart className="h-3.5 w-3.5 text-rose-400 fill-rose-400/20" />
-                <span>Donar</span>
-              </Link>
-
-              <Link
-                href="/comprar"
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black rounded-xl transition-all shadow-lg ${
-                  pathname === '/comprar'
-                    ? 'bg-primary text-primary-foreground shadow-primary/30 ring-2 ring-primary/60 scale-105'
-                    : 'bg-primary text-primary-foreground hover:brightness-110 shadow-primary/20'
-                }`}
-              >
-                <Ticket className="h-4 w-4" />
-                <span>Comprar<span className="hidden sm:inline"> Entradas</span></span>
-              </Link>
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/administracion-interna"
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-900 border border-slate-700 text-amber-300 hover:text-white shadow-md"
-              >
-                <ShieldCheck className="h-4 w-4 text-amber-400" />
-                <span>Hub Operativo</span>
-              </Link>
-              <Link
-                href="/"
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Ver Portada</span>
-              </Link>
-            </div>
-          )}
+        <nav className="flex items-center gap-1.5 sm:gap-2">
+          {!isAdmin ? <>
+            <Link href="/" className={`hidden items-center gap-2 px-3 py-2 text-xs font-bold sm:flex ${pathname === '/' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}><Home className="size-4" /> Inicio</Link>
+            <Link href="/#consultar" className="hidden items-center gap-2 px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground md:flex"><Search className="size-4" /> Consultar</Link>
+            <Link href="/donar" className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${pathname === '/donar' ? 'border-accent bg-accent text-accent-foreground' : 'border-accent/50 text-accent hover:bg-accent hover:text-accent-foreground'}`}><Heart className="size-3.5" /> <span>Donar</span></Link>
+            <Link href="/comprar" className="flex items-center gap-2 bg-primary px-3.5 py-2.5 text-xs font-black text-primary-foreground shadow-lg shadow-primary/20 sm:px-5"><Ticket className="size-4" /> <span>Comprar</span></Link>
+          </> : <div className="flex items-center gap-2"><Link href="/administracion-interna" className="flex items-center gap-2 border border-primary/40 bg-secondary px-3 py-2 text-xs font-bold text-primary"><ShieldCheck className="size-4" /> Hub Operativo</Link><Link href="/" className="flex items-center gap-2 border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /><span className="hidden sm:inline">Portada</span></Link></div>}
         </nav>
       </div>
     </header>
