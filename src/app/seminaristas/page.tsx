@@ -25,7 +25,13 @@ import {
   Image as ImageIcon,
   X,
   Eye,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { SEMINARISTAS_DIRECTORY, SEMINARY_STAGES } from '@/lib/seminaristas';
@@ -53,6 +59,10 @@ export default function SeminaristasPage() {
   const [customSeminarista, setCustomSeminarista] = useState('');
   const [customParish, setCustomParish] = useState('');
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [activeTab, setActiveTab] = useState<'sell' | 'history'>('sell');
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedDayFilter, setSelectedDayFilter] = useState<string>('ALL');
+  const [viewProofModal, setViewProofModal] = useState<string | null>(null);
 
   // Sale form state
   const [buyerName, setBuyerName] = useState('');
@@ -76,7 +86,7 @@ export default function SeminaristasPage() {
   const [rateBs, setRateBs] = useState<number>(897.82);
   const [ticketPrice, setTicketPrice] = useState<number>(20);
 
-  // Stats for the active session
+  // Stats & sales for the active seminarista
   const [mySales, setMySales] = useState<Order[]>([]);
 
   useEffect(() => {
@@ -98,6 +108,26 @@ export default function SeminaristasPage() {
   const seminaristName = selectedSeminarista === 'Otro' ? customSeminarista : selectedSeminarista;
   const parishName = selectedParish === 'Otra Parroquia / Comunidad' ? customParish : selectedParish;
 
+  const loadSeminaristaHistory = async (name: string) => {
+    if (!name.trim()) return;
+    try {
+      setLoadingHistory(true);
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      if (data.success && data.orders) {
+        const myHistoricalSales = data.orders.filter((o: Order) => 
+          (o.sellerName && o.sellerName.toLowerCase().includes(name.toLowerCase())) ||
+          (o.notes && o.notes.toLowerCase().includes(name.toLowerCase()))
+        );
+        setMySales(myHistoricalSales);
+      }
+    } catch (err) {
+      console.error("Error cargando historial de ventas:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const handleStartSession = (e: React.FormEvent) => {
     e.preventDefault();
     if (!seminaristName.trim() || !parishName.trim()) {
@@ -105,6 +135,7 @@ export default function SeminaristasPage() {
       return;
     }
     setIsSessionActive(true);
+    loadSeminaristaHistory(seminaristName);
   };
 
   const handleCaptureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,7 +345,6 @@ export default function SeminaristasPage() {
                     );
                   })}
                   <optgroup label="── OTRAS OPCIONES ──" className="bg-slate-900 text-slate-400 font-bold">
-                    <option value="Equipo de Propedéutico" className="bg-slate-950 text-white font-normal">Equipo de Propedéutico (Maracaibo)</option>
                     <option value="Padre Formador / Encargado" className="bg-slate-950 text-white font-normal">Padre Formador / Encargado</option>
                     <option value="Otro" className="bg-slate-950 text-white font-normal">Otro (Escribir nombre)...</option>
                   </optgroup>
@@ -391,15 +421,15 @@ export default function SeminaristasPage() {
                 </p>
               </div>
 
-              {/* Counters */}
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-slate-950 px-4 py-2 text-center border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Mis Ventas</span>
-                  <span className="text-base font-black text-amber-400">{totalTicketsSoldByMe} Entradas</span>
+              {/* Counters & Tab Navigation */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <div className="rounded-2xl bg-slate-950 px-3.5 py-2 text-center border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Total Entradas</span>
+                  <span className="text-sm sm:text-base font-black text-amber-400">{totalTicketsSoldByMe}</span>
                 </div>
-                <div className="rounded-2xl bg-slate-950 px-4 py-2 text-center border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Efectivo en Mano</span>
-                  <span className="text-base font-black text-emerald-400">${totalCashCollected} USD</span>
+                <div className="rounded-2xl bg-slate-950 px-3.5 py-2 text-center border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Efectivo a Entregar</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-400">${totalCashCollected} USD</span>
                 </div>
                 <button
                   onClick={() => setIsSessionActive(false)}
@@ -410,379 +440,615 @@ export default function SeminaristasPage() {
               </div>
             </div>
 
-            {/* POPUP / VOUCHER IF SALE JUST COMPLETED */}
-            {lastOrder && (
-              <div className="rounded-3xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-950/90 via-slate-900 to-slate-950 p-6 shadow-2xl animate-fadeIn space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 bg-emerald-500 text-slate-950 text-xs font-black uppercase px-3 py-1 rounded-full">
-                    <CheckCircle2 className="h-4 w-4" />
-                    ¡Venta Registrada Exitosamente!
-                  </span>
-                  <span className="text-xs font-mono font-bold text-amber-300">
-                    {lastOrder.id}
-                  </span>
-                </div>
+            {/* TAB SELECTOR: REGISTRAR VENTA VS HISTORIAL POR DÍA */}
+            <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800 select-none">
+              <button
+                type="button"
+                onClick={() => setActiveTab('sell')}
+                className={`py-3 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${
+                  activeTab === 'sell'
+                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-[1.01]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>Registrar Nueva Venta</span>
+              </button>
 
-                <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Comprador:</span>
-                    <strong className="text-white text-sm">{lastOrder.buyerName}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">WhatsApp:</span>
-                    <strong className="text-emerald-400">{lastOrder.buyerPhone}</strong>
-                  </div>
-                  <div className="flex justify-between pt-1 border-t border-slate-800">
-                    <span className="text-slate-400">Ubicación Asignada:</span>
-                    <span className="text-amber-300 font-bold">
-                      {lastOrder.tickets.map(t => `Mesa ${t.tableId} (Silla ${t.seatNumber})`).join(', ')}
-                    </span>
-                  </div>
-                  {lastOrder.paymentProofUrl && (
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[11px] text-sky-300">
-                      <span>Capture de Pago:</span>
-                      <span className="font-bold">📸 Guardado en el Sistema</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('history');
+                  loadSeminaristaHistory(seminaristName);
+                }}
+                className={`py-3 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${
+                  activeTab === 'history'
+                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-[1.01]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <Calendar className="h-4 w-4" />
+                <span>Mi Historial por Día ({mySales.length})</span>
+              </button>
+            </div>
+
+            {/* TAB 1: FORMULARIO DE REGISTRO DE VENTA */}
+            {activeTab === 'sell' && (
+              <div className="space-y-6">
+                {/* POPUP / VOUCHER IF SALE JUST COMPLETED */}
+                {lastOrder && (
+                  <div className="rounded-3xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-950/90 via-slate-900 to-slate-950 p-6 shadow-2xl animate-fadeIn space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-500 text-slate-950 text-xs font-black uppercase px-3 py-1 rounded-full">
+                        <CheckCircle2 className="h-4 w-4" />
+                        ¡Venta Registrada Exitosamente!
+                      </span>
+                      <span className="text-xs font-mono font-bold text-amber-300">
+                        {lastOrder.id}
+                      </span>
                     </div>
-                  )}
-                </div>
 
-                {/* 1-Click WhatsApp Buttons */}
-                {lastOrder.tickets && lastOrder.tickets.length > 0 && (
-                  <div className="space-y-3">
-                    
-                    {/* Send Master Order Link if more than 1 ticket */}
-                    {lastOrder.tickets.length > 1 && (
-                      <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 p-4 rounded-2xl border-2 border-emerald-500/60 text-center space-y-2">
-                        <div className="text-xs font-bold text-emerald-300">
-                          📦 Paquete Familiar ({lastOrder.tickets.length} Entradas)
+                    <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Comprador:</span>
+                        <strong className="text-white text-sm">{lastOrder.buyerName}</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">WhatsApp:</span>
+                        <strong className="text-emerald-400">{lastOrder.buyerPhone}</strong>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-slate-800">
+                        <span className="text-slate-400">Ubicación Asignada:</span>
+                        <span className="text-amber-300 font-bold">
+                          {lastOrder.tickets.map(t => `Mesa ${t.tableId} (Silla ${t.seatNumber})`).join(', ')}
+                        </span>
+                      </div>
+                      {lastOrder.paymentProofUrl && (
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[11px] text-sky-300">
+                          <span>Capture de Pago:</span>
+                          <span className="font-bold">📸 Guardado en el Sistema</span>
                         </div>
-                        {(() => {
-                          const orderUrl = typeof window !== 'undefined'
-                            ? `${window.location.origin}/orden/${lastOrder.id}`
-                            : `https://parrandon.seminariosta.org/orden/${lastOrder.id}`;
+                      )}
+                    </div>
 
-                          const masterMsg = `🎄 *Parrandón Navideño 2026 - Seminario Santo Tomás de Aquino (Maracaibo)*\n\n¡Muchas gracias por colaborar con nuestra formación sacerdotal, *${lastOrder.buyerName}*!\n\n📦 *Tu Paquete Familiar:* ${lastOrder.quantity} Entradas\n🪑 *Mesas y Sillas Asignadas:*\n${lastOrder.tickets.map(t => `• Mesa ${t.tableId} Silla #${t.seatNumber} (${t.attendeeName})`).join('\n')}\n\n🍽️ *Incluye:* ${lastOrder.quantity} Platos Navideños Tradicionales Completos\n📅 *Fecha:* Sábado 12 de Diciembre de 2026 • 6:00 PM\n📍 *Lugar:* Bulevar del Seminario Santo Tomás de Aquino (Maracaibo, Estado Zulia)\n\n👉 *Abre tus ${lastOrder.quantity} entradas con QR aquí:* ${orderUrl}\n\n_Presenta este enlace en tu celular al llegar a la puerta._`;
+                    {/* 1-Click WhatsApp Buttons */}
+                    {lastOrder.tickets && lastOrder.tickets.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-slate-300 block">
+                          Enviar Entradas Digitales con Código QR por WhatsApp:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {lastOrder.tickets.map((t, idx) => {
+                            const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(lastOrder.buyerPhone)}&text=${encodeURIComponent(
+                              `🎄 *GRAN PARRANDÓN NAVIDEÑO 2026*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡Paz y bien, estimado(a) *${t.attendeeName || lastOrder.buyerName}*!\n\nAquí tienes tu Pase Digital Oficial para el evento:\n🎟️ *Entrada #${idx + 1} de ${lastOrder.tickets.length}*\n🪑 *Mesa:* ${t.tableId} (Silla #${t.seatNumber})\n🍽️ *Incluye:* 1 Plato Navideño Completo\n\n👉 *Abre tu Pase y Código QR aquí:*\nhttps://parrandon.vercel.app/ticket/${t.ticketCode}\n\n¡Te esperamos el Sábado 12 de Diciembre a las 6:00 PM en el bulevar del Seminario!`
+                            )}`;
 
-                          const masterWaUrl = `https://wa.me/${cleanPhoneForWhatsApp(lastOrder.buyerPhone)}?text=${encodeURIComponent(masterMsg)}`;
-
-                          return (
-                            <a
-                              href={masterWaUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-3 text-xs font-black text-slate-950 shadow-xl transition-transform hover:scale-[1.02]"
-                            >
-                              <Share2 className="h-4 w-4" />
-                              <span>📲 Enviar las {lastOrder.quantity} Entradas Juntas al Comprador</span>
-                            </a>
-                          );
-                        })()}
+                            return (
+                              <div key={t.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
+                                <div className="text-xs">
+                                  <span className="font-bold text-amber-300 block">Mesa {t.tableId} • Silla #{t.seatNumber}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">{t.ticketCode}</span>
+                                </div>
+                                <a
+                                  href={waUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-emerald-700 hover:text-white px-3.5 py-2 text-xs font-bold text-emerald-300 border border-emerald-500/30 transition-colors"
+                                >
+                                  <Share2 className="h-3.5 w-3.5" />
+                                  <span>Enviar Entrada #{idx + 1}</span>
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
-                    {/* Individual Ticket Buttons */}
-                    <div className="space-y-2">
-                      <span className="text-[11px] font-bold text-slate-400 block uppercase">
-                        {lastOrder.tickets.length > 1 ? 'O enviar entradas por separado:' : 'Enviar entrada al comprador:'}
-                      </span>
-                      {lastOrder.tickets.map((ticket, idx) => {
-                        const ticketUrl = typeof window !== 'undefined'
-                          ? `${window.location.origin}/ticket/${ticket.ticketCode}`
-                          : `https://parrandon.seminariosta.org/ticket/${ticket.ticketCode}`;
-
-                        const waMsg = `🎄 *Parrandón Navideño 2026 - Seminario Santo Tomás de Aquino (Maracaibo)*\n\n¡Muchas gracias por colaborar con nuestra formación sacerdotal, *${ticket.attendeeName}*!\n\n🎟️ *Tu Entrada Digital:* #${ticket.ticketNumber}\n🪑 *Tu Ubicación:* Mesa ${ticket.tableId} • Silla #${ticket.seatNumber} (Sector ${ticket.sector})\n🍽️ *Incluye:* 1 Plato Navideño Tradicional Completo\n📅 *Fecha:* Sábado 12 de Diciembre de 2026 • 6:00 PM\n📍 *Lugar:* Bulevar del Seminario Santo Tomás de Aquino (Maracaibo, Estado Zulia)\n\n👉 *Abre tu código QR aquí:* ${ticketUrl}\n\n_Presenta este enlace o captura en tu celular el día del evento._`;
-
-                        const waUrl = `https://wa.me/${cleanPhoneForWhatsApp(lastOrder.buyerPhone)}?text=${encodeURIComponent(waMsg)}`;
-
-                        return (
-                          <div key={ticket.id} className="flex flex-col sm:flex-row gap-2 items-center justify-between bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                            <div className="text-xs text-left">
-                              <span className="font-bold text-white block">Entrada #{idx + 1}: {ticket.attendeeName}</span>
-                              <span className="text-amber-400 font-mono text-[11px]">Mesa {ticket.tableId} • Silla #{ticket.seatNumber} ({ticket.ticketCode})</span>
-                            </div>
-                            <a
-                              href={waUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-emerald-700 hover:text-white px-3.5 py-2 text-xs font-bold text-emerald-300 border border-emerald-500/30 transition-colors"
-                            >
-                              <Share2 className="h-3.5 w-3.5" />
-                              <span>Enviar Entrada #{idx + 1}</span>
-                            </a>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <button
+                      onClick={() => setLastOrder(null)}
+                      className="w-full text-center text-xs text-slate-400 hover:text-white pt-2"
+                    >
+                      Continuar con siguiente venta ↓
+                    </button>
                   </div>
                 )}
 
-                <button
-                  onClick={() => setLastOrder(null)}
-                  className="w-full text-center text-xs text-slate-400 hover:text-white pt-2"
-                >
-                  Continuar con siguiente venta ↓
-                </button>
-              </div>
-            )}
-
-            {/* FAST PARISH SALES FORM */}
-            <form onSubmit={handleProcessParishSale} className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 sm:p-8 shadow-2xl space-y-5">
-              <div className="border-b border-slate-800 pb-3">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <PlusCircle className="h-5 w-5 text-amber-400" />
-                  Nueva Venta en Puerta de Iglesia
-                </h3>
-                <p className="text-xs text-slate-400">
-                  El sistema asignará automáticamente las mejores mesas y sillas disponibles contiguas.
-                </p>
-              </div>
-
-              {/* Quantity */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-amber-400 mb-2">
-                  ¿Cuántas entradas desea el feligrés?
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {[1, 2, 3, 4, 5, 10].map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setQuantity(n)}
-                      className={`py-3 rounded-2xl font-black text-xs sm:text-sm transition-all active:scale-95 whitespace-nowrap min-h-[44px] flex items-center justify-center ${
-                        quantity === n
-                          ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
-                          : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-700'
-                      }`}
-                    >
-                      {n} {n === 1 ? 'silla' : 'sillas'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Buyer info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">
-                    Nombre del Feligrés / Comprador <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: Familia Morales / Sra. Rosa"
-                    value={buyerName}
-                    onChange={(e) => setBuyerName(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">
-                    Teléfono WhatsApp <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="Ej: 0414-1234567 o 0412 1234567"
-                    value={buyerPhone}
-                    onChange={(e) => setBuyerPhone(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">
-                    Forma de Cobro
-                  </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as any)}
-                    className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                  >
-                    <option value="cash">💵 Efectivo en mano ($ o Bs)</option>
-                    <option value="pago_movil">📱 Pago Móvil (Banesco / BCV)</option>
-                    <option value="zelle">💵 Zelle al Seminario</option>
-                    <option value="binance">🪙 Binance Pay (USDT)</option>
-                    <option value="transferencia">🏦 Transferencia Bancaria</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* PHOTO / SCREENSHOT CAPTURE FOR NON-CASH METHODS */}
-              {paymentMethod !== 'cash' && (
-                <div className="rounded-2xl bg-slate-950 p-4 border-2 border-amber-500/30 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                      <Camera className="h-4 w-4 text-amber-400" />
-                      <span>Capture / Foto del Comprobante de Pago</span>
-                    </label>
-                    <span className="text-[10px] text-slate-400 font-medium">Recomendado para arqueo</span>
+                {/* FAST PARISH SALES FORM */}
+                <form onSubmit={handleProcessParishSale} className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 sm:p-8 shadow-2xl space-y-5">
+                  <div className="border-b border-slate-800 pb-3">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <PlusCircle className="h-5 w-5 text-amber-400" />
+                      Nueva Venta en Puerta de Iglesia
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      El sistema asignará automáticamente las mejores mesas y sillas disponibles contiguas.
+                    </p>
                   </div>
 
-                  {/* Hidden file inputs */}
-                  <input
-                    ref={cameraInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handleCaptureUpload}
-                  />
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleCaptureUpload}
-                  />
-
-                  {/* Photo Action Buttons or Preview */}
-                  {!proofPreview && !paymentProofUrl ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => cameraInputRef.current?.click()}
-                        disabled={uploadingProof}
-                        className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-bold border border-blue-400/40 shadow-lg active:scale-95 transition-all"
-                      >
-                        <Camera className="h-4 w-4 text-amber-300" />
-                        <span>📸 Tomar Foto con Cámara</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingProof}
-                        className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold border border-slate-700 active:scale-95 transition-all"
-                      >
-                        <Upload className="h-4 w-4 text-emerald-400" />
-                        <span>🖼️ Subir Capture de Galería</span>
-                      </button>
+                  {/* Quantity */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-amber-400 mb-2">
+                      ¿Cuántas entradas desea el feligrés?
+                    </label>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                      {[1, 2, 3, 4, 5, 10].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setQuantity(n)}
+                          className={`py-3 rounded-2xl font-black text-xs sm:text-sm transition-all active:scale-95 whitespace-nowrap min-h-[44px] flex items-center justify-center ${
+                            quantity === n
+                              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
+                              : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                          }`}
+                        >
+                          {n} {n === 1 ? 'silla' : 'sillas'}
+                        </button>
+                      ))}
                     </div>
-                  ) : (
-                    /* Photo Uploaded Preview Card */
-                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-emerald-500/40 animate-fadeIn">
-                      <div className="flex items-center gap-3">
-                        <div className="relative h-12 w-12 rounded-lg overflow-hidden border border-emerald-400/50 bg-black shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={proofPreview || paymentProofUrl}
-                            alt="Capture de pago"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Capture guardado con éxito</span>
-                          </div>
-                          <span className="text-[10px] text-slate-400 font-mono truncate max-w-[180px] block">
-                            {proofFileName || 'comprobante_pago.jpg'}
+                  </div>
+
+                  {/* Buyer info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">
+                        Nombre del Feligrés / Comprador <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej: Familia Morales / Sra. Rosa"
+                        value={buyerName}
+                        onChange={(e) => setBuyerName(e.target.value)}
+                        className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">
+                        Teléfono WhatsApp <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="Ej: 0414-1234567"
+                        value={buyerPhone}
+                        onChange={(e) => setBuyerPhone(e.target.value)}
+                        className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Payment Method Selector */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-300 mb-2">
+                      Forma de Pago del Feligrés <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'cash', label: '💵 Efectivo (USD)', desc: 'Billetes en mano' },
+                        { id: 'pago_movil', label: '📲 Pago Móvil', desc: 'Bs al BCV' },
+                        { id: 'zelle', label: '💳 Zelle', desc: 'Dólares directo' },
+                        { id: 'binance', label: '🪙 Binance Pay', desc: 'USDT Pay' }
+                      ].map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(m.id as any)}
+                          className={`p-3 rounded-2xl text-left border transition-all ${
+                            paymentMethod === m.id
+                              ? 'border-amber-400 bg-amber-500/15 text-white shadow-md shadow-amber-500/10'
+                              : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <span className="block text-xs font-bold text-white">{m.label}</span>
+                          <span className="text-[10px] text-slate-400">{m.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CAPTURE PHOTO UPLOAD SECTION FOR NON-CASH METHODS */}
+                  {paymentMethod !== 'cash' && (
+                    <div className="rounded-2xl border-2 border-amber-500/50 bg-amber-500/5 p-4 space-y-3 animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Camera className="h-4 w-4 text-amber-400" />
+                          <span className="text-xs font-bold text-amber-300">
+                            Capture / Foto del Comprobante <span className="text-rose-400">* OBLIGATORIO</span>
                           </span>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => cameraInputRef.current?.click()}
-                          className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white text-[11px] font-semibold border border-slate-700"
-                        >
-                          Cambiar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRemoveProof}
-                          className="p-1.5 rounded-lg bg-rose-950/60 text-rose-400 hover:bg-rose-900 border border-rose-800"
-                          title="Eliminar capture"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {uploadingProof && (
-                    <div className="flex items-center gap-2 text-xs text-amber-300 animate-pulse pt-1">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Subiendo capture de pago...</span>
-                    </div>
-                  )}
-
-                  {/* Reference Number input */}
-                  <div className="pt-2">
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                      Número de Referencia Bancaria (o últimos 4 dígitos)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ej: 098234"
-                      value={paymentRef}
-                      onChange={(e) => setPaymentRef(e.target.value)}
-                      className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-xs text-white uppercase font-mono focus:border-amber-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Total Card */}
-              <div className="rounded-2xl bg-slate-950 p-4 border border-slate-800 flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-slate-400 block">Total a Recibir:</span>
-                  <span className="text-xs text-emerald-400 font-semibold">{quantity} Entrada(s) con Plato Incluido</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-amber-400">${quantity * ticketPrice}.00 USD</span>
-                  <span className="block text-[11px] text-slate-300 font-mono mt-0.5">
-                    o <strong>Bs. {(quantity * ticketPrice * rateBs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</strong>
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting || uploadingProof}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 py-4 text-sm font-black text-slate-950 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50 active:scale-[0.98]"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Emitiendo Códigos QR...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-5 w-5" />
-                    <span>Cobrar y Emitir {quantity} Entrada(s) con QR</span>
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* List of my sales in this session */}
-            {mySales.length > 0 && (
-              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-5 space-y-3">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Ventas registradas en esta jornada ({mySales.length}):
-                </h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {mySales.map((s) => (
-                    <div key={s.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
-                      <div>
-                        <strong className="text-white block">{s.buyerName}</strong>
-                        <span className="text-[10px] text-slate-400">
-                          {s.quantity} {s.quantity === 1 ? 'entrada' : 'entradas'} • {s.seats.map(st => `Mesa ${st.tableId}-S${st.seatNumber}`).join(', ')}
-                        </span>
-                        {s.paymentProofUrl && (
-                          <span className="text-[9px] text-emerald-400 block font-semibold mt-0.5">
-                            📸 Capture adjunto
+                        {paymentProofUrl && (
+                          <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                            <Check className="h-3 w-3" /> Foto Cargada
                           </span>
                         )}
                       </div>
-                      <span className="text-emerald-400 font-bold font-mono">
-                        ${s.convertedUsd} USD
+
+                      <p className="text-[11px] text-slate-300">
+                        Toma una foto al teléfono del feligrés o sube el comprobante de pago para validación instantánea:
+                      </p>
+
+                      {/* Hidden File Inputs */}
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleCaptureUpload}
+                        className="hidden"
+                      />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCaptureUpload}
+                        className="hidden"
+                      />
+
+                      {/* Buttons for Camera and Gallery */}
+                      {!proofPreview && (
+                        <div className="grid grid-cols-2 gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => cameraInputRef.current?.click()}
+                            disabled={uploadingProof}
+                            className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 disabled:opacity-50"
+                          >
+                            <Camera className="h-4 w-4" />
+                            <span>Tomar Foto con Cámara</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingProof}
+                            className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            <Upload className="h-4 w-4 text-amber-400" />
+                            <span>Subir de Galería</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Preview Card */}
+                      {proofPreview && (
+                        <div className="relative rounded-2xl bg-slate-950 p-2.5 border border-amber-500/40 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shrink-0">
+                              <img
+                                src={proofPreview}
+                                alt="Capture de pago"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0 text-left">
+                              <span className="text-xs font-bold text-white block truncate">
+                                Foto del Comprobante
+                              </span>
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                {proofFileName || 'comprobante_pago.jpg'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => cameraInputRef.current?.click()}
+                              className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white text-[11px] font-semibold border border-slate-700"
+                            >
+                              Cambiar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRemoveProof}
+                              className="p-1.5 rounded-lg bg-rose-950/60 text-rose-400 hover:bg-rose-900 border border-rose-800"
+                              title="Eliminar capture"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {uploadingProof && (
+                        <div className="flex items-center gap-2 text-xs text-amber-300 animate-pulse pt-1">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Subiendo capture de pago...</span>
+                        </div>
+                      )}
+
+                      {/* Reference Number input */}
+                      <div className="pt-2">
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                          Número de Referencia Bancaria (o últimos 4 dígitos)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej: 098234"
+                          value={paymentRef}
+                          onChange={(e) => setPaymentRef(e.target.value)}
+                          className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-xs text-white uppercase font-mono focus:border-amber-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Total Card */}
+                  <div className="rounded-2xl bg-slate-950 p-4 border border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-slate-400 block">Total a Recibir:</span>
+                      <span className="text-xs text-emerald-400 font-semibold">{quantity} Entrada(s) con Plato Incluido</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-black text-amber-400">${quantity * ticketPrice}.00 USD</span>
+                      <span className="block text-[11px] text-slate-300 font-mono mt-0.5">
+                        o <strong>Bs. {(quantity * ticketPrice * rateBs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</strong>
                       </span>
                     </div>
-                  ))}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting || uploadingProof}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 py-4 text-sm font-black text-slate-950 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50 active:scale-[0.98]"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Emitiendo Códigos QR...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5" />
+                        <span>Cobrar y Emitir {quantity} Entrada(s) con QR</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* TAB 2: HISTORIAL POR DÍA POR SEMINARISTA */}
+            {activeTab === 'history' && (
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* Header Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-3xl border border-slate-800">
+                  <div>
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-amber-400" />
+                      Historial Diario de Ventas • {seminaristName}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Consulta organizada por fecha para cuadre de caja y rendición de cuentas.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => loadSeminaristaHistory(seminaristName)}
+                    disabled={loadingHistory}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 w-fit"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${loadingHistory ? 'animate-spin text-amber-400' : ''}`} />
+                    <span>Actualizar</span>
+                  </button>
+                </div>
+
+                {loadingHistory ? (
+                  <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-amber-400 mx-auto" />
+                    <span>Cargando tu historial diario de ventas...</span>
+                  </div>
+                ) : mySales.length === 0 ? (
+                  <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-8 text-center text-xs text-slate-400 space-y-2">
+                    <Calendar className="h-8 w-8 text-slate-600 mx-auto" />
+                    <strong className="text-white text-sm block">Aún no tienes ventas registradas</strong>
+                    <p>Las ventas que registres en las iglesias aparecerán aquí agrupadas automáticamente por día.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {(() => {
+                      // Group sales by day
+                      const daysMap: Record<string, { dateKey: string; formattedDate: string; orders: Order[]; totalTickets: number; cashTotal: number; digitalTotal: number; totalUsd: number }> = {};
+
+                      mySales.forEach(order => {
+                        const dateKey = order.createdAt ? order.createdAt.split('T')[0] : 'Hoy';
+                        const d = order.createdAt ? new Date(order.createdAt) : new Date();
+                        const formatted = d.toLocaleDateString('es-VE', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        });
+                        const formattedCapitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+
+                        if (!daysMap[dateKey]) {
+                          daysMap[dateKey] = {
+                            dateKey,
+                            formattedDate: formattedCapitalized,
+                            orders: [],
+                            totalTickets: 0,
+                            cashTotal: 0,
+                            digitalTotal: 0,
+                            totalUsd: 0
+                          };
+                        }
+
+                        const tCount = order.quantity || (order.seats?.length ?? 0) || 1;
+                        const usdVal = order.convertedUsd || order.amountPaid || (tCount * ticketPrice);
+
+                        daysMap[dateKey].orders.push(order);
+                        daysMap[dateKey].totalTickets += tCount;
+                        if (order.paymentMethod === 'cash') {
+                          daysMap[dateKey].cashTotal += usdVal;
+                        } else {
+                          daysMap[dateKey].digitalTotal += usdVal;
+                        }
+                        daysMap[dateKey].totalUsd += usdVal;
+                      });
+
+                      const sortedDays = Object.values(daysMap).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+
+                      return sortedDays.map((dayGroup) => (
+                        <div key={dayGroup.dateKey} className="rounded-3xl border border-slate-800 bg-slate-900/80 overflow-hidden shadow-xl">
+                          {/* DAY HEADER BANNER */}
+                          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-9 w-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                                <Calendar className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-black text-white">
+                                  {dayGroup.formattedDate}
+                                </h4>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {dayGroup.orders.length} {dayGroup.orders.length === 1 ? 'operación' : 'operaciones'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Day Summary Badges */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-xs">
+                                🎟️ {dayGroup.totalTickets} Entradas
+                              </span>
+                              <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold text-xs">
+                                💵 Efectivo: ${dayGroup.cashTotal}
+                              </span>
+                              {dayGroup.digitalTotal > 0 && (
+                                <span className="px-3 py-1 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-300 font-bold text-xs">
+                                  📲 Digital: ${dayGroup.digitalTotal}
+                                </span>
+                              )}
+                              <span className="px-3 py-1 rounded-xl bg-slate-950 border border-slate-700 text-white font-black text-xs font-mono">
+                                Total: ${dayGroup.totalUsd} USD
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* LIST OF SALES IN THIS DAY */}
+                          <div className="divide-y divide-slate-800/60 p-2 sm:p-4 space-y-2">
+                            {dayGroup.orders.map((order) => (
+                              <div key={order.id} className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-700 transition-colors">
+                                <div className="space-y-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <strong className="text-white text-xs sm:text-sm font-bold truncate">
+                                      {order.buyerName}
+                                    </strong>
+                                    <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                                      {order.id}
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
+                                      order.paymentMethod === 'cash'
+                                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'
+                                        : 'bg-sky-950/80 text-sky-300 border border-sky-800'
+                                    }`}>
+                                      {order.paymentMethod === 'cash' ? '💵 Efectivo' : `📲 ${order.paymentMethod}`}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-[11px] text-slate-300 flex items-center gap-2 flex-wrap">
+                                    <span className="text-amber-300 font-semibold">
+                                      {order.quantity || order.seats?.length} Entrada(s):
+                                    </span>
+                                    <span>
+                                      {order.seats && order.seats.length > 0 
+                                        ? order.seats.map(s => `M${s.tableId}-S${s.seatNumber}`).join(', ')
+                                        : 'Mesa asignada'}
+                                    </span>
+                                    <span className="text-slate-500">•</span>
+                                    <span className="text-emerald-400 font-mono font-bold">
+                                      ${order.convertedUsd || order.amountPaid} USD
+                                    </span>
+                                  </div>
+
+                                  {/* Payment proof thumbnail if digital */}
+                                  {order.paymentProofUrl && (
+                                    <div className="pt-1 flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setViewProofModal(order.paymentProofUrl!)}
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-300 bg-sky-950/60 hover:bg-sky-900 border border-sky-800 px-2 py-1 rounded-lg transition-colors"
+                                      >
+                                        <ImageIcon className="h-3 w-3" />
+                                        <span>Ver Capture de Pago</span>
+                                      </button>
+                                      {order.paymentReference && (
+                                        <span className="text-[10px] font-mono text-slate-400">
+                                          Ref: {order.paymentReference}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Re-send WhatsApp Link Buttons */}
+                                <div className="shrink-0 flex items-center gap-1.5 w-full sm:w-auto">
+                                  {order.tickets && order.tickets.length > 0 ? (
+                                    <a
+                                      href={`https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(order.buyerPhone)}&text=${encodeURIComponent(
+                                        `🎄 *GRAN PARRANDÓN NAVIDEÑO 2026*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡Paz y bien, estimado(a) *${order.buyerName}*!\n\nAquí tienes el enlace a tu orden y entradas con Código QR:\n👉 https://parrandon.vercel.app/orden/${order.id}\n\n¡Nos vemos el Sábado 12 de Diciembre!`
+                                      )}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-emerald-700 hover:text-white text-emerald-300 font-bold text-[11px] border border-emerald-500/30 transition-all"
+                                    >
+                                      <Share2 className="h-3.5 w-3.5" />
+                                      <span>Reenviar WhatsApp</span>
+                                    </a>
+                                  ) : (
+                                    <Link
+                                      href={`/orden/${order.id}`}
+                                      target="_blank"
+                                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] border border-slate-700 transition-all"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5 text-amber-400" />
+                                      <span>Ver Orden</span>
+                                    </Link>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* FULLSCREEN PAYMENT PROOF PREVIEW MODAL */}
+            {viewProofModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-fadeIn">
+                <div className="relative max-w-lg w-full bg-slate-900 rounded-3xl border border-slate-700 p-4 text-center space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-amber-400" />
+                      Comprobante / Capture de Pago
+                    </span>
+                    <button
+                      onClick={() => setViewProofModal(null)}
+                      className="p-1 rounded-full bg-slate-800 text-slate-400 hover:text-white"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="relative max-h-[70vh] overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 flex items-center justify-center">
+                    <img
+                      src={viewProofModal}
+                      alt="Capture de pago ampliado"
+                      className="max-h-[70vh] w-auto object-contain rounded-xl"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setViewProofModal(null)}
+                    className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition-colors"
+                  >
+                    Cerrar Visor
+                  </button>
                 </div>
               </div>
             )}

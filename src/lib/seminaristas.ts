@@ -69,6 +69,5 @@ export const SEMINARY_STAGES = [
   '1° de Teología',
   '3° de Filosofía',
   '2° de Filosofía',
-  '1° de Filosofía',
-  'Etapa Propedéutica'
+  '1° de Filosofía'
 ] as const;
