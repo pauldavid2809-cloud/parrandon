@@ -4,7 +4,7 @@ import { Sparkles, MapPin, Calendar, Heart, Lock, Ticket, HelpCircle, Phone, Arr
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t border-white/[0.08] bg-slate-950 text-slate-400 no-print relative overflow-hidden">
+    <footer className="w-full border-t border-primary/20 bg-background text-muted-foreground no-print relative overflow-hidden">
       {/* Background ambient lighting */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-48 bg-gradient-to-t from-blue-900/10 via-amber-500/5 to-transparent blur-3xl pointer-events-none" />
 

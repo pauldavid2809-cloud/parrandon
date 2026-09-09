@@ -10,9 +10,9 @@ export default function Navbar() {
   const isAdmin = pathname.startsWith('/admin') || pathname === '/administracion-interna' || pathname === '/escanear' || pathname === '/cocina';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-slate-950/85 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
+    <header className="sticky top-0 z-50 w-full border-b border-primary/20 bg-background/95 backdrop-blur-xl shadow-lg shadow-black/10">
       {/* Top micro ribbon with live contact */}
-      <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 text-amber-300 text-[10px] sm:text-[11px] font-bold py-1.5 px-3 border-b border-amber-500/15">
+      <div className="bg-secondary text-primary text-[10px] sm:text-[11px] font-bold py-1.5 px-3 border-b border-primary/15">
         <div className="container mx-auto max-w-7xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -118,8 +118,8 @@ export default function Navbar() {
                 href="/comprar"
                 className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black rounded-xl transition-all shadow-lg ${
                   pathname === '/comprar'
-                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-amber-500/30 ring-2 ring-amber-300 scale-105'
-                    : 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 hover:brightness-110 shadow-amber-500/20'
+                    ? 'bg-primary text-primary-foreground shadow-primary/30 ring-2 ring-primary/60 scale-105'
+                    : 'bg-primary text-primary-foreground hover:brightness-110 shadow-primary/20'
                 }`}
               >
                 <Ticket className="h-4 w-4" />
