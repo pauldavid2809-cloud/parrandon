@@ -31,7 +31,9 @@ import {
   ChevronUp,
   ExternalLink,
   Clock,
-  RefreshCw
+  RefreshCw,
+  Heart,
+  Gift
 } from 'lucide-react';
 import Link from 'next/link';
 import { SEMINARISTAS_DIRECTORY, SEMINARY_STAGES } from '@/lib/seminaristas';
@@ -85,9 +87,13 @@ export default function SeminaristasPage() {
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [rateBs, setRateBs] = useState<number>(897.82);
   const [ticketPrice, setTicketPrice] = useState<number>(20);
-
   // Stats & sales for the active seminarista
   const [mySales, setMySales] = useState<Order[]>([]);
+
+  // Donation vs Tickets Mode
+  const [entryMode, setEntryMode] = useState<'tickets' | 'donation'>('tickets');
+  const [donationAmount, setDonationAmount] = useState<number>(20);
+  const [customDonation, setCustomDonation] = useState<string>('');
 
   useEffect(() => {
     async function loadConfig() {
@@ -205,17 +211,21 @@ export default function SeminaristasPage() {
     setSubmitting(true);
     setLastOrder(null);
 
-    const totalUsd = quantity * ticketPrice;
+    const isDonation = entryMode === 'donation';
+    const effectiveDonationAmount = customDonation ? Number(customDonation) : donationAmount;
+    const totalUsd = isDonation ? effectiveDonationAmount : quantity * ticketPrice;
     const totalBs = totalUsd * rateBs;
 
     try {
       const payload = {
-        buyerName,
-        buyerPhone,
+        buyerName: buyerName.trim(),
+        buyerPhone: buyerPhone.trim(),
         buyerDocId,
-        quantity,
+        quantity: isDonation ? 0 : quantity,
+        isDonation,
+        donationAmount: isDonation ? totalUsd : undefined,
         paymentMethod,
-        paymentReference: paymentRef || (paymentMethod === 'cash' ? `EFECTIVO-${parishName.slice(0, 10)}` : 'PARROQUIA-CAPTURE'),
+        paymentReference: paymentRef || (paymentMethod === 'cash' ? `EFECTIVO-${isDonation ? 'DONACION-' : ''}${parishName.slice(0, 8)}` : 'PARROQUIA-CAPTURE'),
         paymentProofUrl: paymentMethod !== 'cash' ? (paymentProofUrl || proofPreview || '') : '',
         amountPaid: paymentMethod === 'pago_movil' ? totalBs : totalUsd,
         currency: paymentMethod === 'pago_movil' ? 'VES' : 'USD',
@@ -224,8 +234,10 @@ export default function SeminaristasPage() {
         salesChannel: 'seminarista_parroquia',
         sellerName: seminaristName,
         parishName: parishName,
-        status: 'approved', // Seminarista in-person sales are approved immediately
-        notes: `Venta presencial en ${parishName} por ${seminaristName}`
+        status: 'approved', // Seminarista in-person operations are approved immediately
+        notes: isDonation 
+          ? `Donación benéfica recibida en ${parishName} por ${seminaristName}`
+          : `Venta presencial en ${parishName} por ${seminaristName}`
       };
 
       const res = await fetch('/api/orders', {
@@ -248,23 +260,31 @@ export default function SeminaristasPage() {
         setProofPreview(null);
         setProofFileName('');
         setQuantity(1);
+        setCustomDonation('');
         if (cameraInputRef.current) cameraInputRef.current.value = '';
         if (fileInputRef.current) fileInputRef.current.value = '';
       } else {
-        alert(data.error || "Error al procesar la venta.");
+        alert(data.error || "Error al procesar la operación.");
       }
     } catch (err) {
       console.error(err);
-      alert("Error de conexión al registrar la venta.");
+      alert("Error de conexión al registrar la operación.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const totalTicketsSoldByMe = mySales.reduce((acc, o) => acc + o.quantity, 0);
+  const totalTicketsSoldByMe = mySales
+    .filter(o => !o.isDonation && o.quantity > 0)
+    .reduce((acc, o) => acc + (o.quantity || (o.seats?.length ?? 0)), 0);
+
+  const totalDonationsUsd = mySales
+    .filter(o => o.isDonation || o.quantity === 0)
+    .reduce((acc, o) => acc + (o.convertedUsd || o.amountPaid || 0), 0);
+
   const totalCashCollected = mySales
     .filter(o => o.paymentMethod === 'cash')
-    .reduce((acc, o) => acc + o.convertedUsd, 0);
+    .reduce((acc, o) => acc + (o.convertedUsd || o.amountPaid || 0), 0);
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 bg-slate-950 text-slate-100">
@@ -424,11 +444,17 @@ export default function SeminaristasPage() {
               {/* Counters & Tab Navigation */}
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <div className="rounded-2xl bg-slate-950 px-3.5 py-2 text-center border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Total Entradas</span>
+                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Entradas</span>
                   <span className="text-sm sm:text-base font-black text-amber-400">{totalTicketsSoldByMe}</span>
                 </div>
+                {totalDonationsUsd > 0 && (
+                  <div className="rounded-2xl bg-slate-950 px-3.5 py-2 text-center border border-rose-900/60">
+                    <span className="text-[10px] text-rose-400 block font-semibold uppercase">Donaciones</span>
+                    <span className="text-sm sm:text-base font-black text-rose-300">${totalDonationsUsd} USD</span>
+                  </div>
+                )}
                 <div className="rounded-2xl bg-slate-950 px-3.5 py-2 text-center border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Efectivo a Entregar</span>
+                  <span className="text-[10px] text-slate-400 block font-semibold uppercase">Efectivo en Mano</span>
                   <span className="text-sm sm:text-base font-black text-emerald-400">${totalCashCollected} USD</span>
                 </div>
                 <button
@@ -440,7 +466,7 @@ export default function SeminaristasPage() {
               </div>
             </div>
 
-            {/* TAB SELECTOR: REGISTRAR VENTA VS HISTORIAL POR DÍA */}
+            {/* TAB SELECTOR: REGISTRAR VENTA/DONACIÓN VS HISTORIAL POR DÍA */}
             <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800 select-none">
               <button
                 type="button"
@@ -452,7 +478,7 @@ export default function SeminaristasPage() {
                 }`}
               >
                 <PlusCircle className="h-4 w-4" />
-                <span>Registrar Nueva Venta</span>
+                <span>Registrar Venta / Donación</span>
               </button>
 
               <button
@@ -472,16 +498,32 @@ export default function SeminaristasPage() {
               </button>
             </div>
 
-            {/* TAB 1: FORMULARIO DE REGISTRO DE VENTA */}
+            {/* TAB 1: FORMULARIO DE REGISTRO (ENTRADAS O DONACIÓN) */}
             {activeTab === 'sell' && (
               <div className="space-y-6">
-                {/* POPUP / VOUCHER IF SALE JUST COMPLETED */}
+                
+                {/* POPUP / VOUCHER IF OPERATION JUST COMPLETED */}
                 {lastOrder && (
-                  <div className="rounded-3xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-950/90 via-slate-900 to-slate-950 p-6 shadow-2xl animate-fadeIn space-y-4">
+                  <div className={`rounded-3xl border-2 p-6 shadow-2xl animate-fadeIn space-y-4 ${
+                    lastOrder.isDonation
+                      ? 'border-rose-500/80 bg-gradient-to-br from-rose-950/90 via-slate-900 to-slate-950'
+                      : 'border-emerald-500 bg-gradient-to-br from-emerald-950/90 via-slate-900 to-slate-950'
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 bg-emerald-500 text-slate-950 text-xs font-black uppercase px-3 py-1 rounded-full">
-                        <CheckCircle2 className="h-4 w-4" />
-                        ¡Venta Registrada Exitosamente!
+                      <span className={`inline-flex items-center gap-1.5 text-slate-950 text-xs font-black uppercase px-3 py-1 rounded-full ${
+                        lastOrder.isDonation ? 'bg-rose-400' : 'bg-emerald-500'
+                      }`}>
+                        {lastOrder.isDonation ? (
+                          <>
+                            <Heart className="h-4 w-4 fill-slate-950" />
+                            ¡Donación Registrada con Éxito!
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4" />
+                            ¡Venta Registrada Exitosamente!
+                          </>
+                        )}
                       </span>
                       <span className="text-xs font-mono font-bold text-amber-300">
                         {lastOrder.id}
@@ -490,19 +532,28 @@ export default function SeminaristasPage() {
 
                     <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 space-y-2 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Comprador:</span>
+                        <span className="text-slate-400">{lastOrder.isDonation ? 'Bienhechor / Donante:' : 'Comprador:'}</span>
                         <strong className="text-white text-sm">{lastOrder.buyerName}</strong>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">WhatsApp:</span>
                         <strong className="text-emerald-400">{lastOrder.buyerPhone}</strong>
                       </div>
-                      <div className="flex justify-between pt-1 border-t border-slate-800">
-                        <span className="text-slate-400">Ubicación Asignada:</span>
-                        <span className="text-amber-300 font-bold">
-                          {lastOrder.tickets.map(t => `Mesa ${t.tableId} (Silla ${t.seatNumber})`).join(', ')}
-                        </span>
-                      </div>
+                      {lastOrder.isDonation ? (
+                        <div className="flex justify-between pt-1 border-t border-slate-800">
+                          <span className="text-slate-400">Tipo de Aporte:</span>
+                          <span className="text-rose-300 font-bold">
+                            Donación Solidaria • ${lastOrder.convertedUsd || lastOrder.amountPaid}.00 USD (Fila Cero)
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between pt-1 border-t border-slate-800">
+                          <span className="text-slate-400">Ubicación Asignada:</span>
+                          <span className="text-amber-300 font-bold">
+                            {lastOrder.tickets?.map(t => `Mesa ${t.tableId} (Silla ${t.seatNumber})`).join(', ')}
+                          </span>
+                        </div>
+                      )}
                       {lastOrder.paymentProofUrl && (
                         <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[11px] text-sky-300">
                           <span>Capture de Pago:</span>
@@ -511,94 +562,196 @@ export default function SeminaristasPage() {
                       )}
                     </div>
 
-                    {/* 1-Click WhatsApp Buttons */}
-                    {lastOrder.tickets && lastOrder.tickets.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-xs font-bold text-slate-300 block">
-                          Enviar Entradas Digitales con Código QR por WhatsApp:
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {lastOrder.tickets.map((t, idx) => {
-                            const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(lastOrder.buyerPhone)}&text=${encodeURIComponent(
-                              `🎄 *GRAN PARRANDÓN NAVIDEÑO 2026*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡Paz y bien, estimado(a) *${t.attendeeName || lastOrder.buyerName}*!\n\nAquí tienes tu Pase Digital Oficial para el evento:\n🎟️ *Entrada #${idx + 1} de ${lastOrder.tickets.length}*\n🪑 *Mesa:* ${t.tableId} (Silla #${t.seatNumber})\n🍽️ *Incluye:* 1 Plato Navideño Completo\n\n👉 *Abre tu Pase y Código QR aquí:*\nhttps://parrandon.vercel.app/ticket/${t.ticketCode}\n\n¡Te esperamos el Sábado 12 de Diciembre a las 6:00 PM en el bulevar del Seminario!`
-                            )}`;
-
-                            return (
-                              <div key={t.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
-                                <div className="text-xs">
-                                  <span className="font-bold text-amber-300 block">Mesa {t.tableId} • Silla #{t.seatNumber}</span>
-                                  <span className="text-[10px] text-slate-400 font-mono">{t.ticketCode}</span>
-                                </div>
-                                <a
-                                  href={waUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-emerald-700 hover:text-white px-3.5 py-2 text-xs font-bold text-emerald-300 border border-emerald-500/30 transition-colors"
-                                >
-                                  <Share2 className="h-3.5 w-3.5" />
-                                  <span>Enviar Entrada #{idx + 1}</span>
-                                </a>
-                              </div>
-                            );
-                          })}
-                        </div>
+                    {/* 1-Click WhatsApp Action Buttons */}
+                    {lastOrder.isDonation ? (
+                      <div className="pt-1">
+                        <a
+                          href={`https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(lastOrder.buyerPhone)}&text=${encodeURIComponent(
+                            `🎄 *GRAN PARRANDÓN NAVIDEÑO 2026*\n🏛️ *Seminario Mayor Santo Tomás de Aquino - Maracaibo*\n\n¡Paz y bien, estimado(a) *${lastOrder.buyerName}*!\n\nEn nombre de nuestros formadores y de todos los seminaristas, le agradecemos de todo corazón su generosa donación de *$${lastOrder.convertedUsd || lastOrder.amountPaid}.00 USD* recibida hoy en *${lastOrder.parishName || 'su comunidad parroquial'}* para apoyar nuestra formación sacerdotal.\n\nQue Dios y Nuestra Señora de Chiquinquirá bendigan a su familia y multipliquen su generosidad.\n\n_«Sacerdos Lux» • Seminario Mayor de Maracaibo_`
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-3 text-xs font-black text-slate-950 shadow-xl transition-transform hover:scale-[1.01]"
+                        >
+                          <Share2 className="h-4 w-4" />
+                          <span>📲 Enviar Agradecimiento y Bendición al Donante por WhatsApp</span>
+                        </a>
                       </div>
+                    ) : (
+                      lastOrder.tickets && lastOrder.tickets.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-300 block">
+                            Enviar Entradas Digitales con Código QR por WhatsApp:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {lastOrder.tickets.map((t, idx) => {
+                              const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(lastOrder.buyerPhone)}&text=${encodeURIComponent(
+                                `🎄 *GRAN PARRANDÓN NAVIDEÑO 2026*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡Paz y bien, estimado(a) *${t.attendeeName || lastOrder.buyerName}*!\n\nAquí tienes tu Pase Digital Oficial para el evento:\n🎟️ *Entrada #${idx + 1} de ${lastOrder.tickets.length}*\n🪑 *Mesa:* ${t.tableId} (Silla #${t.seatNumber})\n🍽️ *Incluye:* 1 Plato Navideño Completo\n\n👉 *Abre tu Pase y Código QR aquí:*\nhttps://parrandon.vercel.app/ticket/${t.ticketCode}\n\n¡Te esperamos el Sábado 12 de Diciembre a las 6:00 PM en el bulevar del Seminario!`
+                              )}`;
+
+                              return (
+                                <div key={t.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
+                                  <div className="text-xs">
+                                    <span className="font-bold text-amber-300 block">Mesa {t.tableId} • Silla #{t.seatNumber}</span>
+                                    <span className="text-[10px] text-slate-400 font-mono">{t.ticketCode}</span>
+                                  </div>
+                                  <a
+                                    href={waUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-emerald-700 hover:text-white px-3.5 py-2 text-xs font-bold text-emerald-300 border border-emerald-500/30 transition-colors"
+                                  >
+                                    <Share2 className="h-3.5 w-3.5" />
+                                    <span>Enviar Entrada #{idx + 1}</span>
+                                  </a>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )
                     )}
 
                     <button
                       onClick={() => setLastOrder(null)}
                       className="w-full text-center text-xs text-slate-400 hover:text-white pt-2"
                     >
-                      Continuar con siguiente venta ↓
+                      Continuar con siguiente registro ↓
                     </button>
                   </div>
                 )}
 
-                {/* FAST PARISH SALES FORM */}
-                <form onSubmit={handleProcessParishSale} className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 sm:p-8 shadow-2xl space-y-5">
+                {/* FAST PARISH SALES OR DONATION FORM */}
+                <form onSubmit={handleProcessParishSale} className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-7 shadow-2xl space-y-5">
+                  
+                  {/* Mode Selector: Venta de Entradas vs Donación Benéfica */}
+                  <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-slate-950 border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setEntryMode('tickets')}
+                      className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                        entryMode === 'tickets'
+                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <TicketIcon className="h-4 w-4" />
+                      <span>🎟️ Venta de Entradas ($20)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntryMode('donation')}
+                      className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                        entryMode === 'donation'
+                          ? 'bg-rose-500 text-white shadow-md font-black'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Heart className="h-4 w-4" />
+                      <span>❤️ Donación / Fila Cero</span>
+                    </button>
+                  </div>
+
+                  {/* Dynamic Header based on Mode */}
                   <div className="border-b border-slate-800 pb-3">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <PlusCircle className="h-5 w-5 text-amber-400" />
-                      Nueva Venta en Puerta de Iglesia
+                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                      {entryMode === 'tickets' ? (
+                        <>
+                          <PlusCircle className="h-5 w-5 text-amber-400" />
+                          <span>Venta de Entradas con Plato Incluido</span>
+                        </>
+                      ) : (
+                        <>
+                          <Heart className="h-5 w-5 text-rose-400" />
+                          <span>Donación Benéfica para el Seminario (Fila Cero)</span>
+                        </>
+                      )}
                     </h3>
-                    <p className="text-xs text-slate-400">
-                      El sistema asignará automáticamente las mejores mesas y sillas disponibles contiguas.
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {entryMode === 'tickets'
+                        ? 'El sistema asignará automáticamente las mejores mesas y sillas disponibles contiguas.'
+                        : 'Para feligreses que colaboran económicamente pero no asistirán. No reserva sillas ni consume platos.'}
                     </p>
                   </div>
 
-                  {/* Quantity */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-amber-400 mb-2">
-                      ¿Cuántas entradas desea el feligrés?
-                    </label>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {[1, 2, 3, 4, 5, 10].map(n => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => setQuantity(n)}
-                          className={`py-3 rounded-2xl font-black text-xs sm:text-sm transition-all active:scale-95 whitespace-nowrap min-h-[44px] flex items-center justify-center ${
-                            quantity === n
-                              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
-                              : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-700'
-                          }`}
-                        >
-                          {n} {n === 1 ? 'silla' : 'sillas'}
-                        </button>
-                      ))}
+                  {/* Quantity Selector (For Tickets) */}
+                  {entryMode === 'tickets' && (
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-amber-400 mb-2">
+                        ¿Cuántas entradas desea el feligrés?
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {[1, 2, 3, 4, 5, 10].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setQuantity(n)}
+                            className={`py-3 rounded-2xl font-black text-xs sm:text-sm transition-all active:scale-95 whitespace-nowrap min-h-[44px] flex items-center justify-center ${
+                              quantity === n
+                                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 scale-105'
+                                : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                            }`}
+                          >
+                            {n} {n === 1 ? 'silla' : 'sillas'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Buyer info */}
+                  {/* Donation Amount Selector (For Donations) */}
+                  {entryMode === 'donation' && (
+                    <div className="space-y-3">
+                      <label className="block text-xs font-bold uppercase text-rose-400">
+                        ¿Cuánto desea donar el feligrés?
+                      </label>
+                      <div className="grid grid-cols-5 gap-2">
+                        {[5, 10, 20, 50, 100].map(amount => (
+                          <button
+                            key={amount}
+                            type="button"
+                            onClick={() => {
+                              setDonationAmount(amount);
+                              setCustomDonation('');
+                            }}
+                            className={`py-3 rounded-2xl font-black text-xs sm:text-sm transition-all active:scale-95 flex flex-col items-center justify-center ${
+                              donationAmount === amount && !customDonation
+                                ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 scale-105'
+                                : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                            }`}
+                          >
+                            <span>${amount}</span>
+                            <span className="text-[9px] opacity-75">USD</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="pt-1">
+                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                          O escribe otro monto en USD ($):
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="Ej: 15 o 30"
+                          value={customDonation}
+                          onChange={(e) => setCustomDonation(e.target.value)}
+                          className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-rose-400 font-mono font-bold"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Buyer / Donor Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
                       <label className="block font-semibold text-slate-300 mb-1">
-                        Nombre del Feligrés / Comprador <span className="text-rose-400">*</span>
+                        {entryMode === 'tickets' ? 'Nombre del Feligrés / Comprador' : 'Nombre del Bienhechor / Familia'} <span className="text-rose-400">*</span>
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="Ej: Familia Morales / Sra. Rosa"
+                        placeholder={entryMode === 'tickets' ? "Ej: Familia Morales / Sra. Rosa" : "Ej: Familia González / Sra. Carmen"}
                         value={buyerName}
                         onChange={(e) => setBuyerName(e.target.value)}
                         className="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
@@ -638,7 +791,9 @@ export default function SeminaristasPage() {
                           onClick={() => setPaymentMethod(m.id as any)}
                           className={`p-3 rounded-2xl text-left border transition-all ${
                             paymentMethod === m.id
-                              ? 'border-amber-400 bg-amber-500/15 text-white shadow-md shadow-amber-500/10'
+                              ? entryMode === 'donation'
+                                ? 'border-rose-400 bg-rose-500/15 text-white shadow-md shadow-rose-500/10'
+                                : 'border-amber-400 bg-amber-500/15 text-white shadow-md shadow-amber-500/10'
                               : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
                           }`}
                         >
@@ -777,28 +932,50 @@ export default function SeminaristasPage() {
                   )}
 
                   {/* Total Card */}
-                  <div className="rounded-2xl bg-slate-950 p-4 border border-slate-800 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="text-slate-400 block">Total a Recibir:</span>
-                      <span className="text-xs text-emerald-400 font-semibold">{quantity} Entrada(s) con Plato Incluido</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-2xl font-black text-amber-400">${quantity * ticketPrice}.00 USD</span>
-                      <span className="block text-[11px] text-slate-300 font-mono mt-0.5">
-                        o <strong>Bs. {(quantity * ticketPrice * rateBs).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</strong>
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const currentTotalUsd = entryMode === 'donation' 
+                      ? (customDonation ? Number(customDonation) : donationAmount)
+                      : (quantity * ticketPrice);
+                    const currentTotalBs = currentTotalUsd * rateBs;
+
+                    return (
+                      <div className="rounded-2xl bg-slate-950 p-4 border border-slate-800 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="text-slate-400 block">Total a Recibir:</span>
+                          <span className={`text-xs font-semibold ${entryMode === 'donation' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                            {entryMode === 'donation' ? 'Donación Directa (Sin asiento)' : `${quantity} Entrada(s) con Plato Incluido`}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-2xl font-black ${entryMode === 'donation' ? 'text-rose-400' : 'text-amber-400'}`}>
+                            ${currentTotalUsd}.00 USD
+                          </span>
+                          <span className="block text-[11px] text-slate-300 font-mono mt-0.5">
+                            o <strong>Bs. {currentTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <button
                     type="submit"
                     disabled={submitting || uploadingProof}
-                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 py-4 text-sm font-black text-slate-950 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50 active:scale-[0.98]"
+                    className={`w-full flex items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black transition-all shadow-xl disabled:opacity-50 active:scale-[0.98] ${
+                      entryMode === 'donation'
+                        ? 'bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white shadow-rose-500/25'
+                        : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-amber-500/25'
+                    }`}
                   >
                     {submitting ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Emitiendo Códigos QR...</span>
+                        <span>Procesando Registro...</span>
+                      </>
+                    ) : entryMode === 'donation' ? (
+                      <>
+                        <Heart className="h-5 w-5" />
+                        <span>Registrar Donación de ${customDonation ? Number(customDonation) : donationAmount}.00 USD</span>
                       </>
                     ) : (
                       <>
@@ -851,7 +1028,17 @@ export default function SeminaristasPage() {
                   <div className="space-y-6">
                     {(() => {
                       // Group sales by day
-                      const daysMap: Record<string, { dateKey: string; formattedDate: string; orders: Order[]; totalTickets: number; cashTotal: number; digitalTotal: number; totalUsd: number }> = {};
+                      const daysMap: Record<string, { 
+                        dateKey: string; 
+                        formattedDate: string; 
+                        orders: Order[]; 
+                        totalTickets: number; 
+                        totalDonations: number;
+                        donationsCount: number;
+                        cashTotal: number; 
+                        digitalTotal: number; 
+                        totalUsd: number;
+                      }> = {};
 
                       mySales.forEach(order => {
                         const dateKey = order.createdAt ? order.createdAt.split('T')[0] : 'Hoy';
@@ -870,17 +1057,26 @@ export default function SeminaristasPage() {
                             formattedDate: formattedCapitalized,
                             orders: [],
                             totalTickets: 0,
+                            totalDonations: 0,
+                            donationsCount: 0,
                             cashTotal: 0,
                             digitalTotal: 0,
                             totalUsd: 0
                           };
                         }
 
-                        const tCount = order.quantity || (order.seats?.length ?? 0) || 1;
-                        const usdVal = order.convertedUsd || order.amountPaid || (tCount * ticketPrice);
+                        const isDonation = Boolean(order.isDonation || (order.quantity === 0 && !order.seats?.length));
+                        const tCount = isDonation ? 0 : (order.quantity || (order.seats?.length ?? 0) || 1);
+                        const usdVal = order.convertedUsd || order.amountPaid || (isDonation ? (order.donationAmount || 0) : (tCount * ticketPrice));
 
                         daysMap[dateKey].orders.push(order);
-                        daysMap[dateKey].totalTickets += tCount;
+                        if (isDonation) {
+                          daysMap[dateKey].totalDonations += usdVal;
+                          daysMap[dateKey].donationsCount += 1;
+                        } else {
+                          daysMap[dateKey].totalTickets += tCount;
+                        }
+
                         if (order.paymentMethod === 'cash') {
                           daysMap[dateKey].cashTotal += usdVal;
                         } else {
@@ -911,9 +1107,16 @@ export default function SeminaristasPage() {
 
                             {/* Day Summary Badges */}
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-xs">
-                                🎟️ {dayGroup.totalTickets} Entradas
-                              </span>
+                              {dayGroup.totalTickets > 0 && (
+                                <span className="px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-xs">
+                                  🎟️ {dayGroup.totalTickets} Entradas
+                                </span>
+                              )}
+                              {dayGroup.totalDonations > 0 && (
+                                <span className="px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 font-bold text-xs">
+                                  ❤️ Donaciones: ${dayGroup.totalDonations}
+                                </span>
+                              )}
                               <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold text-xs">
                                 💵 Efectivo: ${dayGroup.cashTotal}
                               </span>
@@ -930,87 +1133,118 @@ export default function SeminaristasPage() {
 
                           {/* LIST OF SALES IN THIS DAY */}
                           <div className="divide-y divide-slate-800/60 p-2 sm:p-4 space-y-2">
-                            {dayGroup.orders.map((order) => (
-                              <div key={order.id} className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-700 transition-colors">
-                                <div className="space-y-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <strong className="text-white text-xs sm:text-sm font-bold truncate">
-                                      {order.buyerName}
-                                    </strong>
-                                    <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                                      {order.id}
-                                    </span>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
-                                      order.paymentMethod === 'cash'
-                                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'
-                                        : 'bg-sky-950/80 text-sky-300 border border-sky-800'
-                                    }`}>
-                                      {order.paymentMethod === 'cash' ? '💵 Efectivo' : `📲 ${order.paymentMethod}`}
-                                    </span>
-                                  </div>
+                            {dayGroup.orders.map((order) => {
+                              const isDonation = Boolean(order.isDonation || (order.quantity === 0 && !order.seats?.length));
+                              const donationAmt = order.convertedUsd || order.amountPaid || order.donationAmount || 0;
 
-                                  <div className="text-[11px] text-slate-300 flex items-center gap-2 flex-wrap">
-                                    <span className="text-amber-300 font-semibold">
-                                      {order.quantity || order.seats?.length} Entrada(s):
-                                    </span>
-                                    <span>
-                                      {order.seats && order.seats.length > 0 
-                                        ? order.seats.map(s => `M${s.tableId}-S${s.seatNumber}`).join(', ')
-                                        : 'Mesa asignada'}
-                                    </span>
-                                    <span className="text-slate-500">•</span>
-                                    <span className="text-emerald-400 font-mono font-bold">
-                                      ${order.convertedUsd || order.amountPaid} USD
-                                    </span>
-                                  </div>
-
-                                  {/* Payment proof thumbnail if digital */}
-                                  {order.paymentProofUrl && (
-                                    <div className="pt-1 flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setViewProofModal(order.paymentProofUrl!)}
-                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-300 bg-sky-950/60 hover:bg-sky-900 border border-sky-800 px-2 py-1 rounded-lg transition-colors"
-                                      >
-                                        <ImageIcon className="h-3 w-3" />
-                                        <span>Ver Capture de Pago</span>
-                                      </button>
-                                      {order.paymentReference && (
-                                        <span className="text-[10px] font-mono text-slate-400">
-                                          Ref: {order.paymentReference}
+                              return (
+                                <div key={order.id} className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-700 transition-colors">
+                                  <div className="space-y-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <strong className="text-white text-xs sm:text-sm font-bold truncate">
+                                        {order.buyerName}
+                                      </strong>
+                                      <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                                        {order.id}
+                                      </span>
+                                      {isDonation ? (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase bg-rose-950/80 text-rose-300 border border-rose-800 flex items-center gap-1">
+                                          <Heart className="h-3 w-3 inline fill-rose-400/30" />
+                                          DONACIÓN BENÉFICA
                                         </span>
-                                      )}
+                                      ) : null}
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
+                                        order.paymentMethod === 'cash'
+                                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'
+                                          : 'bg-sky-950/80 text-sky-300 border border-sky-800'
+                                      }`}>
+                                        {order.paymentMethod === 'cash' ? '💵 Efectivo' : `📲 ${order.paymentMethod}`}
+                                      </span>
                                     </div>
-                                  )}
-                                </div>
 
-                                {/* Re-send WhatsApp Link Buttons */}
-                                <div className="shrink-0 flex items-center gap-1.5 w-full sm:w-auto">
-                                  {order.tickets && order.tickets.length > 0 ? (
-                                    <a
-                                      href={`https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(order.buyerPhone)}&text=${encodeURIComponent(
-                                        `🎄 *GRAN PARRANDÓN NAVIDEÑO 2026*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡Paz y bien, estimado(a) *${order.buyerName}*!\n\nAquí tienes el enlace a tu orden y entradas con Código QR:\n👉 https://parrandon.vercel.app/orden/${order.id}\n\n¡Nos vemos el Sábado 12 de Diciembre!`
-                                      )}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-emerald-700 hover:text-white text-emerald-300 font-bold text-[11px] border border-emerald-500/30 transition-all"
-                                    >
-                                      <Share2 className="h-3.5 w-3.5" />
-                                      <span>Reenviar WhatsApp</span>
-                                    </a>
-                                  ) : (
-                                    <Link
-                                      href={`/orden/${order.id}`}
-                                      target="_blank"
-                                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] border border-slate-700 transition-all"
-                                    >
-                                      <ExternalLink className="h-3.5 w-3.5 text-amber-400" />
-                                      <span>Ver Orden</span>
-                                    </Link>
-                                  )}
+                                    <div className="text-[11px] text-slate-300 flex items-center gap-2 flex-wrap">
+                                      {isDonation ? (
+                                        <span className="text-rose-400 font-semibold flex items-center gap-1">
+                                          Donación pura para el Seminario (Fila Cero • Sin mesa asignada)
+                                        </span>
+                                      ) : (
+                                        <>
+                                          <span className="text-amber-300 font-semibold">
+                                            {order.quantity || order.seats?.length} Entrada(s):
+                                          </span>
+                                          <span>
+                                            {order.seats && order.seats.length > 0 
+                                              ? order.seats.map(s => `M${s.tableId}-S${s.seatNumber}`).join(', ')
+                                              : 'Mesa asignada'}
+                                          </span>
+                                        </>
+                                      )}
+                                      <span className="text-slate-500">•</span>
+                                      <span className={`font-mono font-bold ${isDonation ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                        ${order.convertedUsd || order.amountPaid || order.donationAmount} USD
+                                      </span>
+                                    </div>
+
+                                    {/* Payment proof thumbnail if digital */}
+                                    {order.paymentProofUrl && (
+                                      <div className="pt-1 flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => setViewProofModal(order.paymentProofUrl!)}
+                                          className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-300 bg-sky-950/60 hover:bg-sky-900 border border-sky-800 px-2 py-1 rounded-lg transition-colors"
+                                        >
+                                          <ImageIcon className="h-3 w-3" />
+                                          <span>Ver Capture de Pago</span>
+                                        </button>
+                                        {order.paymentReference && (
+                                          <span className="text-[10px] font-mono text-slate-400">
+                                            Ref: {order.paymentReference}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Re-send WhatsApp Link Buttons */}
+                                  <div className="shrink-0 flex items-center gap-1.5 w-full sm:w-auto">
+                                    {isDonation ? (
+                                      <a
+                                        href={`https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(order.buyerPhone)}&text=${encodeURIComponent(
+                                          `❤️ *GRACIAS POR TU DONACIÓN AL SEMINARIO*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡La paz del Señor esté contigo, estimado(a) *${order.buyerName}*!\n\nQueremos expresarte nuestro más sincero agradecimiento por tu generoso aporte de *$${donationAmt} USD* para la formación de los futuros sacerdotes de nuestra Diócesis.\n\nComprobante de Ofrenda: #${order.id}\n\nOramos por ti y por tu familia en la Santa Misa diaria del Seminario. ¡Que Dios bendiga y multiplique abundantemente tu generosidad! 🙏✨`
+                                        )}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-700 hover:text-white text-rose-300 font-bold text-[11px] border border-rose-500/30 transition-all"
+                                      >
+                                        <Heart className="h-3.5 w-3.5 text-rose-400 fill-rose-400/20" />
+                                        <span>Enviar Agradecimiento WhatsApp</span>
+                                      </a>
+                                    ) : order.tickets && order.tickets.length > 0 ? (
+                                      <a
+                                        href={`https://api.whatsapp.com/send?phone=${cleanPhoneForWhatsApp(order.buyerPhone)}&text=${encodeURIComponent(
+                                          `🎄 *GRAN PARRANDÓN NAVIDEÑO 2026*\n🏛️ *Seminario Mayor Santo Tomás de Aquino*\n\n¡Paz y bien, estimado(a) *${order.buyerName}*!\n\nAquí tienes el enlace a tu orden y entradas con Código QR:\n👉 https://parrandon.vercel.app/orden/${order.id}\n\n¡Nos vemos el Sábado 12 de Diciembre!`
+                                        )}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-emerald-700 hover:text-white text-emerald-300 font-bold text-[11px] border border-emerald-500/30 transition-all"
+                                      >
+                                        <Share2 className="h-3.5 w-3.5" />
+                                        <span>Reenviar WhatsApp</span>
+                                      </a>
+                                    ) : (
+                                      <Link
+                                        href={`/orden/${order.id}`}
+                                        target="_blank"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] border border-slate-700 transition-all"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5 text-amber-400" />
+                                        <span>Ver Orden</span>
+                                      </Link>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       ));

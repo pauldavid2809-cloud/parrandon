@@ -14,7 +14,8 @@ import {
   Sparkles,
   RefreshCw,
   Church,
-  QrCode
+  QrCode,
+  Heart
 } from 'lucide-react';
 
 import { SEMINARISTAS_DIRECTORY } from '@/lib/seminaristas';
@@ -79,20 +80,30 @@ export default function ReportesPage() {
       o.notes?.toLowerCase().includes(sem.name.toLowerCase())
     );
     const approvedOrders = semOrders.filter(o => o.status === 'approved');
-    const ticketsCount = approvedOrders.reduce((sum, o) => sum + (o.quantity || (o.seats?.length ?? 0) || 0), 0);
-    const cashTotal = approvedOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, o) => sum + (o.convertedUsd || o.amountPaid || 0), 0);
-    const digitalTotal = approvedOrders.filter(o => o.paymentMethod !== 'cash').reduce((sum, o) => sum + (o.convertedUsd || o.amountPaid || 0), 0);
+    const ticketsCount = approvedOrders
+      .filter(o => !o.isDonation)
+      .reduce((sum, o) => sum + (o.quantity || (o.seats?.length ?? 0) || 0), 0);
+    const donationsTotal = approvedOrders
+      .filter(o => Boolean(o.isDonation || (o.quantity === 0 && !o.seats?.length)))
+      .reduce((sum, o) => sum + (o.convertedUsd || o.amountPaid || o.donationAmount || 0), 0);
+    const cashTotal = approvedOrders
+      .filter(o => o.paymentMethod === 'cash')
+      .reduce((sum, o) => sum + (o.convertedUsd || o.amountPaid || 0), 0);
+    const digitalTotal = approvedOrders
+      .filter(o => o.paymentMethod !== 'cash')
+      .reduce((sum, o) => sum + (o.convertedUsd || o.amountPaid || 0), 0);
     const totalRevenue = cashTotal + digitalTotal;
 
     return {
       ...sem,
       ordersCount: approvedOrders.length,
       ticketsCount,
+      donationsTotal,
       cashTotal,
       digitalTotal,
       totalRevenue
     };
-  }).filter(s => s.ticketsCount > 0).sort((a, b) => b.ticketsCount - a.ticketsCount);
+  }).filter(s => s.ticketsCount > 0 || s.donationsTotal > 0).sort((a, b) => b.totalRevenue - a.totalRevenue);
 
   return (
     <div className="space-y-8">
@@ -276,6 +287,7 @@ export default function ReportesPage() {
                   <th className="py-3 px-4">Seminarista</th>
                   <th className="py-3 px-4">Etapa / Diócesis</th>
                   <th className="py-3 px-4 text-center">Entradas</th>
+                  <th className="py-3 px-4 text-right">Donaciones ($)</th>
                   <th className="py-3 px-4 text-right">Efectivo ($)</th>
                   <th className="py-3 px-4 text-right">Digital ($)</th>
                   <th className="py-3 px-4 text-right font-bold text-amber-400">Total ($)</th>
@@ -298,6 +310,9 @@ export default function ReportesPage() {
                     <td className="py-3 px-4 text-center font-bold text-amber-400 font-mono">
                       {sem.ticketsCount}
                     </td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-rose-400">
+                      {sem.donationsTotal > 0 ? `$${sem.donationsTotal.toFixed(2)}` : '—'}
+                    </td>
                     <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-400">
                       ${sem.cashTotal.toFixed(2)}
                     </td>
@@ -310,6 +325,38 @@ export default function ReportesPage() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="border-t-2 border-slate-700 bg-slate-950 font-bold">
+                {(() => {
+                  const grandTickets = seminaristaSales.reduce((acc, s) => acc + s.ticketsCount, 0);
+                  const grandDonations = seminaristaSales.reduce((acc, s) => acc + s.donationsTotal, 0);
+                  const grandCash = seminaristaSales.reduce((acc, s) => acc + s.cashTotal, 0);
+                  const grandDigital = seminaristaSales.reduce((acc, s) => acc + s.digitalTotal, 0);
+                  const grandTotal = seminaristaSales.reduce((acc, s) => acc + s.totalRevenue, 0);
+
+                  return (
+                    <tr>
+                      <td colSpan={2} className="py-3.5 px-4 text-white text-xs uppercase tracking-wider">
+                        Total General Parroquias (Arqueo de Caja)
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-mono text-amber-400 text-xs">
+                        {grandTickets}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono text-rose-400 text-xs">
+                        ${grandDonations.toFixed(2)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono text-emerald-400 text-xs font-black">
+                        ${grandCash.toFixed(2)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono text-sky-300 text-xs">
+                        ${grandDigital.toFixed(2)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono text-amber-400 text-xs font-black">
+                        ${grandTotal.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })()}
+              </tfoot>
             </table>
           </div>
         )}

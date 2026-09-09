@@ -60,6 +60,8 @@ export interface Order {
   salesChannel: SalesChannel;
   sellerName?: string; // Seminarista name if applicable
   parishName?: string; // Parroquia if sold by seminarista
+  isDonation?: boolean; // True if it's a direct donation without seats
+  donationAmount?: number;
   rejectionReason?: string;
   verifiedAt?: string;
   verifiedBy?: string;

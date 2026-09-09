@@ -634,14 +634,19 @@ export async function createOrder(data: {
   salesChannel?: SalesChannel;
   sellerName?: string;
   parishName?: string;
+  isDonation?: boolean;
+  donationAmount?: number;
   status?: OrderStatus;
   notes?: string;
 }): Promise<Order> {
   const id = generateOrderId();
+  const isDonation = Boolean(data.isDonation);
 
   let assignedSeats = data.seats || [];
-  if (!assignedSeats || assignedSeats.length === 0) {
+  if (!isDonation && (!assignedSeats || assignedSeats.length === 0)) {
     assignedSeats = await autoAssignSeats(data.quantity);
+  } else if (isDonation) {
+    assignedSeats = [];
   }
 
   const salesChannel = data.salesChannel || 'online';
@@ -650,16 +655,18 @@ export async function createOrder(data: {
     (data.paymentMethod === 'cash' && !data.paymentProofUrl);
   const status: OrderStatus = data.status || (isAutoApproved ? 'approved' : 'pending');
 
-  const attendees = data.attendees && data.attendees.length > 0 
-    ? data.attendees 
-    : assignedSeats.map((s, idx) => ({
-        name: `${data.buyerName}${idx > 0 ? ` (Acompañante ${idx + 1})` : ''}`,
-        tableId: s.tableId,
-        seatNumber: s.seatNumber
-      }));
+  const attendees = isDonation 
+    ? [] 
+    : (data.attendees && data.attendees.length > 0 
+        ? data.attendees 
+        : assignedSeats.map((s, idx) => ({
+            name: `${data.buyerName}${idx > 0 ? ` (Acompañante ${idx + 1})` : ''}`,
+            tableId: s.tableId,
+            seatNumber: s.seatNumber
+          })));
 
   let tickets: Ticket[] = [];
-  if (status === 'approved') {
+  if (!isDonation && status === 'approved') {
     tickets = await generateTicketsForSeats(
       id,
       assignedSeats,
@@ -676,7 +683,9 @@ export async function createOrder(data: {
     buyerEmail: data.buyerEmail || '',
     buyerPhone: data.buyerPhone,
     buyerDocId: data.buyerDocId || '',
-    quantity: data.quantity,
+    quantity: isDonation ? 0 : data.quantity,
+    isDonation,
+    donationAmount: isDonation ? data.convertedUsd : undefined,
     seats: assignedSeats,
     attendees,
     paymentMethod: data.paymentMethod,
@@ -690,7 +699,7 @@ export async function createOrder(data: {
     salesChannel,
     sellerName: data.sellerName,
     parishName: data.parishName,
-    notes: data.notes,
+    notes: isDonation ? `[DONACIÓN BENÉFICA] ${data.notes || ''}`.trim() : data.notes,
     tickets
   };
 

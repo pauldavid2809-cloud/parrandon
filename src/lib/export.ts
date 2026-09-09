@@ -8,6 +8,7 @@ export function exportOrdersToExcel(orders: Order[], filename = 'Parrandon_Navid
   const ordersData = orders.map((order, idx) => ({
     'N°': idx + 1,
     'ID Orden': order.id,
+    'Tipo': order.isDonation ? 'DONACIÓN BENÉFICA (FILA CERO)' : 'ENTRADAS CON CENA',
     'Canal': order.salesChannel === 'seminarista_parroquia' ? 'SEMINARISTA / PARROQUIA' : order.salesChannel === 'taquilla' ? 'TAQUILLA' : 'ONLINE',
     'Vendedor / Seminarista': order.sellerName || 'Venta Web',
     'Parroquia': order.parishName || 'Web Seminario',
@@ -15,8 +16,8 @@ export function exportOrdersToExcel(orders: Order[], filename = 'Parrandon_Navid
     'Comprador': order.buyerName,
     'Cédula/DNI': order.buyerDocId || 'N/A',
     'Teléfono WhatsApp': order.buyerPhone,
-    'Cantidad Entradas': order.quantity,
-    'Mesas y Sillas': (order.seats || []).map(s => `Mesa ${s.tableId}-S${s.seatNumber}`).join(', '),
+    'Cantidad Entradas': order.isDonation ? 0 : order.quantity,
+    'Mesas y Sillas': order.isDonation ? 'N/A (Donación sin asiento)' : (order.seats || []).map(s => `Mesa ${s.tableId}-S${s.seatNumber}`).join(', '),
     'Método de Pago': order.paymentMethod.toUpperCase(),
     'Referencia Bancaria': order.paymentReference || 'N/A',
     'Monto Pagado': order.amountPaid,

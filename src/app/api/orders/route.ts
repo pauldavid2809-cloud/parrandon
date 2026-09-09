@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
       buyerPhone,
       buyerDocId,
       quantity,
+      isDonation,
+      donationAmount,
       seats,
       attendees,
       paymentMethod,
@@ -60,9 +62,9 @@ export async function POST(request: NextRequest) {
       notes
     } = body;
 
-    if (!buyerName || !buyerPhone || !quantity || !paymentMethod) {
+    if (!buyerName || !buyerPhone || (!quantity && !isDonation) || !paymentMethod) {
       return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios para registrar la compra.' },
+        { success: false, error: 'Faltan campos obligatorios para registrar la operación.' },
         { status: 400 }
       );
     }
@@ -72,9 +74,11 @@ export async function POST(request: NextRequest) {
       buyerEmail: buyerEmail || '',
       buyerPhone,
       buyerDocId: buyerDocId || '',
-      quantity: Number(quantity),
-      seats: Array.isArray(seats) ? seats : [],
-      attendees: Array.isArray(attendees) ? attendees : [],
+      quantity: isDonation ? 0 : Number(quantity || 0),
+      isDonation: Boolean(isDonation),
+      donationAmount: isDonation ? Number(convertedUsd || amountPaid || 0) : undefined,
+      seats: isDonation ? [] : (Array.isArray(seats) ? seats : []),
+      attendees: isDonation ? [] : (Array.isArray(attendees) ? attendees : []),
       paymentMethod,
       paymentReference: paymentReference || '',
       paymentProofUrl,
