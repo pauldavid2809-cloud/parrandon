@@ -1,12 +1,80 @@
 -- ==============================================================================
 -- PARRANDÓN NAVIDEÑO 2026 · Entradas físicas con QR
 -- Copia todo este archivo en Supabase → SQL Editor → Run.
--- Se puede correr más de una vez sin dañar datos.
+-- Es lo único que hay que correr (no hace falta schema.sql) y se puede correr
+-- más de una vez sin dañar datos.
 --
 -- IMPORTANTE: estas tablas NO tienen acceso público. Solo el servidor las lee
 -- con la clave de servicio (SUPABASE_SERVICE_ROLE_KEY en Vercel). Así nadie puede
 -- descargar los códigos secretos de las 500 entradas.
 -- ==============================================================================
+
+-- 0. Tablas base del sitio: configuración del evento (incluye los datos de Zelle y
+--    Pago Móvil que ven los compradores) y donaciones. Si ya existen, no se tocan.
+CREATE TABLE IF NOT EXISTS public.event_config (
+    id INT PRIMARY KEY DEFAULT 1,
+    event_name TEXT NOT NULL DEFAULT 'Parrandón Navideño 2026',
+    subtitle TEXT DEFAULT 'Seminario Mayor Santo Tomás de Aquino',
+    edition TEXT DEFAULT 'Gran Fiesta Tradicional y Familiar',
+    date TEXT DEFAULT 'Sábado, 12 de Diciembre de 2026',
+    time TEXT DEFAULT '06:00 PM - 01:00 AM',
+    venue TEXT DEFAULT 'Bulevar del Seminario Mayor Santo Tomás de Aquino',
+    venue_address TEXT DEFAULT 'Sede del Seminario Santo Tomás de Aquino, Maracaibo, Estado Zulia',
+    total_quota INT DEFAULT 500,
+    total_tables INT DEFAULT 50,
+    seats_per_table INT DEFAULT 10,
+    ticket_price_usd NUMERIC DEFAULT 20.00,
+    child_ticket_price_usd NUMERIC DEFAULT 10.00,
+    current_rate_bs NUMERIC DEFAULT 897.82,
+    description TEXT,
+    includes_meal BOOLEAN DEFAULT TRUE,
+    meal_name TEXT DEFAULT 'Plato Navideño Tradicional Completo',
+    announcement TEXT,
+    -- Vacío hasta que se guarden en Administración → Configuración.
+    payment_details JSONB,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO public.event_config (id) VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS public.orders (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    buyer_name TEXT NOT NULL,
+    buyer_email TEXT DEFAULT '',
+    buyer_phone TEXT NOT NULL,
+    buyer_doc_id TEXT DEFAULT '',
+    quantity INT NOT NULL,
+    seats JSONB DEFAULT '[]'::jsonb,
+    attendees JSONB DEFAULT '[]'::jsonb,
+    payment_method TEXT NOT NULL,
+    payment_reference TEXT DEFAULT 'N/A',
+    payment_proof_url TEXT,
+    amount_paid NUMERIC NOT NULL,
+    currency TEXT NOT NULL,
+    converted_usd NUMERIC NOT NULL,
+    rate_applied NUMERIC,
+    status TEXT NOT NULL DEFAULT 'pending',
+    sales_channel TEXT NOT NULL DEFAULT 'online',
+    seller_name TEXT,
+    parish_name TEXT,
+    rejection_reason TEXT,
+    verified_at TIMESTAMPTZ,
+    verified_by TEXT,
+    notes TEXT,
+    tickets JSONB DEFAULT '[]'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
+
+-- Solo el servidor escribe. La configuración se puede leer (no tiene datos privados).
+ALTER TABLE public.event_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access on event_config" ON public.event_config;
+CREATE POLICY "Allow public read access on event_config"
+    ON public.event_config FOR SELECT USING (true);
 
 -- 1. Fecha del evento en formato máquina (para cerrar cambios de mesa ese día)
 ALTER TABLE public.event_config
