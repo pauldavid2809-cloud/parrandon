@@ -5,7 +5,7 @@ Sistema de las 500 entradas físicas con QR del Parrandón del Seminario Mayor S
 ## Cómo funciona
 
 1. **Entradas de papel.** Desde Administración se generan las 500 entradas (#001–#500). Cada una tiene un código secreto y un QR que abre `https://parrandon-seven.vercel.app/e/<código>`. Los 39 seminaristas reciben 6 cada uno (#001–#234, en el orden del directorio). El resto se asigna por rangos al Padre Jorge, a las parroquias o a la taquilla.
-2. **Venta.** El comprador escanea su QR, escribe sus datos, reporta el pago (Zelle o Pago Móvil con referencia y capture) y escoge su mesa. También puede registrarlo el vendedor desde `/vendedores`. La entrada queda **por verificar** con la mesa apartada.
+2. **Venta.** El comprador escanea su QR, escribe sus datos (nombre, apellido, cédula y teléfono), reporta el pago (Zelle o Pago Móvil con referencia y capture) y escoge su mesa, todo en la misma página. La cédula acepta V, E o pasaporte; para un niño sin cédula se usa la de su representante. Quien solo tiene el QR ve su cédula a medias (V-••.•••.678); administración, puerta y taquilla la ven completa. También puede registrarlo el vendedor desde `/vendedores`. La entrada queda **por verificar** con la mesa apartada.
 3. **Verificación.** En `/admin/verificaciones` se aprueba el pago (la entrada queda **activa**) o se rechaza (vuelve a sin vender y se libera la mesa; la persona ve el motivo al escanear).
    Si algo se cargó mal, en `/admin/entradas` → detalle de la entrada → **Reiniciar entrada** la deja como recién impresa (sin datos, sin pago, sin mesa, sin ingreso). Conserva número, QR y lote; hay que escribir el número para confirmar y en las notas queda lo que tenía.
 4. **Mesas.** 50 mesas de 10 puestos. Ninguna pasa de 10 aunque muchos elijan a la vez. Se puede cambiar de mesa hasta el día anterior al evento. Administración puede mover gente, reservar mesas o ponerles nombre.
@@ -28,6 +28,10 @@ Puerta, cocina y taquilla piden un PIN de 6 a 8 números (se define en `/admin/c
 4. Entra a `/admin`, pulsa **Generar entradas**, define los PIN en Configuración y revisa los datos de Zelle y Pago Móvil.
 5. En `/admin/entradas` descarga el **PDF para imprenta** (4 entradas por hoja A4, QR vectorial) o el **CSV con códigos** si la imprenta hace la impresión de datos variables.
 
+**Al actualizar a una versión nueva:** corre otra vez `supabase/entradas.sql` en Supabase **antes** de publicarla. Es seguro repetirlo: solo agrega lo que falta (por ejemplo, las columnas de nombre, apellido y cédula) y no borra datos. Si se publica antes, `/admin` lo avisa y los pagos no se pueden registrar hasta correrlo.
+
+En `/admin/entradas`, **Lista de asistentes** descarga un CSV con número, nombre, apellido, cédula, teléfono, mesa, estado y pago de cada entrada vendida.
+
 > El repositorio es público: los códigos de las entradas solo existen en Supabase. Guarda el PDF y el CSV en un lugar privado; quien tenga un QR puede activar esa entrada.
 
 ## Desarrollo local
@@ -39,7 +43,7 @@ PARRANDON_LOCAL_DB=1 npm run dev
 
 Con `PARRANDON_LOCAL_DB=1` todo se guarda en `.data/` (sin Supabase). La contraseña de administración por defecto funciona en local.
 
-Pruebas de la API (122 casos: permisos, cupo de mesas con elecciones simultáneas, pagos, puerta, cocina, taquilla, lotes, reinicio de entradas):
+Pruebas de la API (141 casos: permisos, cupo de mesas con elecciones simultáneas, datos y cédula, pagos, puerta, cocina, taquilla, lotes, reinicio de entradas):
 
 ```bash
 rm -f .data/entradas_local.json && PARRANDON_LOCAL_DB=1 npm run dev -- -p 3100   # en una terminal

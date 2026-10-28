@@ -29,6 +29,8 @@ export interface Condicion {
 }
 
 interface Store {
+  // false si a la tabla le faltan columnas nuevas (no se ha vuelto a correr supabase/entradas.sql).
+  schemaAlDia(): Promise<boolean>;
   listEntradas(): Promise<Entrada[]>;
   listEntradasLite(): Promise<EntradaLite[]>;
   countEntradas(): Promise<number>;
@@ -60,6 +62,9 @@ const COLS: Record<keyof Entrada, string> = {
   holderName: 'holder_name',
   status: 'status',
   attendeeName: 'attendee_name',
+  attendeeFirstName: 'attendee_first_name',
+  attendeeLastName: 'attendee_last_name',
+  attendeeCedula: 'attendee_cedula',
   attendeePhone: 'attendee_phone',
   tableId: 'table_id',
   paymentMethod: 'payment_method',
@@ -137,6 +142,10 @@ function supabaseStore(): Store {
   };
 
   return {
+    async schemaAlDia() {
+      const { error } = await db.from('entradas').select(Object.values(COLS).join(',')).limit(1);
+      return !error;
+    },
     async listEntradas() {
       const { data, error } = await db.from('entradas').select('*').order('number').limit(2000);
       fail('Leyendo entradas', error);
@@ -300,6 +309,9 @@ function localStore(): Store {
   };
 
   return {
+    async schemaAlDia() {
+      return true;
+    },
     async listEntradas() {
       return readLocal().entradas.sort((a, b) => a.number - b.number);
     },

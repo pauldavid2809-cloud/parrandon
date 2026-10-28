@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS public.entradas (
     holder_name TEXT,
     status TEXT NOT NULL DEFAULT 'sin_vender',
     attendee_name TEXT,
+    attendee_first_name TEXT,
+    attendee_last_name TEXT,
+    attendee_cedula TEXT,
     attendee_phone TEXT,
     table_id TEXT REFERENCES public.mesas(id),
     payment_method TEXT,
@@ -66,6 +69,12 @@ CREATE TABLE IF NOT EXISTS public.entradas (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Nombre, apellido y cédula por separado (para bases creadas antes de este cambio)
+ALTER TABLE public.entradas
+  ADD COLUMN IF NOT EXISTS attendee_first_name TEXT,
+  ADD COLUMN IF NOT EXISTS attendee_last_name TEXT,
+  ADD COLUMN IF NOT EXISTS attendee_cedula TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_entradas_table ON public.entradas(table_id);
 CREATE INDEX IF NOT EXISTS idx_entradas_status ON public.entradas(status);

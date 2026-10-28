@@ -1,5 +1,14 @@
 import { route, ok, fail, readJson } from '@/lib/api';
-import { apartarMesa, aprobar, EntradaError, eventRules, rechazar, reiniciarEntrada } from '@/lib/entradas/service';
+import {
+  apartarMesa,
+  aprobar,
+  datosPersona,
+  EntradaError,
+  eventRules,
+  rechazar,
+  reiniciarEntrada,
+  SIN_PERSONA,
+} from '@/lib/entradas/service';
 import { store, type Condicion } from '@/lib/entradas/store';
 import type { Entrada, MetodoPago } from '@/lib/entradas/types';
 
@@ -42,14 +51,13 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
       if (entrada.status !== 'sin_vender') throw new EntradaError('Esta entrada ya tiene un pago reportado.');
       const method = body.method as MetodoPago;
       if (!['zelle', 'pago_movil', 'efectivo_usd'].includes(method)) throw new EntradaError('Elige el método de pago.');
-      const name = text(body.attendeeName, 120);
-      if (!name) throw new EntradaError('Escribe el nombre de quien usará la entrada.');
+      // Administración puede activar sin cédula (pagos recibidos en persona); si la escribe, se valida.
+      const persona = datosPersona(body, { cedula: false, phone: false });
       const { config } = await eventRules();
       const ves = method === 'pago_movil';
       patch = {
         status: 'activa',
-        attendeeName: name,
-        attendeePhone: text(body.attendeePhone, 30),
+        ...persona,
         paymentMethod: method,
         paymentReference: text(body.reference, 60),
         amount: ves ? Math.round(config.ticketPriceUsd * config.currentRateBs * 100) / 100 : config.ticketPriceUsd,
@@ -64,14 +72,18 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
       onlyIf = { status: 'sin_vender' };
       break;
     }
-    case 'editar':
-      patch = {
-        attendeeName: text(body.attendeeName, 120) ?? entrada.attendeeName,
-        attendeePhone: text(body.attendeePhone, 30) ?? entrada.attendeePhone,
-        paymentReference: text(body.paymentReference, 60) ?? entrada.paymentReference,
-        notes: text(body.notes, 500),
-      };
+    case 'editar': {
+      // Solo se tocan los campos que llegan; vaciar la persona solo se permite si la entrada no se ha vendido.
+      const campos = ['firstName', 'lastName', 'cedula', 'phone'] as const;
+      const vacia = campos.every((k) => !text(body[k])?.replace(/^[VEP]-?$/i, ''));
+      patch = {};
+      if (campos.some((k) => body[k] !== undefined)) {
+        Object.assign(patch, vacia && entrada.status === 'sin_vender' ? SIN_PERSONA : datosPersona(body, { cedula: false, phone: false }));
+      }
+      if (body.paymentReference !== undefined) patch.paymentReference = text(body.paymentReference, 60);
+      if (body.notes !== undefined) patch.notes = text(body.notes, 500);
       break;
+    }
     case 'mesa':
       if (typeof body.tableId !== 'string') throw new EntradaError('Elige la mesa.');
       await apartarMesa(code, body.tableId, Boolean(body.force));

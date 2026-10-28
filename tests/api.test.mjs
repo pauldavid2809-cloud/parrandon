@@ -65,7 +65,9 @@ const taquilla = new Client();
 
 function report(code, extra = {}) {
   return anon.post(`/api/entradas/${code}/reportar`, {
-    name: 'Ana Pérez',
+    firstName: 'Ana',
+    lastName: 'Pérez',
+    cedula: 'V-12.345.678',
     phone: '0414-1234567',
     method: 'pago_movil',
     reference: '123456',
@@ -187,8 +189,18 @@ function report(code, extra = {}) {
 
   // ---------------------------------------------------------------- reporte del comprador
   sec('Reporte de pago del comprador');
-  r = await report(c(10), { name: 'A' });
+  r = await report(c(10), { firstName: 'A' });
   check('Nombre muy corto → 400', r.status === 400 && /nombre/i.test(r.json.error));
+  r = await report(c(10), { lastName: '' });
+  check('Sin apellido → 400', r.status === 400 && /apellido/i.test(r.json.error), r.json?.error);
+  r = await report(c(10), { cedula: '' });
+  check('Sin cédula → 400', r.status === 400 && /cédula/i.test(r.json.error), r.json?.error);
+  r = await report(c(10), { cedula: 'V-' });
+  check('Solo la letra de la cédula → 400', r.status === 400 && /cédula/i.test(r.json.error));
+  r = await report(c(10), { cedula: '04141234567' });
+  check('Un teléfono en el campo de cédula → 400', r.status === 400 && /cédula/i.test(r.json.error));
+  r = await report(c(10), { cedula: 'V-12' });
+  check('Cédula muy corta → 400', r.status === 400 && /cédula/i.test(r.json.error));
   r = await report(c(10), { phone: '123' });
   check('Teléfono inválido → 400', r.status === 400 && /teléfono/i.test(r.json.error));
   r = await report(c(10), { method: 'efectivo_usd' });
@@ -201,8 +213,22 @@ function report(code, extra = {}) {
   check('Capture con URL peligrosa → 400', r.status === 400, JSON.stringify(r.json));
   r = await report(c(10), { proofUrl: 'https://evil.example.com/x.png' });
   check('Capture de otro sitio → 400', r.status === 400);
-  r = await report(c(10), { tableId: 'A1' });
+  r = await report(c(10), { tableId: 'A1', firstName: '  Ana  María ', lastName: 'Pérez  de León', cedula: 'v 12.345.678' });
   check('Reporte válido con mesa A1 → por verificar y mesa apartada', r.status === 200 && r.json.entrada.status === 'por_verificar' && r.json.entrada.tableId === 'A1', JSON.stringify(r.json));
+  check('…quien tiene el QR ve su cédula a medias', r.json.entrada.attendeeCedula === 'V-••.•••.678', r.json.entrada.attendeeCedula);
+  check('…nombre y apellido limpios y el nombre completo armado', r.json.entrada.attendeeFirstName === 'Ana María' && r.json.entrada.attendeeLastName === 'Pérez de León' && r.json.entrada.attendeeName === 'Ana María Pérez de León', JSON.stringify(r.json.entrada));
+  r = await anon.get(`/api/entradas/${c(10)}`);
+  check('La página pública de la entrada nunca trae la cédula completa', !JSON.stringify(r.json).includes('12345678') && !JSON.stringify(r.json).includes('12.345'));
+  r = await admin.get(`/api/admin/entradas/${c(10)}`);
+  check('Administración ve la cédula completa y normalizada', r.json?.entrada?.attendeeCedula === 'V-12345678', r.json?.entrada?.attendeeCedula);
+  r = await report(c(15), { cedula: 'E-84.123.456' });
+  check('Cédula de extranjero (E) se acepta', r.status === 200);
+  r = await report(c(16), { cedula: 'P-ab 123456' });
+  r = await admin.get(`/api/admin/entradas/${c(16)}`);
+  check('Pasaporte (P) se acepta con letras', r.json?.entrada?.attendeeCedula === 'P-AB123456', r.json?.entrada?.attendeeCedula);
+  r = await report(c(17), { cedula: '9876543' });
+  r = await admin.get(`/api/admin/entradas/${c(17)}`);
+  check('Solo números → se asume V', r.json?.entrada?.attendeeCedula === 'V-9876543', r.json?.entrada?.attendeeCedula);
   r = await report(c(10));
   check('Segundo reporte de la misma entrada → 409', r.status === 409 && r.json.reason === 'ya_reportada');
   const dobles = await Promise.all([report(c(11)), report(c(11)), report(c(11))]);
@@ -272,10 +298,13 @@ function report(code, extra = {}) {
   check('Sentarle en B2 (le quedaba 1 puesto) y entra', r.json?.state === 'adelante' && r.json.entrada.tableId === 'B2', JSON.stringify(r.json));
   r = await puerta.post('/api/puerta/escanear', { input: c(40) });
   check('Entrada sin vender → "sin activar" con su lote', r.json.state === 'sin_activar' && r.json.entrada.holderName);
-  r = await puerta.post('/api/puerta/activar', { code: c(40), name: 'Luis Gómez', method: 'efectivo_usd', tableId: 'B2', soldBy: 'Seminarista X' });
+  r = await puerta.post('/api/puerta/activar', { code: c(40), firstName: 'Luis', lastName: 'Gómez', method: 'efectivo_usd', tableId: 'B4' });
+  check('Activar en puerta sin cédula → 400', r.status === 400 && /cédula/i.test(r.json.error), r.json?.error);
+  r = await puerta.post('/api/puerta/activar', { code: c(40), firstName: 'Luis', lastName: 'Gómez', cedula: 'V-20111222', method: 'efectivo_usd', tableId: 'B2', soldBy: 'Seminarista X' });
   check('Activar en puerta en mesa llena → error claro', r.status === 409 && /llen/i.test(r.json.error));
-  r = await puerta.post('/api/puerta/activar', { code: c(40), name: 'Luis Gómez', method: 'efectivo_usd', tableId: 'B4', soldBy: 'Seminarista X' });
+  r = await puerta.post('/api/puerta/activar', { code: c(40), firstName: 'Luis', lastName: 'Gómez', cedula: 'V-20111222', method: 'efectivo_usd', tableId: 'B4', soldBy: 'Seminarista X' });
   check('Reintentar con otra mesa → entra, queda marcada "activada en puerta"', r.json?.state === 'adelante' && r.json.entrada.doorActivated && r.json.entrada.status === 'por_verificar', JSON.stringify(r.json));
+  check('…la puerta ve el nombre completo y la cédula', r.json?.entrada?.attendeeName === 'Luis Gómez' && r.json.entrada.attendeeCedula === 'V-20111222');
   r = await puerta.post('/api/puerta/escanear', { input: 'P999-ZZZZZZZZ' });
   check('Código que no existe → "no existe"', r.json.state === 'no_existe');
   r = await puerta.post('/api/puerta/escanear', { input: 'https://google.com' });
@@ -313,18 +342,18 @@ function report(code, extra = {}) {
   check('Asignar #481–#500 a taquilla', r.json?.count === 20);
   r = await taquilla.post('/api/taquilla/buscar', { input: '481' });
   check('Buscar por número', r.json?.entrada?.number === 481 && r.json.entrada.holderType === 'taquilla');
-  r = await taquilla.post('/api/taquilla/vender', { code: c(481), name: 'Carmen Soto', method: 'zelle', tableId: 'D1' });
+  r = await taquilla.post('/api/taquilla/vender', { code: c(481), firstName: 'Carmen', lastName: 'Soto', cedula: 'V-15222333', method: 'zelle', tableId: 'D1' });
   check('Zelle sin referencia → 400', r.status === 400);
-  r = await taquilla.post('/api/taquilla/vender', { code: c(481), name: 'Carmen Soto', method: 'efectivo_usd', tableId: 'B2' });
+  r = await taquilla.post('/api/taquilla/vender', { code: c(481), firstName: 'Carmen', lastName: 'Soto', cedula: 'V-15222333', method: 'efectivo_usd', tableId: 'B2' });
   check('Mesa llena → error y la entrada vuelve a quedar sin vender', r.status === 409);
   r = await taquilla.post('/api/taquilla/buscar', { input: '481' });
   check('…sigue sin vender después del error', r.json.entrada.status === 'sin_vender' && !r.json.entrada.attendeeName);
   const ventas = await Promise.all([
-    taquilla.post('/api/taquilla/vender', { code: c(482), name: 'Pedro Uno', method: 'efectivo_usd', tableId: 'D1' }),
-    taquilla.post('/api/taquilla/vender', { code: c(482), name: 'Pedro Dos', method: 'efectivo_usd', tableId: 'D1' }),
+    taquilla.post('/api/taquilla/vender', { code: c(482), firstName: 'Pedro', lastName: 'Uno', cedula: 'V-11111111', method: 'efectivo_usd', tableId: 'D1' }),
+    taquilla.post('/api/taquilla/vender', { code: c(482), firstName: 'Pedro', lastName: 'Dos', cedula: 'V-22222222', method: 'efectivo_usd', tableId: 'D1' }),
   ]);
   check('Dos cajas venden la misma entrada a la vez: solo una venta pasa', ventas.filter((x) => x.status === 200).length === 1, ventas.map((x) => x.status).join(','));
-  r = await taquilla.post('/api/taquilla/vender', { code: c(481), name: 'Carmen Soto', method: 'pago_movil', reference: '778899', tableId: 'D1' });
+  r = await taquilla.post('/api/taquilla/vender', { code: c(481), firstName: 'Carmen', lastName: 'Soto', cedula: 'V-15222333', method: 'pago_movil', reference: '778899', tableId: 'D1' });
   check('Venta con Pago Móvil: activa y ya ingresó', r.json?.entrada?.status === 'activa' && r.json.entrada.checkedInAt);
   r = await taquilla.get('/api/taquilla/resumen');
   check('Caja de la noche suma por método', r.json.cantidad === 2 && r.json.totales.efectivo_usd === 20 && r.json.totales.pago_movil > 0, JSON.stringify(r.json.totales));
@@ -356,7 +385,9 @@ function report(code, extra = {}) {
   sec('Vendedor registra una venta');
   r = await anon.post('/api/vendedores/reportar', {
     code: c(50),
-    name: 'Jorge Ruiz',
+    firstName: 'Jorge',
+    lastName: 'Ruiz',
+    cedula: 'V-18765432',
     phone: '0412-5550000',
     method: 'zelle',
     reference: 'ZL998877',
@@ -364,7 +395,9 @@ function report(code, extra = {}) {
     sellerName: 'Otro Seminarista',
   });
   check('Venta del vendedor queda por verificar', r.json?.entrada?.status === 'por_verificar' && r.json.entrada.reportedBy === 'vendedor');
-  r = await anon.post('/api/vendedores/reportar', { code: 'P050', name: 'x' });
+  r = await anon.post('/api/vendedores/reportar', { code: c(51), firstName: 'Jorge', lastName: 'Ruiz', phone: '0412-5550000', method: 'zelle', reference: 'ZL998878', proofUrl: PROOF });
+  check('El vendedor también tiene que poner la cédula', r.status === 400 && /cédula/i.test(r.json.error));
+  r = await anon.post('/api/vendedores/reportar', { code: 'P050', firstName: 'x' });
   check('Sin el código completo (secreto) no se puede registrar', r.status === 400);
 
   // ---------------------------------------------------------------- fecha del evento
@@ -404,9 +437,17 @@ function report(code, extra = {}) {
 
   // ---------------------------------------------------------------- admin varias
   sec('Acciones de administración');
-  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'marcar_pagada', attendeeName: 'Teresa Paz', method: 'efectivo_usd' });
-  check('Registrar pago recibido → activa', r.json?.entrada?.status === 'activa');
-  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'marcar_pagada', attendeeName: 'Otra', method: 'efectivo_usd' });
+  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'marcar_pagada', firstName: 'Teresa', lastName: 'Paz', method: 'efectivo_usd' });
+  check('Registrar pago recibido → activa (administración puede omitir la cédula)', r.json?.entrada?.status === 'activa' && r.json.entrada.attendeeName === 'Teresa Paz' && !r.json.entrada.attendeeCedula, JSON.stringify(r.json));
+  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'editar', notes: 'Pagó en la oficina' });
+  check('Editar solo las notas no toca la persona', r.json?.entrada?.notes === 'Pagó en la oficina' && r.json.entrada.attendeeName === 'Teresa Paz', JSON.stringify(r.json));
+  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'editar', firstName: 'Teresa', lastName: 'Paz', cedula: 'V-12' });
+  check('Editar con una cédula inválida → 400', r.status === 400 && /cédula/i.test(r.json.error));
+  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'editar', firstName: 'Teresa', lastName: 'Paz Rincón', cedula: 'V-7.654.321' });
+  check('Editar nombre, apellido y cédula', r.json?.entrada?.attendeeName === 'Teresa Paz Rincón' && r.json.entrada.attendeeCedula === 'V-7654321' && r.json.entrada.notes === 'Pagó en la oficina', JSON.stringify(r.json));
+  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'editar', firstName: '', lastName: '', cedula: 'V-', phone: '' });
+  check('No se puede dejar sin nombre una entrada vendida', r.status === 400);
+  r = await admin.patch(`/api/admin/entradas/${c(70)}`, { action: 'marcar_pagada', firstName: 'Otra', lastName: 'Persona', method: 'efectivo_usd' });
   check('Registrar pago dos veces → error', r.status === 400 || r.status === 409);
   r = await admin.patch(`/api/admin/entradas/${c(10)}`, { action: 'anular' });
   check('No se puede anular una entrada que ya entró', r.status === 400);
@@ -424,11 +465,11 @@ function report(code, extra = {}) {
   const re = r.json?.entrada;
   check(
     'Reiniciar deja la entrada sin vender, sin datos, sin mesa, sin ingreso ni plato',
-    re && re.status === 'sin_vender' && !re.attendeeName && !re.attendeePhone && !re.tableId && !re.paymentReference && !re.paymentProofUrl && !re.checkedInAt && !re.mealServedAt && !re.doorActivated && !re.reportedBy,
+    re && re.status === 'sin_vender' && !re.attendeeName && !re.attendeeFirstName && !re.attendeeLastName && !re.attendeeCedula && !re.attendeePhone && !re.tableId && !re.paymentReference && !re.paymentProofUrl && !re.checkedInAt && !re.mealServedAt && !re.doorActivated && !re.reportedBy,
     JSON.stringify(re)
   );
   check('…conserva número, código y lote', re && re.number === 14 && re.code === c(14) && re.holderId === byNum(14).holderId);
-  check('…y anota lo que había', re && /Reiniciada por Administración/.test(re.notes) && /Ana Pérez/.test(re.notes) && /mesa A1/.test(re.notes), re?.notes);
+  check('…y anota lo que había', re && /Reiniciada por Administración/.test(re.notes) && /Ana Pérez/.test(re.notes) && /V-12345678/.test(re.notes) && /mesa A1/.test(re.notes), re?.notes);
   const mesasDespues = (await anon.get('/api/mesas')).json.mesas.find((m) => m.id === 'A1').taken;
   check('…y libera su puesto en la mesa', mesasDespues === mesasAntes - 1, `${mesasAntes} → ${mesasDespues}`);
   r = await cocina.get('/api/cocina');

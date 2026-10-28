@@ -8,6 +8,8 @@ import CameraScanner from '@/components/CameraScanner';
 import MesaPicker from '@/components/mesas/MesaPicker';
 import PaymentDetails, { formatBs, montoBs, type PagoInfo } from '@/components/pago/PaymentDetails';
 import ProofUpload from '@/components/pago/ProofUpload';
+import PersonaFields, { PERSONA_VACIA, type Persona } from '@/components/PersonaFields';
+import { erroresPersona } from '@/lib/persona';
 import type { EntradaStatus, HolderType } from '@/lib/entradas/types';
 import type { TicketView } from '@/lib/entradas/service';
 import { formatNumber } from '@/lib/site';
@@ -396,8 +398,8 @@ function VentaForm({
   onDone: (e: TicketView) => void;
 }) {
   const { entrada, pago } = data;
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
+  const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<'pago_movil' | 'zelle' | null>(null);
   const [reference, setReference] = useState('');
   const [proofUrl, setProofUrl] = useState<string | null>(null);
@@ -427,6 +429,12 @@ function VentaForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    const faltan = erroresPersona(persona, { cedula: true, phone: true });
+    setErrors(faltan);
+    if (Object.keys(faltan).length) {
+      document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setSending(true);
     try {
       const res = await fetch('/api/vendedores/reportar', {
@@ -434,8 +442,7 @@ function VentaForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
-          name,
-          phone,
+          ...persona,
           method,
           reference,
           proofUrl,
@@ -466,14 +473,10 @@ function VentaForm({
           Esta entrada es del lote de {entrada.holderName}. Puedes registrarla igual; quedará anotado que la vendiste tú.
         </Notice>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nombre del comprador" htmlFor="v-nombre">
-          <TextInput id="v-nombre" value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="Teléfono del comprador" htmlFor="v-tel">
-          <TextInput id="v-tel" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0414-1234567" />
-        </Field>
-      </div>
+      <fieldset>
+        <legend className="mb-3 font-bold">Quien va a usar la entrada</legend>
+        <PersonaFields id="v" value={persona} onChange={setPersona} errors={errors} />
+      </fieldset>
       <Field label="¿Cómo pagó?">
         <Choice
           name="Método de pago"

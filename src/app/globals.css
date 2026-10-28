@@ -38,6 +38,8 @@ html {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
+  /* Los botones fijos abajo (enviar pago, activar, cobrar) no tapan el campo que recibe el foco. */
+  scroll-padding-bottom: 6rem;
 }
 
 body {

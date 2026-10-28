@@ -5,6 +5,8 @@ import { useCallback, useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, LogOut, OctagonX, TriangleAlert } from 'lucide-react';
 import CameraScanner from '@/components/CameraScanner';
 import MesaPicker from '@/components/mesas/MesaPicker';
+import PersonaFields, { PERSONA_VACIA, type Persona } from '@/components/PersonaFields';
+import { erroresPersona, formatCedula } from '@/lib/persona';
 import { Button, Choice, Field, Notice, TextInput } from '@/components/ui';
 import { logout } from '@/components/staff/StaffGate';
 import type { StaffView } from '@/lib/entradas/staff-view';
@@ -219,12 +221,16 @@ function ResultPanel({
 }) {
   const e = result.entrada;
   const head = e ? `Entrada N.º ${formatNumber(e.number)}` : '';
+  const ci = e?.attendeeCedula ? ` · C.I. ${formatCedula(e.attendeeCedula)}` : '';
 
   if (result.state === 'adelante' && e) {
     return (
       <Panel tone="verde" icon={<CheckCircle2 className="h-12 w-12 text-oro" aria-hidden />} title="Adelante">
         <p className="text-xl font-bold">{e.attendeeName}</p>
-        <p className="tabular text-paper/80">{head}</p>
+        <p className="tabular text-paper/80">
+          {head}
+          {ci}
+        </p>
         <p className="mt-6 text-paper/80">Su mesa</p>
         <p className="font-display text-[5.5rem] leading-none">{e.tableId}</p>
         <p className="text-lg text-paper/85">Sector {e.tableId?.[0]}</p>
@@ -239,7 +245,8 @@ function ResultPanel({
       <Panel tone="rojo" icon={<OctagonX className="h-12 w-12" aria-hidden />} title="Esta entrada ya entró">
         <p className="text-xl font-bold">Entró a las {hora(e.checkedInAt)}</p>
         <p className="mt-1 text-paper/85">
-          {e.attendeeName} · {head} · Mesa {e.tableId}
+          {e.attendeeName} · {head}
+          {ci} · Mesa {e.tableId}
         </p>
         <p className="mt-4 text-paper/85">Si la persona dice que es suya, pide ayuda a administración.</p>
         <Next onNext={onNext} label="Entendido" />
@@ -265,7 +272,8 @@ function ResultPanel({
       <Panel tone="oro" icon={<TriangleAlert className="h-12 w-12" aria-hidden />} title="Pago por verificar">
         <p className="text-xl font-bold">{e.attendeeName}</p>
         <p className="tabular">
-          {head} · Mesa {e.tableId}
+          {head}
+          {ci} · Mesa {e.tableId}
         </p>
         <p className="mt-3">
           Reportó el pago {e.reportedBy === 'vendedor' ? 'su vendedor' : e.reportedBy === 'puerta' ? 'en la puerta' : 'la persona'}
@@ -362,14 +370,23 @@ function ActivarAqui({
   onAct: (url: string, body: unknown) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
+  const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<MetodoPago | null>(null);
   const [reference, setReference] = useState('');
   const [soldBy, setSoldBy] = useState(entrada.holderName || '');
   const [tableId, setTableId] = useState<string | null>(null);
 
-  const ready = name.trim().length >= 3 && method && tableId;
+  const ready = method && tableId;
+  const activar = () => {
+    const faltan = erroresPersona(persona, { cedula: true, phone: false });
+    setErrors(faltan);
+    if (Object.keys(faltan).length) {
+      document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    onAct('/api/puerta/activar', { code: entrada.code, ...persona, method, reference, soldBy, tableId });
+  };
   return (
     <div className="flash-in rounded-2xl bg-card p-5 text-ink sm:p-6">
       <div className="flex items-start gap-3">
@@ -388,13 +405,8 @@ function ActivarAqui({
         </Notice>
       )}
       <p className="mt-4 text-ink-2">Anota quién es y cómo pagó, escojan la mesa y déjale pasar. Administración lo revisará.</p>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Field label="Nombre y apellido" htmlFor="p-nombre">
-          <TextInput id="p-nombre" value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="Teléfono (opcional)" htmlFor="p-tel">
-          <TextInput id="p-tel" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </Field>
+      <div className="mt-5">
+        <PersonaFields id="p" value={persona} onChange={setPersona} errors={errors} phone="optional" />
       </div>
       <Field label="¿Cómo pagó?" className="mt-4">
         <Choice
@@ -433,9 +445,7 @@ function ActivarAqui({
           className="flex-1"
           disabled={!ready}
           loading={busy}
-          onClick={() =>
-            onAct('/api/puerta/activar', { code: entrada.code, name, phone, method, reference, soldBy, tableId })
-          }
+          onClick={activar}
         >
           {tableId ? `Activar y sentarle en la ${tableId}` : 'Activar y dejar pasar'}
         </Button>

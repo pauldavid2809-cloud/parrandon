@@ -5,7 +5,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { Download, Printer, Search } from 'lucide-react';
 import { Button, Field, Notice, Spinner, StatusPill, TextInput } from '@/components/ui';
 import { api, PageTitle } from '@/components/admin/api';
-import { buildEntradasPdf, download, entradasCsv } from '@/lib/print/entradasPdf';
+import { asistentesCsv, buildEntradasPdf, download, entradasCsv } from '@/lib/print/entradasPdf';
+import { formatCedula } from '@/lib/persona';
 import { HOLDER_LABEL, type Entrada, type EntradaStatus, type HolderType } from '@/lib/entradas/types';
 import type { EventConfig } from '@/types';
 import { formatNumber } from '@/lib/site';
@@ -50,8 +51,12 @@ export default function EntradasAdmin() {
       if (estado !== 'todas' && e.status !== estado) return false;
       if (tipo !== 'todos' && e.holderType !== tipo) return false;
       if (!term) return true;
-      if (/^#?\d+$/.test(term)) return e.number === Number(term.replace('#', ''));
-      return [e.attendeeName, e.attendeePhone, e.code, e.holderName, e.tableId, e.paymentReference]
+      if (/^#?\d+$/.test(term)) {
+        // Un número corto es el N.º de la entrada; uno largo, parte de una cédula.
+        const digits = term.replace('#', '');
+        return e.number === Number(digits) || (digits.length >= 5 && Boolean(e.attendeeCedula?.includes(digits)));
+      }
+      return [e.attendeeName, e.attendeeCedula, formatCedula(e.attendeeCedula), e.attendeePhone, e.code, e.holderName, e.tableId, e.paymentReference]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(term));
     });
@@ -75,6 +80,15 @@ export default function EntradasAdmin() {
               }
             >
               <Download className="h-4 w-4" aria-hidden /> CSV con códigos
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                download('asistentes-parrandon-2026.csv', new Blob([asistentesCsv(entradas)], { type: 'text/csv;charset=utf-8' }))
+              }
+            >
+              <Download className="h-4 w-4" aria-hidden /> Lista de asistentes
             </Button>
           </>
         )}
@@ -102,7 +116,7 @@ export default function EntradasAdmin() {
                     setQ(e.target.value);
                     setLimit(PAGE);
                   }}
-                  placeholder="N.º, nombre, teléfono, mesa, referencia"
+                  placeholder="N.º, nombre, cédula, teléfono, mesa"
                   className="pl-10"
                 />
               </div>

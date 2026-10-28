@@ -11,6 +11,7 @@ import { HOLDER_LABEL, type HolderType, type MesasResumen } from '@/lib/entradas
 interface Estado {
   storeReady: boolean;
   storeError: string | null;
+  schemaAlDia: boolean;
   localStore: boolean;
   generadas: number;
   pins: { puerta: boolean; cocina: boolean; taquilla: boolean };
@@ -232,6 +233,13 @@ function Puesta({ estado, onGenerar, generating }: { estado: Estado; onGenerar: 
       {estado.storeError && (
         <Notice tone="error" title="La base de datos respondió con un error">
           {estado.storeError} ¿Ya corriste <code>supabase/entradas.sql</code> en Supabase?
+        </Notice>
+      )}
+      {!estado.storeError && !estado.schemaAlDia && (
+        <Notice tone="error" title="Falta actualizar la base de datos">
+          Esta versión guarda nombre, apellido y cédula por separado. En Supabase abre SQL Editor, pega otra vez el
+          archivo <code>supabase/entradas.sql</code> y dale Run (no borra nada). Mientras tanto nadie puede registrar
+          su pago.
         </Notice>
       )}
       {!estado.storeError && estado.generadas === 0 && (

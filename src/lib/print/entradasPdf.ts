@@ -2,6 +2,8 @@
 
 import QRCode from 'qrcode';
 import { formatNumber, ticketUrl, SITE_URL } from '@/lib/site';
+import { formatCedula } from '@/lib/persona';
+import { METODO_LABEL, STATUS_LABEL, type Entrada } from '@/lib/entradas/types';
 
 // PDF para la imprenta: 4 entradas por hoja A4 (180 × 64 mm), con líneas de corte,
 // talón troquelado y el QR que abre la página de activación de cada entrada.
@@ -218,6 +220,35 @@ export function entradasCsv(rows: { number: number; code: string; holderName: st
     lines.push([formatNumber(r.number), r.code, ticketUrl(r.code), esc(r.holderName || ''), r.status].join(','));
   }
   return '﻿' + lines.join('\n');
+}
+
+// Lista de quienes van al evento, para abrir en Excel. Los nombres los escribe el público:
+// un texto que empiece con = + - @ se antepone con ' para que Excel no lo ejecute como fórmula.
+export function asistentesCsv(rows: Entrada[]) {
+  const esc = (v: string | null | undefined) => {
+    const t = String(v ?? '');
+    return `"${(/^[=+\-@\t\r]/.test(t) ? `'${t}` : t).replace(/"/g, '""')}"`;
+  };
+  const lines = ['Numero,Nombre,Apellido,Cedula,Telefono,Mesa,Estado,Pago,Referencia,Lote,Ingreso'];
+  for (const e of rows) {
+    if (!e.attendeeName || e.status === 'anulada') continue;
+    lines.push(
+      [
+        formatNumber(e.number),
+        esc(e.attendeeFirstName ?? e.attendeeName),
+        esc(e.attendeeLastName),
+        esc(formatCedula(e.attendeeCedula)),
+        esc(e.attendeePhone),
+        e.tableId || '',
+        STATUS_LABEL[e.status],
+        e.paymentMethod ? METODO_LABEL[e.paymentMethod] : '',
+        esc(e.paymentReference),
+        esc(e.holderName),
+        e.checkedInAt ? 'Sí' : '',
+      ].join(',')
+    );
+  }
+  return '\ufeff' + lines.join('\n');
 }
 
 export function download(name: string, data: Blob) {

@@ -6,6 +6,8 @@ import { Button, Choice, Field, Notice, StatusPill, TextInput } from '@/componen
 import MesaPicker from '@/components/mesas/MesaPicker';
 import { fechaCorta, patchEntrada } from '@/components/admin/api';
 import { formatBs } from '@/components/pago/PaymentDetails';
+import PersonaFields, { PERSONA_VACIA, personaDe, type Persona } from '@/components/PersonaFields';
+import { erroresPersona, formatCedula } from '@/lib/persona';
 import { HOLDER_LABEL, METODO_LABEL, type Entrada, type MetodoPago } from '@/lib/entradas/types';
 import { formatNumber, ticketUrl } from '@/lib/site';
 import { cleanPhoneForWhatsApp } from '@/lib/utils';
@@ -68,6 +70,7 @@ export default function EntradaDetalle({
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line p-5 text-[0.95rem]">
         <Item label="Nombre" value={entrada.attendeeName} />
+        <Item label="Cédula" value={formatCedula(entrada.attendeeCedula)} />
         <Item label="Teléfono" value={entrada.attendeePhone} />
         <Item label="Mesa" value={entrada.tableId} />
         <Item label="Lote" value={entrada.holderName ? `${entrada.holderName} (${HOLDER_LABEL[entrada.holderType]})` : 'Sin asignar'} />
@@ -282,21 +285,23 @@ function Editar({
   onSubmit: (v: Record<string, string>) => void;
   onCancel: () => void;
 }) {
+  const [persona, setPersona] = useState<Persona>(() => personaDe(entrada));
+  const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [v, setV] = useState({
-    attendeeName: entrada.attendeeName || '',
-    attendeePhone: entrada.attendeePhone || '',
     paymentReference: entrada.paymentReference || '',
     notes: entrada.notes || '',
   });
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
+  const guardar = () => {
+    // Una entrada sin vender puede quedar sin persona; si se escribe algo, tiene que estar completo.
+    const vacia = !persona.firstName.trim() && !persona.lastName.trim() && !persona.cedula.replace(/^[VEP]-?/, '').trim() && !persona.phone.trim();
+    const faltan = vacia && entrada.status === 'sin_vender' ? {} : erroresPersona(persona, { cedula: false, phone: false });
+    setErrors(faltan);
+    if (Object.keys(faltan).length === 0) onSubmit({ ...persona, ...v });
+  };
   return (
     <div className="space-y-3 rounded-xl bg-paper-2 p-4">
-      <Field label="Nombre" htmlFor="ed-nombre">
-        <TextInput id="ed-nombre" value={v.attendeeName} onChange={set('attendeeName')} />
-      </Field>
-      <Field label="Teléfono" htmlFor="ed-tel">
-        <TextInput id="ed-tel" value={v.attendeePhone} onChange={set('attendeePhone')} />
-      </Field>
+      <PersonaFields id="ed" value={persona} onChange={setPersona} errors={errors} phone="optional" cedula="optional" />
       <Field label="Referencia" htmlFor="ed-ref">
         <TextInput id="ed-ref" value={v.paymentReference} onChange={set('paymentReference')} />
       </Field>
@@ -304,7 +309,7 @@ function Editar({
         <TextInput id="ed-notas" value={v.notes} onChange={set('notes')} />
       </Field>
       <div className="flex gap-2">
-        <Button size="sm" loading={busy} onClick={() => onSubmit(v)}>
+        <Button size="sm" loading={busy} onClick={guardar}>
           Guardar
         </Button>
         <Button size="sm" variant="quiet" onClick={onCancel}>
@@ -324,19 +329,19 @@ function MarcarPagada({
   onSubmit: (v: Record<string, string>) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
+  const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<MetodoPago | null>(null);
   const [reference, setReference] = useState('');
+  const activar = () => {
+    const faltan = erroresPersona(persona, { cedula: false, phone: false });
+    setErrors(faltan);
+    if (Object.keys(faltan).length === 0) onSubmit({ ...persona, method: method!, reference });
+  };
   return (
     <div className="space-y-3 rounded-xl bg-paper-2 p-4">
       <p className="text-sm text-ink-2">Para pagos que recibiste directamente. La entrada queda activa de una vez.</p>
-      <Field label="Nombre de quien la usa" htmlFor="mp-nombre">
-        <TextInput id="mp-nombre" value={name} onChange={(e) => setName(e.target.value)} />
-      </Field>
-      <Field label="Teléfono" htmlFor="mp-tel">
-        <TextInput id="mp-tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-      </Field>
+      <PersonaFields id="mp" value={persona} onChange={setPersona} errors={errors} phone="optional" cedula="optional" />
       <Choice
         name="Método"
         value={method}
@@ -356,8 +361,8 @@ function MarcarPagada({
           size="sm"
           variant="verde"
           loading={busy}
-          disabled={!name.trim() || !method}
-          onClick={() => onSubmit({ attendeeName: name, attendeePhone: phone, method: method!, reference })}
+          disabled={!method}
+          onClick={activar}
         >
           Activar entrada
         </Button>

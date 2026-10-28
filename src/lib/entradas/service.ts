@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { getEventConfig } from '@/lib/db';
 import { fetchLiveEuroRate } from '@/lib/rates';
 import { isSafeProofUrl } from '@/lib/proof';
+import { erroresPersona, limpiarNombre, normalizarCedula, ocultarCedula, type PersonaInput, type ReglasPersona } from '@/lib/persona';
 import { SEMINARISTAS_DIRECTORY } from '@/lib/seminaristas';
 import { store } from './store';
 import {
@@ -96,6 +97,10 @@ export function ticketView(e: Entrada) {
     holderType: e.holderType,
     holderName: e.holderName,
     attendeeName: e.attendeeName,
+    attendeeFirstName: e.attendeeFirstName,
+    attendeeLastName: e.attendeeLastName,
+    // El QR se puede fotografiar: la cédula se muestra a medias.
+    attendeeCedula: ocultarCedula(e.attendeeCedula),
     attendeePhone: e.attendeePhone,
     tableId: e.tableId,
     paymentMethod: e.paymentMethod,
@@ -134,6 +139,31 @@ export async function mesasEstado(): Promise<{ mesas: MesaEstado[]; resumen: Mes
   };
 }
 
+// ---------- persona ----------
+
+export const SIN_PERSONA = {
+  attendeeName: null,
+  attendeeFirstName: null,
+  attendeeLastName: null,
+  attendeeCedula: null,
+  attendeePhone: null,
+} satisfies Partial<Entrada>;
+
+// Valida nombre, apellido, cédula y teléfono, y los deja listos para guardar.
+export function datosPersona(input: PersonaInput, reglas: ReglasPersona) {
+  const primero = Object.values(erroresPersona(input, reglas))[0];
+  if (primero) throw new EntradaError(primero);
+  const firstName = limpiarNombre(input.firstName);
+  const lastName = limpiarNombre(input.lastName);
+  return {
+    attendeeName: `${firstName} ${lastName}`,
+    attendeeFirstName: firstName,
+    attendeeLastName: lastName,
+    attendeeCedula: normalizarCedula(input.cedula),
+    attendeePhone: String(input.phone ?? '').trim().slice(0, 30) || null,
+  } satisfies Partial<Entrada>;
+}
+
 // ---------- generación ----------
 
 export async function generarEntradas(total = TOTAL_ENTRADAS): Promise<number> {
@@ -152,8 +182,7 @@ export async function generarEntradas(total = TOTAL_ENTRADAS): Promise<number> {
       holderId: sem ? sem.id : null,
       holderName: sem ? sem.name : null,
       status: 'sin_vender',
-      attendeeName: null,
-      attendeePhone: null,
+      ...SIN_PERSONA,
       tableId: null,
       paymentMethod: null,
       paymentReference: null,
@@ -209,7 +238,9 @@ export async function elegirMesaComprador(code: string, tableId: string) {
 // ---------- reporte de pago (comprador o vendedor) ----------
 
 export interface ReporteInput {
-  name: string;
+  firstName: string;
+  lastName: string;
+  cedula: string;
   phone: string;
   method: MetodoPago;
   reference: string;
@@ -222,13 +253,10 @@ function clean(value: unknown, max = 120): string {
 }
 
 export function validarReporte(input: Partial<ReporteInput>, opts: { requireProof: boolean; methods: MetodoPago[] }) {
-  const name = clean(input.name);
-  const phone = clean(input.phone, 30);
+  const persona = datosPersona(input, { cedula: true, phone: true });
   const reference = clean(input.reference, 60);
   const proofUrl = clean(input.proofUrl, 4_000_000);
   const method = input.method as MetodoPago;
-  if (name.length < 3) throw new EntradaError('Escribe el nombre y apellido de quien va a usar la entrada.');
-  if (phone.replace(/\D/g, '').length < 10) throw new EntradaError('Escribe un teléfono válido, por ejemplo 0414-1234567.');
   if (!opts.methods.includes(method)) throw new EntradaError('Elige cómo se pagó la entrada.');
   if (method !== 'efectivo_usd' && reference.length < 4) {
     throw new EntradaError('Escribe el número de referencia del pago (al menos 4 dígitos).');
@@ -237,7 +265,7 @@ export function validarReporte(input: Partial<ReporteInput>, opts: { requireProo
     throw new EntradaError('Sube el capture del pago para poder verificarlo.');
   }
   if (proofUrl && !isSafeProofUrl(proofUrl)) throw new EntradaError('El capture no es válido. Súbelo de nuevo.');
-  return { name, phone, method, reference, proofUrl, tableId: input.tableId ? clean(input.tableId, 4) : null };
+  return { persona, method, reference, proofUrl, tableId: input.tableId ? clean(input.tableId, 4) : null };
 }
 
 export async function reportarPago(code: string, input: Partial<ReporteInput>, by: ReportadoPor) {
@@ -253,8 +281,7 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
 
   const reportado = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'por_verificar',
-    attendeeName: data.name,
-    attendeePhone: data.phone,
+    ...data.persona,
     paymentMethod: data.method,
     paymentReference: data.reference,
     paymentProofUrl: data.proofUrl,
@@ -315,8 +342,7 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
 // Deja la entrada como recién impresa. Conserva número, código (QR) y lote.
 const ESTADO_INICIAL: Partial<Entrada> = {
   status: 'sin_vender',
-  attendeeName: null,
-  attendeePhone: null,
+  ...SIN_PERSONA,
   tableId: null,
   paymentMethod: null,
   paymentReference: null,
@@ -347,6 +373,7 @@ export async function reiniciarEntrada(code: string, by = 'Administración') {
   // Queda constancia de lo que había, por si hay que reconstruirlo.
   const antes = [
     entrada.attendeeName,
+    entrada.attendeeCedula,
     entrada.attendeePhone,
     entrada.paymentMethod && `${entrada.paymentMethod}${entrada.paymentReference ? ` ref. ${entrada.paymentReference}` : ''}`,
     entrada.tableId && `mesa ${entrada.tableId}`,
@@ -374,7 +401,9 @@ export async function checkIn(code: string, by = 'Puerta') {
 }
 
 export interface ActivacionPuertaInput {
-  name: string;
+  firstName: string;
+  lastName: string;
+  cedula: string;
   phone?: string;
   method: MetodoPago;
   reference?: string;
@@ -387,8 +416,7 @@ export async function activarEnPuerta(code: string, input: Partial<ActivacionPue
   if (!entrada) throw new EntradaError('Entrada no encontrada.', 404);
   if (entrada.status === 'anulada') throw new EntradaError('Esta entrada fue anulada.');
 
-  const name = clean(input.name);
-  if (name.length < 3) throw new EntradaError('Escribe el nombre de la persona.');
+  const persona = datosPersona(input, { cedula: true, phone: false });
   if (!input.tableId) throw new EntradaError('Elige la mesa donde se va a sentar.');
   const method = input.method as MetodoPago;
   if (!['zelle', 'pago_movil', 'efectivo_usd'].includes(method)) throw new EntradaError('Elige el método de pago.');
@@ -398,8 +426,7 @@ export async function activarEnPuerta(code: string, input: Partial<ActivacionPue
   if (entrada.status === 'sin_vender') {
     await store().updateEntradaIf(code, { status: 'sin_vender' }, {
       status: 'por_verificar',
-      attendeeName: name,
-      attendeePhone: clean(input.phone, 30) || null,
+      ...persona,
       paymentMethod: method,
       paymentReference: clean(input.reference, 60) || null,
       ...amountFor(method, config.ticketPriceUsd, config.currentRateBs),
@@ -426,8 +453,7 @@ export async function ventaTaquilla(
   if (entrada.status !== 'sin_vender') {
     throw new EntradaError('Esta entrada ya fue vendida o reportada. Usa otra del lote de taquilla.', 409);
   }
-  const name = clean(input.name);
-  if (name.length < 3) throw new EntradaError('Escribe el nombre de quien compra.');
+  const persona = datosPersona(input, { cedula: true, phone: false });
   const method = input.method as MetodoPago;
   if (!['zelle', 'pago_movil', 'efectivo_usd'].includes(method)) throw new EntradaError('Elige el método de pago.');
   const reference = clean(input.reference, 60);
@@ -440,8 +466,7 @@ export async function ventaTaquilla(
   const now = new Date().toISOString();
   const vendida = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'activa',
-    attendeeName: name,
-    attendeePhone: clean(input.phone, 30) || null,
+    ...persona,
     paymentMethod: method,
     paymentReference: reference || null,
     paymentProofUrl: proofUrl || null,
@@ -459,8 +484,7 @@ export async function ventaTaquilla(
     // Sin mesa la venta no sirve: se revierte para que el taquillero elija otra.
     await store().updateEntrada(code, {
       status: 'sin_vender',
-      attendeeName: null,
-      attendeePhone: null,
+      ...SIN_PERSONA,
       paymentMethod: null,
       paymentReference: null,
       paymentProofUrl: null,

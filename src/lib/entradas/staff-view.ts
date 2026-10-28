@@ -10,6 +10,7 @@ export function staffView(e: Entrada) {
     holderType: e.holderType,
     holderName: e.holderName,
     attendeeName: e.attendeeName,
+    attendeeCedula: e.attendeeCedula,
     attendeePhone: e.attendeePhone,
     tableId: e.tableId,
     paymentMethod: e.paymentMethod,

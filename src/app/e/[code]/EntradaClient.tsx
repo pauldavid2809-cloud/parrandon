@@ -8,6 +8,8 @@ import { Button, Choice, Field, Notice, Spinner, StatusPill, TextInput } from '@
 import MesaPicker from '@/components/mesas/MesaPicker';
 import PaymentDetails, { formatBs, montoBs, type PagoInfo } from '@/components/pago/PaymentDetails';
 import ProofUpload from '@/components/pago/ProofUpload';
+import PersonaFields, { PERSONA_VACIA, type Persona } from '@/components/PersonaFields';
+import { erroresPersona } from '@/lib/persona';
 import type { TicketView } from '@/lib/entradas/service';
 import { formatNumber } from '@/lib/site';
 
@@ -170,8 +172,7 @@ function ReportarPago({
   reload: () => void;
 }) {
   const { entrada, pago } = data;
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
   const [method, setMethod] = useState<'pago_movil' | 'zelle' | null>(null);
   const [reference, setReference] = useState('');
   const [proofUrl, setProofUrl] = useState<string | null>(null);
@@ -181,9 +182,7 @@ function ReportarPago({
   const [sending, setSending] = useState(false);
 
   const validate = () => {
-    const e: Record<string, string> = {};
-    if (name.trim().length < 3) e.name = 'Escribe el nombre y apellido de quien va a usar la entrada.';
-    if (phone.replace(/\D/g, '').length < 10) e.phone = 'Escribe un teléfono válido, por ejemplo 0414-1234567.';
+    const e: Record<string, string> = { ...erroresPersona(persona, { cedula: true, phone: true }) };
     if (!method) e.method = 'Elige cómo pagaste.';
     if (reference.trim().length < 4) e.reference = 'Escribe el número de referencia (al menos 4 dígitos).';
     if (!proofUrl) e.proof = 'Sube el capture del pago.';
@@ -204,7 +203,7 @@ function ReportarPago({
       const res = await fetch(`/api/entradas/${encodeURIComponent(code)}/reportar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, method, reference, proofUrl, tableId }),
+        body: JSON.stringify({ ...persona, method, reference, proofUrl, tableId }),
       });
       const json = await res.json();
       if (!json.success) {
@@ -233,29 +232,7 @@ function ReportarPago({
       </p>
 
       <Step n={1} title="¿Quién va a usar esta entrada?">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nombre y apellido" htmlFor="nombre" error={errors.name}>
-            <TextInput
-              id="nombre"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="name"
-              data-error={Boolean(errors.name)}
-            />
-          </Field>
-          <Field label="Teléfono" htmlFor="telefono" error={errors.phone} hint="Por si hay que contactarte por el pago.">
-            <TextInput
-              id="telefono"
-              type="tel"
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoComplete="tel"
-              placeholder="0414-1234567"
-              data-error={Boolean(errors.phone)}
-            />
-          </Field>
-        </div>
+        <PersonaFields value={persona} onChange={setPersona} errors={errors} phoneHint="Por si hay que contactarte por el pago." />
       </Step>
 
       <Step n={2} title="Tu pago">
@@ -415,6 +392,7 @@ function EntradaReportada({
           <div className="col-span-2 sm:col-span-1">
             <dt className="text-sm text-ink-3">A nombre de</dt>
             <dd className="text-lg font-bold">{entrada.attendeeName || 'Sin nombre todavía'}</dd>
+            {entrada.attendeeCedula && <dd className="tabular text-ink-2">C.I. {entrada.attendeeCedula}</dd>}
           </div>
           <div className="col-span-2 sm:col-span-1">
             <dt className="text-sm text-ink-3">Pago</dt>

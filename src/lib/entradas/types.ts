@@ -20,7 +20,10 @@ export interface Entrada {
   holderId: string | null;
   holderName: string | null;
   status: EntradaStatus;
-  attendeeName: string | null;
+  attendeeName: string | null; // nombre completo, para mostrar y buscar
+  attendeeFirstName: string | null;
+  attendeeLastName: string | null;
+  attendeeCedula: string | null; // "V-12345678", "E-…" o "P-…"
   attendeePhone: string | null;
   tableId: string | null;
   paymentMethod: MetodoPago | null;

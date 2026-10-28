@@ -8,10 +8,12 @@ export const GET = route(async () => {
   const storeReady = useLocalStore || Boolean(supabaseAdmin);
   let generadas = 0;
   let storeError: string | null = null;
+  let schemaAlDia = true;
   const pins = { puerta: false, cocina: false, taquilla: false };
   if (storeReady) {
     try {
       generadas = await store().countEntradas();
+      schemaAlDia = await store().schemaAlDia();
       for (const role of ['puerta', 'cocina', 'taquilla'] as const) pins[role] = Boolean(await store().getPin(role));
     } catch (err) {
       storeError = err instanceof Error ? err.message : 'No se pudo leer la base de datos.';
@@ -20,6 +22,7 @@ export const GET = route(async () => {
   return ok({
     storeReady,
     storeError,
+    schemaAlDia,
     localStore: useLocalStore,
     generadas,
     pins,

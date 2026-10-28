@@ -6,6 +6,8 @@ import { CheckCircle2, LogOut, Ticket } from 'lucide-react';
 import CameraScanner from '@/components/CameraScanner';
 import MesaPicker from '@/components/mesas/MesaPicker';
 import ProofUpload from '@/components/pago/ProofUpload';
+import PersonaFields, { PERSONA_VACIA, type Persona } from '@/components/PersonaFields';
+import { erroresPersona } from '@/lib/persona';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import { Button, Choice, Field, Notice, TextInput } from '@/components/ui';
 import { logout } from '@/components/staff/StaffGate';
@@ -210,8 +212,8 @@ export default function TaquillaClient() {
 
 function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => void; onDone: (e: StaffView) => void }) {
   const { entrada, priceUsd, rateBs } = found;
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
+  const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<MetodoPago | null>(null);
   const [reference, setReference] = useState('');
   const [proofUrl, setProofUrl] = useState<string | null>(null);
@@ -239,12 +241,18 @@ function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    const faltan = erroresPersona(persona, { cedula: true, phone: false });
+    setErrors(faltan);
+    if (Object.keys(faltan).length) {
+      document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/taquilla/vender', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: entrada.code, name, phone, method, reference, proofUrl, tableId, enterNow }),
+        body: JSON.stringify({ code: entrada.code, ...persona, method, reference, proofUrl, tableId, enterNow }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
@@ -270,14 +278,7 @@ function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => 
           te la entregaron para eso.
         </Notice>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nombre de quien compra" htmlFor="t-nombre">
-          <TextInput id="t-nombre" value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="Teléfono (opcional)" htmlFor="t-tel">
-          <TextInput id="t-tel" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </Field>
-      </div>
+      <PersonaFields id="t" value={persona} onChange={setPersona} errors={errors} phone="optional" />
       <Field label="¿Cómo paga?">
         <Choice
           name="Método de pago"
@@ -317,7 +318,7 @@ function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => 
       </label>
       {error && <Notice tone="error">{error}</Notice>}
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-paper px-4 py-3">
-        <Button type="submit" size="lg" loading={busy} disabled={!name.trim() || !method || !tableId} className="w-full">
+        <Button type="submit" size="lg" loading={busy} disabled={!method || !tableId} className="w-full">
           {tableId ? `Cobrar y sentar en la ${tableId}` : 'Cobrar y activar'}
         </Button>
       </div>

@@ -8,6 +8,7 @@ import { formatBs } from '@/components/pago/PaymentDetails';
 import { METODO_LABEL, type Entrada } from '@/lib/entradas/types';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
+import { formatCedula } from '@/lib/persona';
 
 const MOTIVOS = ['No aparece el pago en la cuenta.', 'El monto está incompleto.', 'La referencia no coincide.'];
 const POR: Record<string, string> = {
@@ -121,6 +122,7 @@ function PagoCard({ entrada, onDone }: { entrada: Entrada; onDone: () => void })
             <p className="text-lg font-bold">{entrada.attendeeName}</p>
           </div>
           <p className="text-ink-2">
+            {entrada.attendeeCedula ? `C.I. ${formatCedula(entrada.attendeeCedula)} · ` : ''}
             {entrada.attendeePhone || 'Sin teléfono'} · Mesa {entrada.tableId || 'sin escoger'}
             {entrada.checkedInAt ? ' · ya entró' : ''}
           </p>
