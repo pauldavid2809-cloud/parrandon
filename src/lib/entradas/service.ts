@@ -310,6 +310,55 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
   return ok;
 }
 
+// ---------- reinicio (administración) ----------
+
+// Deja la entrada como recién impresa. Conserva número, código (QR) y lote.
+const ESTADO_INICIAL: Partial<Entrada> = {
+  status: 'sin_vender',
+  attendeeName: null,
+  attendeePhone: null,
+  tableId: null,
+  paymentMethod: null,
+  paymentReference: null,
+  paymentProofUrl: null,
+  amount: null,
+  currency: null,
+  rateApplied: null,
+  reportedBy: null,
+  reportedAt: null,
+  verifiedAt: null,
+  verifiedBy: null,
+  rejectionReason: null,
+  doorActivated: false,
+  checkedInAt: null,
+  checkedInBy: null,
+  mealServedAt: null,
+};
+
+function horaCaracas(date: Date) {
+  const d = new Date(date.getTime() - 4 * 3600 * 1000);
+  const h = d.getUTCHours();
+  return `${d.getUTCDate()}/${d.getUTCMonth() + 1} ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+}
+
+export async function reiniciarEntrada(code: string, by = 'Administración') {
+  const entrada = await store().getEntrada(code);
+  if (!entrada) throw new EntradaError('Entrada no encontrada.', 404);
+  // Queda constancia de lo que había, por si hay que reconstruirlo.
+  const antes = [
+    entrada.attendeeName,
+    entrada.attendeePhone,
+    entrada.paymentMethod && `${entrada.paymentMethod}${entrada.paymentReference ? ` ref. ${entrada.paymentReference}` : ''}`,
+    entrada.tableId && `mesa ${entrada.tableId}`,
+    entrada.checkedInAt && 'había ingresado',
+    entrada.status !== 'sin_vender' && `estado ${entrada.status}`,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  const nota = `Reiniciada por ${by} el ${horaCaracas(new Date())}${antes ? ` (antes: ${antes})` : ''}.`;
+  return store().updateEntrada(code, { ...ESTADO_INICIAL, notes: nota.slice(0, 500) });
+}
+
 // ---------- puerta ----------
 
 export async function checkIn(code: string, by = 'Puerta') {

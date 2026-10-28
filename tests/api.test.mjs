@@ -16,12 +16,14 @@ function check(name, cond, detail = '') {
 }
 
 class Client {
-  constructor() {
+  constructor(ip) {
     this.cookie = '';
+    this.ip = ip;
   }
   async req(method, path, body, raw) {
     const headers = {};
     if (this.cookie) headers.cookie = this.cookie;
+    if (this.ip) headers['x-forwarded-for'] = this.ip;
     let payload;
     if (raw) payload = raw;
     else if (body !== undefined) {
@@ -138,14 +140,15 @@ function report(code, extra = {}) {
   forged.cookie = 'prn_session=' + Buffer.from(JSON.stringify({ roles: ['admin'], exp: Date.now() + 1e9 })).toString('base64url') + '.firmafalsa';
   r = await forged.get('/api/admin/resumen');
   check('Cookie falsificada (sin firma válida) → 401', r.status === 401, r.status);
-  const bruto = new Client();
+  // IP propia para que el bloqueo no alcance a quien use el servidor después
+  const bruto = new Client('203.0.113.7');
   let bloqueado = false;
   for (let i = 0; i < 10; i++) {
     const x = await bruto.req('POST', '/api/auth/login', { role: 'cocina', secret: String(100000 + i) });
     if (x.status === 429) bloqueado = true;
   }
   check('Tras varios PIN errados desde la misma IP → 429', bloqueado);
-  r = await new Client().post('/api/auth/login', { role: 'admin', secret: '#Seminario31' });
+  r = await new Client('203.0.113.7').post('/api/auth/login', { role: 'admin', secret: '#Seminario31' });
   check('…pero eso no bloquea a otra área (admin sigue entrando)', r.status === 200, r.status);
 
   // ---------------------------------------------------------------- generación
@@ -411,6 +414,30 @@ function report(code, extra = {}) {
   check('Deshacer ingreso', r.json?.entrada && !r.json.entrada.checkedInAt);
   r = await admin.patch(`/api/admin/entradas/${c(41)}`, { action: 'restaurar' });
   check('Restaurar entrada anulada', r.json?.entrada?.status === 'sin_vender');
+  // Reiniciar: #14 está en A1, ya entró y comió (ver cocina).
+  r = await anon.patch(`/api/admin/entradas/${c(14)}`, { action: 'reiniciar' });
+  check('Reiniciar sin sesión de admin → 401', r.status === 401);
+  r = await cocina.patch(`/api/admin/entradas/${c(14)}`, { action: 'reiniciar' });
+  check('Cocina no puede reiniciar entradas', r.status === 401);
+  const mesasAntes = (await anon.get('/api/mesas')).json.mesas.find((m) => m.id === 'A1').taken;
+  r = await admin.patch(`/api/admin/entradas/${c(14)}`, { action: 'reiniciar' });
+  const re = r.json?.entrada;
+  check(
+    'Reiniciar deja la entrada sin vender, sin datos, sin mesa, sin ingreso ni plato',
+    re && re.status === 'sin_vender' && !re.attendeeName && !re.attendeePhone && !re.tableId && !re.paymentReference && !re.paymentProofUrl && !re.checkedInAt && !re.mealServedAt && !re.doorActivated && !re.reportedBy,
+    JSON.stringify(re)
+  );
+  check('…conserva número, código y lote', re && re.number === 14 && re.code === c(14) && re.holderId === byNum(14).holderId);
+  check('…y anota lo que había', re && /Reiniciada por Administración/.test(re.notes) && /Ana Pérez/.test(re.notes) && /mesa A1/.test(re.notes), re?.notes);
+  const mesasDespues = (await anon.get('/api/mesas')).json.mesas.find((m) => m.id === 'A1').taken;
+  check('…y libera su puesto en la mesa', mesasDespues === mesasAntes - 1, `${mesasAntes} → ${mesasDespues}`);
+  r = await cocina.get('/api/cocina');
+  check('…y sale de la cocina', !r.json.llegadas.some((l) => l.number === 14));
+  r = await puerta.post('/api/puerta/escanear', { input: c(14) });
+  check('…en la puerta aparece como "sin activar"', r.json?.state === 'sin_activar', JSON.stringify(r.json));
+  r = await report(c(14), { tableId: 'A3' });
+  check('Después de reiniciar se puede reportar de nuevo', r.status === 200 && r.json.entrada.tableId === 'A3');
+
   r = await admin.patch(`/api/admin/entradas/${c(10)}`, { action: 'inventada' });
   check('Acción desconocida → 400', r.status === 400);
   r = await admin.get('/api/admin/resumen');

@@ -10,7 +10,7 @@ import { HOLDER_LABEL, METODO_LABEL, type Entrada, type MetodoPago } from '@/lib
 import { formatNumber, ticketUrl } from '@/lib/site';
 import { cleanPhoneForWhatsApp } from '@/lib/utils';
 
-type Panel = null | 'editar' | 'mesa' | 'pagada' | 'rechazar' | 'anular';
+type Panel = null | 'editar' | 'mesa' | 'pagada' | 'rechazar' | 'anular' | 'reiniciar';
 
 export default function EntradaDetalle({
   entrada,
@@ -40,6 +40,13 @@ export default function EntradaDetalle({
   };
 
   const ocupa = entrada.status === 'activa' || entrada.status === 'por_verificar';
+  const intacta =
+    entrada.status === 'sin_vender' &&
+    !entrada.attendeeName &&
+    !entrada.tableId &&
+    !entrada.checkedInAt &&
+    !entrada.paymentReference &&
+    !entrada.rejectionReason;
   const link = ticketUrl(entrada.code);
   const monto =
     entrada.amount == null ? null : entrada.currency === 'VES' ? formatBs(entrada.amount) : `$${entrada.amount.toFixed(2)}`;
@@ -146,6 +153,11 @@ export default function EntradaDetalle({
               </Button>
             )
           )}
+          {!intacta && (
+            <Button size="sm" variant="quiet" className="text-rojo" onClick={() => setPanel('reiniciar')}>
+              Reiniciar entrada
+            </Button>
+          )}
         </div>
 
         {panel === 'rechazar' && <Rechazar busy={busy === 'rechazar'} onSubmit={(reason) => act('rechazar', { reason })} onCancel={() => setPanel(null)} />}
@@ -160,7 +172,60 @@ export default function EntradaDetalle({
         )}
         {panel === 'editar' && <Editar entrada={entrada} busy={busy === 'editar'} onSubmit={(v) => act('editar', v)} onCancel={() => setPanel(null)} />}
         {panel === 'pagada' && <MarcarPagada busy={busy === 'marcar_pagada'} onSubmit={(v) => act('marcar_pagada', v)} onCancel={() => setPanel(null)} />}
+        {panel === 'reiniciar' && (
+          <Reiniciar entrada={entrada} busy={busy === 'reiniciar'} onSubmit={() => act('reiniciar')} onCancel={() => setPanel(null)} />
+        )}
         {panel === 'mesa' && <MoverMesa entrada={entrada} busy={busy === 'mesa'} error={error} onSubmit={(tableId, force) => act('mesa', { tableId, force })} onCancel={() => setPanel(null)} />}
+      </div>
+    </div>
+  );
+}
+
+function Reiniciar({
+  entrada,
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  entrada: Entrada;
+  busy: boolean;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  const numero = formatNumber(entrada.number);
+  const [typed, setTyped] = useState('');
+  const ok = typed.trim().replace(/^#/, '') === numero || Number(typed.trim().replace(/^#/, '')) === entrada.number;
+  return (
+    <div className="space-y-3 rounded-xl bg-rojo-soft p-4 text-ink">
+      <p className="font-bold">¿Reiniciar la entrada N.º {numero}?</p>
+      <p className="text-sm">
+        Queda como recién impresa: <strong>sin vender</strong>. Se borran el nombre, el teléfono, el pago y su capture, la
+        mesa (se libera el puesto), el ingreso y el plato. Se mantienen el número, el QR y el lote
+        {entrada.holderName ? ` (${entrada.holderName})` : ''}. Lo que había queda anotado en las notas.
+      </p>
+      {entrada.checkedInAt && (
+        <p className="text-sm font-bold text-rojo-2">Ojo: esta persona ya entró al evento.</p>
+      )}
+      {entrada.status === 'activa' && (
+        <p className="text-sm font-bold text-rojo-2">Ojo: el pago de esta entrada ya estaba verificado.</p>
+      )}
+      <Field label={`Escribe ${numero} para confirmar`} htmlFor="confirmar-reinicio">
+        <TextInput
+          id="confirmar-reinicio"
+          inputMode="numeric"
+          autoComplete="off"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          className="tabular w-32"
+        />
+      </Field>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" loading={busy} disabled={!ok} onClick={onSubmit}>
+          Reiniciar la entrada N.º {numero}
+        </Button>
+        <Button size="sm" variant="quiet" onClick={onCancel}>
+          Cancelar
+        </Button>
       </div>
     </div>
   );

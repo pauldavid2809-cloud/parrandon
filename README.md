@@ -7,6 +7,7 @@ Sistema de las 500 entradas físicas con QR del Parrandón del Seminario Mayor S
 1. **Entradas de papel.** Desde Administración se generan las 500 entradas (#001–#500). Cada una tiene un código secreto y un QR que abre `https://parrandon-seven.vercel.app/e/<código>`. Los 39 seminaristas reciben 6 cada uno (#001–#234, en el orden del directorio). El resto se asigna por rangos al Padre Jorge, a las parroquias o a la taquilla.
 2. **Venta.** El comprador escanea su QR, escribe sus datos, reporta el pago (Zelle o Pago Móvil con referencia y capture) y escoge su mesa. También puede registrarlo el vendedor desde `/vendedores`. La entrada queda **por verificar** con la mesa apartada.
 3. **Verificación.** En `/admin/verificaciones` se aprueba el pago (la entrada queda **activa**) o se rechaza (vuelve a sin vender y se libera la mesa; la persona ve el motivo al escanear).
+   Si algo se cargó mal, en `/admin/entradas` → detalle de la entrada → **Reiniciar entrada** la deja como recién impresa (sin datos, sin pago, sin mesa, sin ingreso). Conserva número, QR y lote; hay que escribir el número para confirmar y en las notas queda lo que tenía.
 4. **Mesas.** 50 mesas de 10 puestos. Ninguna pasa de 10 aunque muchos elijan a la vez. Se puede cambiar de mesa hasta el día anterior al evento. Administración puede mover gente, reservar mesas o ponerles nombre.
 5. **La noche del evento.**
    - `/puerta`: escanea; si está activa y con mesa, entra de una vez y muestra la mesa en grande. Si llega sin activar, el portero anota los datos, escogen la mesa y entra (queda marcada para revisión).
@@ -38,7 +39,7 @@ PARRANDON_LOCAL_DB=1 npm run dev
 
 Con `PARRANDON_LOCAL_DB=1` todo se guarda en `.data/` (sin Supabase). La contraseña de administración por defecto funciona en local.
 
-Pruebas de la API (113 casos: permisos, cupo de mesas con elecciones simultáneas, pagos, puerta, cocina, taquilla, lotes):
+Pruebas de la API (122 casos: permisos, cupo de mesas con elecciones simultáneas, pagos, puerta, cocina, taquilla, lotes, reinicio de entradas):
 
 ```bash
 rm -f .data/entradas_local.json && PARRANDON_LOCAL_DB=1 npm run dev -- -p 3100   # en una terminal

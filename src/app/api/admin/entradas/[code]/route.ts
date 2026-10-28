@@ -1,5 +1,5 @@
 import { route, ok, fail, readJson } from '@/lib/api';
-import { apartarMesa, aprobar, EntradaError, eventRules, rechazar } from '@/lib/entradas/service';
+import { apartarMesa, aprobar, EntradaError, eventRules, rechazar, reiniciarEntrada } from '@/lib/entradas/service';
 import { store, type Condicion } from '@/lib/entradas/store';
 import type { Entrada, MetodoPago } from '@/lib/entradas/types';
 
@@ -85,6 +85,9 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
       break;
     case 'revisada_puerta':
       patch = { doorActivated: false };
+      break;
+    case 'reiniciar':
+      await reiniciarEntrada(code, by);
       break;
     default:
       return fail('Acción desconocida.');
