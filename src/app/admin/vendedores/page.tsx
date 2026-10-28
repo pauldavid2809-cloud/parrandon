@@ -6,7 +6,7 @@ import { Trash2 } from 'lucide-react';
 import { Button, Field, Notice, Spinner, TextInput } from '@/components/ui';
 import { api, PageTitle } from '@/components/admin/api';
 import { HOLDER_LABEL, type Entrada, type HolderType, type Parroquia } from '@/lib/entradas/types';
-import { formatNumber } from '@/lib/site';
+import { formatNumber, formatRangos } from '@/lib/site';
 
 interface Lista {
   seminaristas: { id: string; name: string; stage: string }[];
@@ -142,6 +142,7 @@ function AsignarLote({
   const enRango = valid ? entradas.filter((e) => e.number >= a && e.number <= b) : [];
   const conPago = enRango.filter((e) => e.status !== 'sin_vender').length;
   const needsId = type === 'seminarista' || type === 'parroquia';
+  const deSeminaristas = entradas.filter((e) => e.holderType === 'seminarista').map((e) => e.number);
 
   const submit = async () => {
     setBusy(true);
@@ -165,7 +166,8 @@ function AsignarLote({
         Asignar un lote
       </h2>
       <p className="mt-1 max-w-[62ch] text-ink-2">
-        Escribe el rango de números de las entradas que entregas y a quién. Los seminaristas ya tienen #001–#234.
+        Escribe el rango de números de las entradas que entregas y a quién.
+        {deSeminaristas.length > 0 && ` Los seminaristas tienen ${formatRangos(deSeminaristas)}.`}
       </p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Desde N.º" htmlFor="lote-desde">

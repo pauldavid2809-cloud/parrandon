@@ -51,13 +51,12 @@ export const SEMINARISTAS_DIRECTORY: Seminarista[] = [
   { id: 'f2-8', name: 'Osmán José Vargas Quintero', stage: '2° de Filosofía', diocese: 'Maracaibo', phone: '0412-7330508', docId: 'V-31.055.024' },
   { id: 'f2-9', name: 'Julio César Yajure Sánchez', stage: '2° de Filosofía', diocese: 'Maracaibo', phone: '0412-6713820', docId: 'V-30.573.428' },
 
-  // 1° DE FILOSOFÍA (8)
+  // 1° DE FILOSOFÍA (7)
   { id: 'f1-1', name: 'Ángel David Báez Caridad', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0422-6755714', docId: 'V-33.124.924' },
   { id: 'f1-2', name: 'José Enrique Bermúdez Suárez', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0412-4250224', docId: 'V-32.577.396' },
   { id: 'f1-3', name: 'Edwin Javier Bermúdez Urdaneta', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0412-6989201', docId: 'V-32.551.085' },
   { id: 'f1-4', name: 'Lisandro Alberto Castellano Finol', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0424-6065923', docId: 'V-30.274.453' },
   { id: 'f1-5', name: 'Roberth David García Marín', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0424-6576662', docId: 'V-32.967.515' },
-  { id: 'f1-6', name: 'Miguel Rafael Márquez Barreto', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0422-7173463', docId: 'V-32.098.189' },
   { id: 'f1-7', name: 'Isaac David Pérez Ramos', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0424-6633777', docId: 'V-31.818.380' },
   { id: 'f1-8', name: 'Samuel de Jesús Pérez Ramos', stage: '1° de Filosofía', diocese: 'Maracaibo', phone: '0412-5131419', docId: 'V-33.036.016' }
 ];

@@ -168,7 +168,8 @@ function report(code, extra = {}) {
   check('Códigos únicos con formato P001-XXXXXXXX', new Set(E.map((e) => e.code)).size === 500 && E.every((e) => /^P\d{3}-[2-9A-HJ-NP-Z]{8}$/.test(e.code)));
   const sems = {};
   E.filter((e) => e.holderType === 'seminarista').forEach((e) => (sems[e.holderId] = (sems[e.holderId] || 0) + 1));
-  check('39 seminaristas con 6 entradas cada uno (#001–#234)', Object.keys(sems).length === 39 && Object.values(sems).every((v) => v === 6) && byNum(234).holderType === 'seminarista' && byNum(235).holderType === 'sin_asignar');
+  check('38 seminaristas con 6 entradas cada uno (#001–#228)', Object.keys(sems).length === 38 && Object.values(sems).every((v) => v === 6) && byNum(228).holderType === 'seminarista' && byNum(229).holderType === 'sin_asignar');
+  check('Un seminarista que salió del directorio (f1-6) no recibe entradas', !E.some((e) => e.holderId === 'f1-6'));
   check('#001–#006 son del primer seminarista del directorio', [1, 2, 3, 4, 5, 6].every((n) => byNum(n).holderId === 't4-1') && byNum(7).holderId === 't4-2');
 
   // ---------------------------------------------------------------- vista pública

@@ -1,6 +1,6 @@
 'use client';
 
-import { formatNumber } from '@/lib/site';
+import { formatNumber, formatRangos } from '@/lib/site';
 import { HOLDER_LABEL, type Entrada } from '@/lib/entradas/types';
 import { buildEntradasPdf, entradasCsv, type PrintEvent } from './entradasPdf';
 
@@ -34,15 +34,7 @@ function rangoCorto(entradas: Entrada[]) {
 
 // "#281-#290, #300, #305-#310" (para el LEEME).
 function rangos(entradas: Entrada[]) {
-  const n = numeros(entradas);
-  const partes: string[] = [];
-  for (let i = 0; i < n.length; ) {
-    let j = i;
-    while (j + 1 < n.length && n[j + 1] === n[j] + 1) j++;
-    partes.push(i === j ? `#${formatNumber(n[i])}` : `#${formatNumber(n[i])}-#${formatNumber(n[j])}`);
-    i = j + 1;
-  }
-  return partes.join(', ');
+  return formatRangos(numeros(entradas));
 }
 
 function lotes(entradas: Entrada[]): Lote[] {

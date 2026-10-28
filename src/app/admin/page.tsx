@@ -57,7 +57,7 @@ export default function AdminResumen() {
   useAutoLoad(load, 20000);
 
   const generar = async () => {
-    if (!confirm('¿Generar las 500 entradas? Esto se hace una sola vez y reparte #001–#234 entre los 39 seminaristas (6 cada uno).')) return;
+    if (!confirm('¿Generar las 500 entradas? Esto se hace una sola vez y reparte 6 a cada seminarista del directorio, en orden (#001–#006 al primero, #007–#012 al segundo…).')) return;
     setGenerating(true);
     try {
       await api('/api/admin/entradas/generar', { method: 'POST' });
@@ -246,8 +246,8 @@ function Puesta({ estado, onGenerar, generating }: { estado: Estado; onGenerar: 
         <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-soft)]">
           <p className="font-display text-2xl">Genera las 500 entradas</p>
           <p className="mt-1 max-w-[60ch] text-ink-2">
-            Se crean los 500 códigos secretos (uno por entrada) y se asignan #001–#234 a los 39 seminaristas, 6 a cada
-            uno, en el orden del directorio. Después podrás descargar el PDF para la imprenta.
+            Se crean los 500 códigos secretos (uno por entrada) y se asignan 6 a cada seminarista, en el orden del
+            directorio (#001–#006 al primero, #007–#012 al segundo…). Después podrás descargar el PDF para la imprenta.
           </p>
           <Button className="mt-4" onClick={onGenerar} loading={generating}>
             Generar entradas

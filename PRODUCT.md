@@ -9,7 +9,7 @@ web
 ## Users
 
 - **Asistentes y compradores** (familias de las parroquias de Maracaibo y el Zulia, muchas personas mayores): tienen en la mano una entrada física con QR. La escanean con la cámara del teléfono para activarla, reportar el pago y escoger su mesa.
-- **Vendedores**: 39 seminaristas del Seminario Mayor Santo Tomás de Aquino (6 entradas cada uno), el Padre Jorge y las parroquias a las que administración asigna lotes.
+- **Vendedores**: los seminaristas del Seminario Mayor Santo Tomás de Aquino (6 entradas cada uno), el Padre Jorge y las parroquias a las que administración asigna lotes.
 - **Personal de la noche**: puerta (escanea y deja pasar), cocina (despacha platos por mesa), taquilla (vende entradas del lote de taquilla). Trabajan de noche, al aire libre, con teléfonos o tabletas.
 - **Administración**: verifica pagos, asigna lotes, mueve gente de mesa y configura el evento.
 
@@ -44,7 +44,7 @@ Entrada de papel con QR que se activa al escanearla: el papel es la credencial, 
 ## Evidence on Hand
 
 - Fotos propias en `public/images/` (ambiente de gala, gaitas en vivo, bazar navideño, plato navideño, comunidad del seminario).
-- Directorio oficial de 39 seminaristas en `src/lib/seminaristas.ts`.
+- Directorio oficial de seminaristas en `src/lib/seminaristas.ts`.
 - No hay testimonios ni cifras de ediciones anteriores: no inventarlos.
 
 ## Product Principles
