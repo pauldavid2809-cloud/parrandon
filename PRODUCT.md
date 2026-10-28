@@ -25,7 +25,7 @@ Entrada de papel con QR que se activa al escanearla: el papel es la credencial, 
 
 - Evento: viernes 11 de diciembre de 2026, 6:00 p. m. – 1:00 a. m., Bulevar del Seminario Mayor Santo Tomás de Aquino, Maracaibo.
 - 50 mesas de 10 puestos en 5 sectores (A–E) a lo largo del bulevar: tarima de gaitas al inicio (frente al Sector A), baranda negra a la izquierda, muro gris a la derecha, bazar cerca del Sector D, giro a la derecha al final (Sector E).
-- Pagos: Zelle y Pago Móvil (taquilla también acepta efectivo en dólares). Precio único $20, incluye plato navideño. Bolívares a la tasa oficial del día.
+- Pagos: Zelle y Pago Móvil (taquilla también acepta efectivo en dólares). Precio único $20, incluye plato navideño. Bolívares a la tasa Binance del día (USDT/VES en Binance P2P).
 - Estados de una entrada: sin vender → por verificar (pago reportado, mesa apartada) → activa (pago verificado). Puede anularse.
 - El comprador puede cambiar de mesa hasta el día anterior al evento.
 

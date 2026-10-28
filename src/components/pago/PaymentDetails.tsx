@@ -60,7 +60,7 @@ export default function PaymentDetails({ method, pago }: { method: 'pago_movil' 
         <Row label="RIF / Cédula" value={pago.pagoMovil.docId} copy={pago.pagoMovil.docId} />
         <Row label="Titular" value={pago.pagoMovil.holder} />
         <p className="py-2 text-sm text-ink-3">
-          ${pago.priceUsd} a la tasa oficial del día ({formatBs(pago.rateBs)} por dólar).
+          ${pago.priceUsd} a la tasa Binance del día ({formatBs(pago.rateBs)} por dólar).
         </p>
       </dl>
     );

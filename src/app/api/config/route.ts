@@ -1,12 +1,12 @@
 import { hasRole, unauthorized } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { getEventConfig, updateEventConfig } from '@/lib/db';
-import { fetchLiveEuroRate } from '@/lib/rates';
+import { fetchLiveRate } from '@/lib/rates';
 
 export async function GET() {
   try {
     const config = await getEventConfig();
-    const liveRate = await fetchLiveEuroRate();
+    const liveRate = await fetchLiveRate();
     if (liveRate && liveRate > 0) {
       config.currentRateBs = liveRate;
     }
