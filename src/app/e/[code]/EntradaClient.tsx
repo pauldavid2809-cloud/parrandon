@@ -3,7 +3,7 @@
 import { useAutoLoad } from '@/lib/useAutoLoad';
 import { useCallback, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Check, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { Button, Choice, Field, Notice, Spinner, StatusPill, TextInput } from '@/components/ui';
 import MesaPicker from '@/components/mesas/MesaPicker';
 import PaymentDetails, { formatBs, montoBs, type PagoInfo } from '@/components/pago/PaymentDetails';
@@ -12,6 +12,7 @@ import PersonaFields, { PERSONA_VACIA, type Persona } from '@/components/Persona
 import { erroresPersona } from '@/lib/persona';
 import type { TicketView } from '@/lib/entradas/service';
 import { formatNumber } from '@/lib/site';
+import { cn } from '@/lib/utils';
 
 export interface Data {
   entrada: TicketView;
@@ -49,7 +50,8 @@ export default function EntradaClient({
   const [data, setData] = useState<Data | null>(initial?.data ?? null);
   const [notFound, setNotFound] = useState(initial?.notFound ?? false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [mesaWarning, setMesaWarning] = useState<string | null>(null);
+  // Mesa recién apartada en el paso 2, para confirmar que terminó.
+  const [recienApartada, setRecienApartada] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -104,6 +106,9 @@ export default function EntradaClient({
   }
 
   const { entrada } = data;
+  const reportada = entrada.status === 'por_verificar' || entrada.status === 'activa';
+  // Paso 2: con el pago ya reportado, falta la mesa.
+  const faltaMesa = reportada && !entrada.tableId && !entrada.checkedInAt;
   return (
     <Shell>
       <header className="flex flex-col items-start gap-3">
@@ -131,20 +136,18 @@ export default function EntradaClient({
             Si crees que es un error, escríbenos por WhatsApp al 0412-0308674 con el número de tu entrada.
           </Notice>
         )}
-        {entrada.status === 'sin_vender' && (
-          <ReportarPago
+        {entrada.status === 'sin_vender' && <ReportarPago data={data} code={code} onDone={setData} reload={load} />}
+        {faltaMesa && (
+          <EscogerMesa
             data={data}
             code={code}
-            onDone={(d, warning) => {
+            onDone={(d) => {
               setData(d);
-              setMesaWarning(warning);
+              setRecienApartada(d.entrada.tableId);
             }}
-            reload={load}
           />
         )}
-        {(entrada.status === 'por_verificar' || entrada.status === 'activa') && (
-          <EntradaReportada data={data} code={code} onChange={load} initialWarning={mesaWarning} />
-        )}
+        {reportada && !faltaMesa && <EntradaReportada data={data} code={code} onChange={load} recienApartada={recienApartada} />}
       </div>
     </Shell>
   );
@@ -158,7 +161,49 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ---------- 1. reportar pago + escoger mesa ----------
+// Dos pasos: 1) datos y pago, 2) mesa. La mesa se escoge con el pago ya reportado,
+// así el pago queda registrado aunque la persona cierre la página antes de escogerla.
+function Pasos({ actual }: { actual: 1 | 2 }) {
+  const pasos = ['Tus datos y tu pago', 'Tu mesa'];
+  return (
+    <ol aria-label="Pasos para activar tu entrada" className="grid grid-cols-2 gap-2">
+      {pasos.map((label, i) => {
+        const n = i + 1;
+        const hecho = n < actual;
+        const ahora = n === actual;
+        return (
+          <li
+            key={label}
+            aria-current={ahora ? 'step' : undefined}
+            className={cn(
+              'flex items-center gap-3 rounded-xl p-3',
+              ahora ? 'bg-card shadow-[var(--shadow-soft)]' : 'bg-paper-2/60'
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-lg',
+                hecho ? 'bg-verde text-paper' : ahora ? 'bg-rojo text-paper' : 'border-2 border-line text-ink-3'
+              )}
+            >
+              {hecho ? <Check className="h-5 w-5" strokeWidth={3} /> : n}
+            </span>
+            <span className="min-w-0 leading-tight">
+              <span className="block text-sm text-ink-3">
+                Paso {n}
+                {hecho ? ' · listo' : ''}
+              </span>
+              <span className={cn('font-bold', ahora ? 'text-ink' : 'text-ink-2')}>{label}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// ---------- paso 1: datos y pago ----------
 
 function ReportarPago({
   data,
@@ -168,7 +213,7 @@ function ReportarPago({
 }: {
   data: Data;
   code: string;
-  onDone: (d: Data, mesaWarning: string | null) => void;
+  onDone: (d: Data) => void;
   reload: () => void;
 }) {
   const { entrada, pago } = data;
@@ -176,7 +221,6 @@ function ReportarPago({
   const [method, setMethod] = useState<'pago_movil' | 'zelle' | null>(null);
   const [reference, setReference] = useState('');
   const [proofUrl, setProofUrl] = useState<string | null>(null);
-  const [tableId, setTableId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -186,7 +230,6 @@ function ReportarPago({
     if (!method) e.method = 'Elige cómo pagaste.';
     if (reference.trim().length < 4) e.reference = 'Escribe el número de referencia (al menos 4 dígitos).';
     if (!proofUrl) e.proof = 'Sube el capture del pago.';
-    if (!tableId) e.table = 'Escoge tu mesa en el croquis.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -203,14 +246,14 @@ function ReportarPago({
       const res = await fetch(`/api/entradas/${encodeURIComponent(code)}/reportar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...persona, method, reference, proofUrl, tableId }),
+        body: JSON.stringify({ ...persona, method, reference, proofUrl }),
       });
       const json = await res.json();
       if (!json.success) {
         if (json.reason === 'ya_reportada') reload();
         throw new Error(json.error);
       }
-      onDone({ ...data, entrada: json.entrada }, json.mesaError || null);
+      onDone({ ...data, entrada: json.entrada });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'No se pudo enviar. Intenta de nuevo.');
@@ -221,21 +264,24 @@ function ReportarPago({
 
   return (
     <form onSubmit={submit} noValidate className="space-y-10">
-      {entrada.rejectionReason && (
-        <Notice tone="error" title="Tu pago anterior no se pudo verificar">
-          {entrada.rejectionReason} Revisa los datos y repórtalo de nuevo.
-        </Notice>
-      )}
-      <p className="text-lg text-ink-2">
-        Para activar tu entrada: escribe tus datos, reporta tu pago de <strong className="text-ink">${pago.priceUsd}</strong>{' '}
-        ({formatBs(montoBs(pago))} por Pago Móvil) y escoge tu mesa.
-      </p>
+      <div className="space-y-4">
+        <Pasos actual={1} />
+        {entrada.rejectionReason && (
+          <Notice tone="error" title="Tu pago anterior no se pudo verificar">
+            {entrada.rejectionReason} Revisa los datos y repórtalo de nuevo.
+          </Notice>
+        )}
+        <p className="text-lg text-ink-2">
+          Escribe tus datos y reporta tu pago de <strong className="text-ink">${pago.priceUsd}</strong> (
+          {formatBs(montoBs(pago))} por Pago Móvil). Al enviarlo pasas a escoger tu mesa.
+        </p>
+      </div>
 
-      <Step n={1} title="¿Quién va a usar esta entrada?">
+      <Seccion id="datos" title="¿Quién va a usar esta entrada?">
         <PersonaFields value={persona} onChange={setPersona} errors={errors} phoneHint="Por si hay que contactarte por el pago." />
-      </Step>
+      </Seccion>
 
-      <Step n={2} title="Tu pago">
+      <Seccion id="pago" title="Tu pago">
         <div data-error={Boolean(errors.method)}>
           <Choice
             name="Método de pago"
@@ -272,36 +318,22 @@ function ReportarPago({
             </div>
           </div>
         )}
-      </Step>
-
-      <Step n={3} title="Escoge tu mesa">
-        <p className="mb-4 text-ink-2">
-          Si vienen en grupo, cada entrada escoge la misma mesa. Queda apartada mientras verificamos tu pago y puedes
-          cambiarla hasta el día antes del evento.
-        </p>
-        <div data-error={Boolean(errors.table)}>
-          <MesaPicker value={tableId} onChange={setTableId} hideConfirm />
-          {errors.table && <p className="mt-1.5 text-sm font-bold text-rojo">{errors.table}</p>}
-        </div>
-      </Step>
+      </Seccion>
 
       <div className="sticky bottom-3 z-20 space-y-2">
         {serverError && <Notice tone="error">{serverError}</Notice>}
         <Button type="submit" size="lg" loading={sending} className="w-full shadow-[var(--shadow-ticket)]">
-          {tableId ? `Enviar pago y apartar la mesa ${tableId}` : 'Enviar pago y apartar mi mesa'}
+          Enviar y escoger mi mesa
         </Button>
       </div>
     </form>
   );
 }
 
-function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function Seccion({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <section aria-labelledby={`paso-${n}`}>
-      <h2 id={`paso-${n}`} className="mb-4 flex items-center gap-3 font-display text-2xl">
-        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rojo text-lg text-paper">
-          {n}
-        </span>
+    <section aria-labelledby={id}>
+      <h2 id={id} className="mb-4 font-display text-2xl">
         {title}
       </h2>
       {children}
@@ -309,24 +341,86 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-// ---------- 2. pago reportado o entrada activa ----------
+// ---------- paso 2: mesa ----------
+
+function EscogerMesa({ data, code, onDone }: { data: Data; code: string; onDone: (d: Data) => void }) {
+  const { entrada, rules } = data;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirmar = async (tableId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/entradas/${encodeURIComponent(code)}/mesa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tableId }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      onDone({ ...data, entrada: json.entrada });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo apartar la mesa.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Quien vuelve a escanear sin haber escogido mesa cae aquí directamente.
+  const aviso =
+    entrada.status === 'activa'
+      ? { title: 'Tu entrada está activa', body: 'Tu pago ya fue verificado. Solo falta escoger tu mesa.' }
+      : entrada.reportedBy === 'comprador'
+        ? {
+            title: 'Recibimos tus datos y tu pago',
+            body: 'La organización lo verifica en estos días. Mientras tanto, escoge tu mesa: queda apartada a tu nombre.',
+          }
+        : {
+            title: 'Tu pago ya está reportado',
+            body: `${entrada.reportedBy === 'vendedor' ? 'Tu vendedor lo registró' : 'Quedó registrado'}${
+              entrada.attendeeName ? ` a nombre de ${entrada.attendeeName}` : ''
+            }. Solo falta escoger tu mesa.`,
+          };
+
+  return (
+    <div className="space-y-8">
+      <Pasos actual={2} />
+      <Notice tone="ok" title={aviso.title}>
+        {aviso.body}
+      </Notice>
+      <section aria-labelledby="escoger-mesa">
+        <h2 id="escoger-mesa" className="font-display text-3xl">
+          Escoge tu mesa
+        </h2>
+        <p className="mb-4 mt-1 text-ink-2">
+          Si vienen en grupo, cada entrada escoge la misma mesa.
+          {rules.canChangeTable ? ' La puedes cambiar hasta el día antes del evento.' : ''}
+        </p>
+        <MesaPicker onConfirm={confirmar} confirmLabel={(id) => `Apartar la mesa ${id}`} busy={busy} error={error} />
+      </section>
+    </div>
+  );
+}
+
+// ---------- listo: pago reportado o entrada activa, con mesa ----------
 
 function EntradaReportada({
   data,
   code,
   onChange,
-  initialWarning,
+  recienApartada,
 }: {
   data: Data;
   code: string;
   onChange: () => void;
-  initialWarning: string | null;
+  recienApartada: string | null;
 }) {
   const { entrada, rules } = data;
-  const [changing, setChanging] = useState(!entrada.tableId);
+  const [changing, setChanging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mesaWarning, setMesaWarning] = useState<string | null>(initialWarning);
 
   const confirmTable = async (tableId: string) => {
     setBusy(true);
@@ -340,7 +434,6 @@ function EntradaReportada({
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       setChanging(false);
-      setMesaWarning(null);
       onChange();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -355,6 +448,11 @@ function EntradaReportada({
 
   return (
     <div className="space-y-8">
+      {recienApartada && recienApartada === entrada.tableId && !entrada.checkedInAt && (
+        <Notice tone="ok" title={`¡Listo! La mesa ${recienApartada} quedó apartada`}>
+          Ya completaste los dos pasos. Guarda tu entrada de papel: esa noche la escanean en la puerta.
+        </Notice>
+      )}
       {entrada.checkedInAt ? (
         <div className="rounded-2xl bg-verde p-6 text-paper">
           <CheckCircle2 className="h-9 w-9 text-oro" aria-hidden />
@@ -416,8 +514,6 @@ function EntradaReportada({
           )}
         </div>
       </div>
-
-      {mesaWarning && <Notice tone="warn" title="Tu pago quedó reportado, pero falta la mesa">{mesaWarning}</Notice>}
 
       {entrada.tableId && !rules.canChangeTable && !entrada.checkedInAt && (
         <p className="text-ink-2">Los cambios de mesa ya cerraron. Si necesitas ayuda, avísale al personal de la puerta.</p>

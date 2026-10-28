@@ -18,7 +18,7 @@ export default async function ActivarPage({ searchParams }: { searchParams: Prom
           <ol className="mt-8 space-y-4 text-lg">
             <li className="flex gap-3">
               <span className="font-display text-2xl text-rojo">1.</span>
-              <span>Reporta tu pago por Zelle o Pago Móvil y sube el capture.</span>
+              <span>Escribe tu nombre, apellido y cédula, y reporta tu pago por Zelle o Pago Móvil con el capture.</span>
             </li>
             <li className="flex gap-3">
               <span className="font-display text-2xl text-rojo">2.</span>

@@ -14,7 +14,7 @@ const PASOS = [
   {
     titulo: 'Escanéala y reporta tu pago',
     texto:
-      'Abre la cámara del teléfono y apunta al QR. Paga por Zelle o Pago Móvil, escribe la referencia y sube el capture. La organización lo verifica.',
+      'Abre la cámara del teléfono y apunta al QR. Escribe tu nombre, apellido y cédula, y reporta tu pago por Zelle o Pago Móvil con la referencia y el capture. La organización lo verifica.',
   },
   {
     titulo: 'Escoge tu mesa',
