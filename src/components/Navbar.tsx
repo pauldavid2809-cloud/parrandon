@@ -40,7 +40,7 @@ export default function Navbar() {
             <span className="block whitespace-nowrap font-display text-lg">
               Parrandón<span className="hidden min-[400px]:inline"> 2026</span>
             </span>
-            <span className={cn('hidden text-xs font-bold sm:block', onRed ? 'text-paper/80' : 'text-ink-3')}>
+            <span className={cn('hidden text-xs font-bold sm:block', onRed ? 'text-paper/90' : 'text-ink-3')}>
               Seminario Santo Tomás de Aquino
             </span>
           </span>

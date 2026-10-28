@@ -23,16 +23,18 @@ export default function TicketStub({
   className?: string;
   perforationBg?: string;
 }) {
+  // El talón se acomoda al lado o debajo según el ancho de la propia entrada, no de la pantalla.
   return (
+    <div className={cn('@container', className)}>
     <div
-      className={cn('flex flex-col overflow-hidden rounded-2xl bg-card text-ink shadow-[var(--shadow-ticket)] sm:flex-row', className)}
+      className="flex flex-col overflow-hidden rounded-2xl bg-card text-ink shadow-[var(--shadow-ticket)] @[30rem]:flex-row"
       style={{ ['--perforation-bg' as string]: perforationBg }}
     >
-      <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 @[30rem]:p-6">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="font-display text-[1.65rem] leading-none text-rojo sm:text-3xl">Parrandón Navideño</p>
-            <p className="mt-1 text-sm font-bold text-ink-2">Seminario Mayor Santo Tomás de Aquino · 2026</p>
+          <div className="min-w-0">
+            <p className="font-display text-[1.65rem] leading-none text-rojo @[30rem]:text-3xl">Parrandón Navideño</p>
+            <p className="mt-1 text-sm font-bold text-ink-2">Seminario Mayor Santo Tomás de Aquino&nbsp;·&nbsp;2026</p>
           </div>
           <p className="shrink-0 rounded-md bg-verde px-2 py-1 text-xs font-bold text-paper">Incluye plato</p>
         </div>
@@ -59,12 +61,13 @@ export default function TicketStub({
           {footer}
         </div>
       </div>
-      <div className="perforation mx-0 sm:hidden" aria-hidden />
-      <div className="perforation-v hidden sm:block" aria-hidden />
-      <div className="flex items-center gap-4 bg-paper-2/60 p-5 sm:w-48 sm:flex-col sm:justify-center sm:gap-3 sm:p-5">
-        <QrImage value={qrValue} label={qrLabel} className="w-28 shrink-0 sm:w-full" />
-        <p className="text-sm font-bold leading-snug text-ink-2 sm:text-center">{stubCaption}</p>
+      <div className="perforation mx-0 @[30rem]:hidden" aria-hidden />
+      <div className="perforation-v hidden @[30rem]:block" aria-hidden />
+      <div className="flex items-center gap-4 bg-paper-2/60 p-5 @[30rem]:w-48 @[30rem]:flex-col @[30rem]:justify-center @[30rem]:gap-3">
+        <QrImage value={qrValue} label={qrLabel} className="w-28 shrink-0 @[30rem]:w-full" />
+        <p className="text-sm font-bold leading-snug text-ink-2 @[30rem]:text-center">{stubCaption}</p>
       </div>
+    </div>
     </div>
   );
 }

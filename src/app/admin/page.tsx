@@ -83,14 +83,14 @@ export default function AdminResumen() {
             <h2 id="ventas" className="sr-only">
               Ventas
             </h2>
-            <dl className="tabular grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line shadow-[var(--shadow-soft)] sm:grid-cols-3 lg:grid-cols-6">
+            <ul className="tabular grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line shadow-[var(--shadow-soft)] sm:grid-cols-3 lg:grid-cols-6">
               <Stat label="Vendidas" value={`${resumen.vendidas}`} detail={`de ${resumen.generadas}`} />
               <Stat label="Por verificar" value={`${resumen.porVerificar}`} href="/admin/verificaciones" tone={resumen.porVerificar ? 'oro' : undefined} />
               <Stat label="Activas" value={`${resumen.activas}`} tone="verde" />
               <Stat label="Mesas llenas" value={`${resumen.mesas.mesasLlenas}`} detail={`${resumen.mesas.puestosLibres} puestos libres`} href="/admin/mesas" />
               <Stat label="Adentro" value={`${resumen.ingresaron}`} detail="escaneados en puerta" />
               <Stat label="Platos servidos" value={`${resumen.platosServidos}`} />
-            </dl>
+            </ul>
             {(resumen.sinMesa > 0 || resumen.activadasEnPuerta > 0) && (
               <div className="mt-4 flex flex-wrap gap-3">
                 {resumen.sinMesa > 0 && (
@@ -133,7 +133,12 @@ export default function AdminResumen() {
             <h2 id="responsables" className="font-display text-2xl">
               Por responsable
             </h2>
-            <div className="mt-4 overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]">
+            <div
+              role="region"
+              aria-label="Tabla por responsable"
+              tabIndex={0}
+              className="mt-4 overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]"
+            >
               <table className="tabular w-full min-w-[34rem] text-left">
                 <thead className="border-b border-line text-sm text-ink-3">
                   <tr>
@@ -179,19 +184,31 @@ function Stat({
 }) {
   const body = (
     <>
-      <dt className="text-sm font-bold text-ink-3">{label}</dt>
-      <dd className={tone === 'oro' ? 'font-display text-4xl text-oro-ink' : tone === 'verde' ? 'font-display text-4xl text-verde-2' : 'font-display text-4xl'}>
+      <span className="block text-sm font-bold text-ink-3">{label}</span>
+      <span
+        className={
+          tone === 'oro'
+            ? 'block font-display text-4xl text-oro-ink'
+            : tone === 'verde'
+              ? 'block font-display text-4xl text-verde-2'
+              : 'block font-display text-4xl'
+        }
+      >
         {value}
-      </dd>
-      {detail && <dd className="text-sm text-ink-3">{detail}</dd>}
+      </span>
+      {detail && <span className="block text-sm text-ink-3">{detail}</span>}
     </>
   );
-  return href ? (
-    <Link href={href} className="block bg-card p-4 transition-colors hover:bg-paper-2">
-      {body}
-    </Link>
-  ) : (
-    <div className="bg-card p-4">{body}</div>
+  return (
+    <li className="bg-card">
+      {href ? (
+        <Link href={href} className="block h-full p-4 transition-colors hover:bg-paper-2">
+          {body}
+        </Link>
+      ) : (
+        <div className="p-4">{body}</div>
+      )}
+    </li>
   );
 }
 
@@ -201,11 +218,11 @@ function Puesta({ estado, onGenerar, generating }: { estado: Estado; onGenerar: 
     return (
       <Notice tone="error" title="Falta conectar la base de datos de entradas" className="mb-8">
         <ol className="mt-2 list-decimal space-y-1 pl-5">
-          <li>En Supabase abre SQL Editor, pega el archivo <code>supabase/entradas.sql</code> y dale Run.</li>
           <li>
             En Vercel → Settings → Environment Variables agrega <code>SUPABASE_SERVICE_ROLE_KEY</code> (Supabase →
             Project Settings → API → service_role) y vuelve a desplegar.
           </li>
+          <li>En Supabase abre SQL Editor, pega el archivo <code>supabase/entradas.sql</code> y dale Run.</li>
         </ol>
       </Notice>
     );

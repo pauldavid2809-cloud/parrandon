@@ -2,6 +2,7 @@ import 'server-only';
 import { randomBytes } from 'crypto';
 import { getEventConfig } from '@/lib/db';
 import { fetchLiveEuroRate } from '@/lib/rates';
+import { isSafeProofUrl } from '@/lib/proof';
 import { SEMINARISTAS_DIRECTORY } from '@/lib/seminaristas';
 import { store } from './store';
 import {
@@ -235,6 +236,7 @@ export function validarReporte(input: Partial<ReporteInput>, opts: { requireProo
   if (opts.requireProof && method !== 'efectivo_usd' && !proofUrl) {
     throw new EntradaError('Sube el capture del pago para poder verificarlo.');
   }
+  if (proofUrl && !isSafeProofUrl(proofUrl)) throw new EntradaError('El capture no es válido. Súbelo de nuevo.');
   return { name, phone, method, reference, proofUrl, tableId: input.tableId ? clean(input.tableId, 4) : null };
 }
 
@@ -249,7 +251,7 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
   const { config } = await eventRules();
   const money = amountFor(data.method, config.ticketPriceUsd, config.currentRateBs);
 
-  await store().updateEntrada(code, {
+  const reportado = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'por_verificar',
     attendeeName: data.name,
     attendeePhone: data.phone,
@@ -261,6 +263,7 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
     reportedAt: new Date().toISOString(),
     rejectionReason: null,
   });
+  if (!reportado) throw new EntradaError('El pago de esta entrada ya fue reportado.', 409, 'ya_reportada');
 
   // La mesa se aparta en el mismo momento; si se llenó, el pago queda reportado y se elige otra.
   let mesaError: string | null = null;
@@ -280,7 +283,13 @@ export async function aprobar(code: string, by = 'Administración') {
   const entrada = await store().getEntrada(code);
   if (!entrada) throw new EntradaError('Entrada no encontrada.', 404);
   if (entrada.status !== 'por_verificar') throw new EntradaError('Esta entrada no está esperando verificación.');
-  return store().updateEntrada(code, { status: 'activa', verifiedAt: new Date().toISOString(), verifiedBy: by });
+  const ok = await store().updateEntradaIf(code, { status: 'por_verificar' }, {
+    status: 'activa',
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: by,
+  });
+  if (!ok) throw new EntradaError('Esta entrada cambió mientras tanto. Recarga la lista.', 409);
+  return ok;
 }
 
 export async function rechazar(code: string, reason: string, by = 'Administración') {
@@ -289,7 +298,7 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
   if (entrada.status !== 'por_verificar') throw new EntradaError('Esta entrada no está esperando verificación.');
   if (entrada.checkedInAt) throw new EntradaError('Esta persona ya entró al evento. Resuélvelo directamente con ella.');
   // Vuelve a "sin vender" y libera el puesto; la persona puede reportar de nuevo.
-  return store().updateEntrada(code, {
+  const ok = await store().updateEntradaIf(code, { status: 'por_verificar', notCheckedIn: true }, {
     status: 'sin_vender',
     tableId: null,
     rejectionReason: clean(reason, 300) || 'No se encontró el pago.',
@@ -297,6 +306,8 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
     verifiedBy: by,
     doorActivated: false,
   });
+  if (!ok) throw new EntradaError('Esta entrada cambió mientras tanto. Recarga la lista.', 409);
+  return ok;
 }
 
 // ---------- puerta ----------
@@ -307,7 +318,10 @@ export async function checkIn(code: string, by = 'Puerta') {
   if (!OCUPA_PUESTO.includes(entrada.status)) throw new EntradaError('Esta entrada no está activa.');
   if (entrada.checkedInAt) throw new EntradaError('Esta entrada ya ingresó.', 409, 'ya_ingreso');
   if (!entrada.tableId) throw new EntradaError('Primero elige la mesa de esta persona.', 400, 'sin_mesa');
-  return store().updateEntrada(code, { checkedInAt: new Date().toISOString(), checkedInBy: by });
+  const ok = await store().updateEntradaIf(code, { notCheckedIn: true }, { checkedInAt: new Date().toISOString(), checkedInBy: by });
+  // Si dos puertas escanean la misma entrada a la vez, solo una la deja pasar.
+  if (!ok) throw new EntradaError('Esta entrada ya ingresó.', 409, 'ya_ingreso');
+  return ok;
 }
 
 export interface ActivacionPuertaInput {
@@ -333,7 +347,7 @@ export async function activarEnPuerta(code: string, input: Partial<ActivacionPue
   const { config } = await eventRules();
   const soldBy = clean(input.soldBy, 120);
   if (entrada.status === 'sin_vender') {
-    await store().updateEntrada(code, {
+    await store().updateEntradaIf(code, { status: 'sin_vender' }, {
       status: 'por_verificar',
       attendeeName: name,
       attendeePhone: clean(input.phone, 30) || null,
@@ -370,16 +384,18 @@ export async function ventaTaquilla(
   const reference = clean(input.reference, 60);
   if (method !== 'efectivo_usd' && reference.length < 4) throw new EntradaError('Escribe la referencia del pago.');
   if (!input.tableId) throw new EntradaError('Elige la mesa.');
+  const proofUrl = clean(input.proofUrl, 4_000_000);
+  if (proofUrl && !isSafeProofUrl(proofUrl)) throw new EntradaError('El capture no es válido. Súbelo de nuevo.');
 
   const { config } = await eventRules();
   const now = new Date().toISOString();
-  await store().updateEntrada(code, {
+  const vendida = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'activa',
     attendeeName: name,
     attendeePhone: clean(input.phone, 30) || null,
     paymentMethod: method,
     paymentReference: reference || null,
-    paymentProofUrl: clean(input.proofUrl, 4_000_000) || null,
+    paymentProofUrl: proofUrl || null,
     ...amountFor(method, config.ticketPriceUsd, config.currentRateBs),
     reportedBy: 'taquilla',
     reportedAt: now,
@@ -387,6 +403,7 @@ export async function ventaTaquilla(
     verifiedBy: by,
     rejectionReason: null,
   });
+  if (!vendida) throw new EntradaError('Esta entrada se acaba de vender en otra caja. Usa otra.', 409);
   try {
     await apartarMesa(code, input.tableId);
   } catch (err) {

@@ -13,10 +13,12 @@ import type { SessionRole, StaffRole } from '@/lib/entradas/types';
 const STAFF: StaffRole[] = ['puerta', 'cocina', 'taquilla'];
 
 export const POST = route(async (req) => {
-  const ip = clientIp(req);
+  const { role, secret } = await readJson(req);
+  // El freno cuenta por IP y por área: en el evento todos comparten el mismo WiFi,
+  // y un PIN mal escrito en la puerta no debe bloquear a administración.
+  const ip = `${clientIp(req)}:${String(role)}`;
   if (tooManyAttempts(ip)) return fail('Demasiados intentos. Espera unos minutos.', 429);
 
-  const { role, secret } = await readJson(req);
   const value = String(secret ?? '').trim();
   let valid = false;
 

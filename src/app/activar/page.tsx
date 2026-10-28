@@ -8,7 +8,7 @@ export default async function ActivarPage({ searchParams }: { searchParams: Prom
   const { camara } = await searchParams;
   return (
     <div className="paper-grain flex-1">
-      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-10 px-4 py-10 sm:px-6 md:grid-cols-[1fr_24rem] md:py-16">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-10 px-4 py-10 sm:px-6 md:py-16 lg:grid-cols-[1fr_24rem]">
         <div>
           <h1 className="font-display text-4xl leading-tight sm:text-5xl">Activa tu entrada</h1>
           <p className="mt-3 max-w-[52ch] text-lg text-ink-2">
@@ -35,7 +35,7 @@ export default async function ActivarPage({ searchParams }: { searchParams: Prom
             <ActivarForm tone="paper" showCameraLink={false} className="mt-4" />
           </div>
         </div>
-        <div>
+        <div className="w-full max-w-sm">
           <p className="mb-3 font-bold">O escanéalo aquí mismo</p>
           <ActivarScanner autoStart={camara === '1'} />
         </div>

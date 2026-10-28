@@ -13,17 +13,17 @@ Sistema de las 500 entradas físicas con QR del Parrandón del Seminario Mayor S
    - `/cocina`: en vivo quién va llegando y cuántos platos faltan por mesa; «Despachar» sirve a los que ya llegaron (con opción de deshacer).
    - `/taquilla`: vende entradas del lote de taquilla (Pago Móvil, Zelle o efectivo en dólares), asigna mesa y registra la entrada.
 
-Puerta, cocina y taquilla piden un PIN (se define en `/admin/configuracion`). Administración pide la contraseña.
+Puerta, cocina y taquilla piden un PIN de 6 a 8 números (se define en `/admin/configuracion`). Administración pide la contraseña.
 
 ## Puesta en marcha (una sola vez)
 
-1. **Supabase → SQL Editor:** pega y corre [`supabase/entradas.sql`](supabase/entradas.sql). Crea las tablas `entradas`, `mesas`, `parroquias` y `staff_access`, sin acceso público.
-2. **Vercel → Settings → Environment Variables:**
+1. **Vercel → Settings → Environment Variables:**
    - `SUPABASE_SERVICE_ROLE_KEY` (obligatoria): Supabase → Project Settings → API → `service_role`. Sin ella el servidor no puede leer las entradas.
    - `ADMIN_PASSWORD` (recomendada): la contraseña de administración. Si no se define, sigue siendo la anterior, que es pública en este repositorio.
    - `SESSION_SECRET` (opcional): una frase larga al azar para firmar las sesiones.
    - `NEXT_PUBLIC_SITE_URL` (opcional): dominio que va dentro del QR. Por defecto `https://parrandon-seven.vercel.app`. **No cambiarlo después de imprimir.**
-3. Vuelve a desplegar en Vercel.
+2. Vuelve a desplegar en Vercel.
+3. **Supabase → SQL Editor:** pega y corre [`supabase/entradas.sql`](supabase/entradas.sql). Crea las tablas `entradas`, `mesas`, `parroquias` y `staff_access` sin acceso público, y cierra las tablas anteriores (`event_config`, `orders`) a la clave pública: hasta ahora cualquiera con esa clave, que está en el código, podía cambiar los datos de Zelle y Pago Móvil que ven los compradores. Por eso la clave de servicio del paso 1 tiene que estar puesta antes.
 4. Entra a `/admin`, pulsa **Generar entradas**, define los PIN en Configuración y revisa los datos de Zelle y Pago Móvil.
 5. En `/admin/entradas` descarga el **PDF para imprenta** (4 entradas por hoja A4, QR vectorial) o el **CSV con códigos** si la imprenta hace la impresión de datos variables.
 
@@ -37,6 +37,13 @@ PARRANDON_LOCAL_DB=1 npm run dev
 ```
 
 Con `PARRANDON_LOCAL_DB=1` todo se guarda en `.data/` (sin Supabase). La contraseña de administración por defecto funciona en local.
+
+Pruebas de la API (113 casos: permisos, cupo de mesas con elecciones simultáneas, pagos, puerta, cocina, taquilla, lotes):
+
+```bash
+rm -f .data/entradas_local.json && PARRANDON_LOCAL_DB=1 npm run dev -- -p 3100   # en una terminal
+npm run test:api                                                                  # en otra
+```
 
 ## Diseño
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAutoLoad } from '@/lib/useAutoLoad';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Notice, Spinner, TextInput } from '@/components/ui';
 import { api, fechaCorta, PageTitle, patchEntrada } from '@/components/admin/api';
 import { formatBs } from '@/components/pago/PaymentDetails';
@@ -210,17 +210,34 @@ function PagoCard({ entrada, onDone }: { entrada: Entrada; onDone: () => void })
         )}
       </div>
       {zoom && proof && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Capture del pago"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-noche/85 p-4"
-          onClick={() => setZoom(false)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={proof} alt={`Capture del pago de la entrada ${entrada.number}`} className="max-h-full max-w-full rounded-xl" />
-        </div>
+        <CaptureDialog src={proof} alt={`Capture del pago de la entrada ${entrada.number}`} onClose={() => setZoom(false)} />
       )}
     </li>
+  );
+}
+
+// Diálogo nativo: atrapa el foco, se cierra con Escape y devuelve el foco al botón.
+function CaptureDialog({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    // Al desmontarse, el diálogo sale del DOM y se cierra solo; no hace falta cerrarlo aquí.
+    if (ref.current && !ref.current.open) ref.current.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      aria-label="Capture del pago"
+      onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="m-auto max-h-[92vh] max-w-[92vw] rounded-2xl bg-card p-3 backdrop:bg-noche/85"
+    >
+      <div className="mb-2 flex justify-end">
+        <Button size="sm" variant="quiet" onClick={onClose} autoFocus>
+          Cerrar
+        </Button>
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className="max-h-[80vh] max-w-full rounded-xl" />
+    </dialog>
   );
 }

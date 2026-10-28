@@ -1,4 +1,5 @@
 import { hasRole, unauthorized } from '@/lib/auth';
+import { isSafeProofUrl } from '@/lib/proof';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllOrders, createOrder, searchOrdersOrTickets } from '@/lib/db';
 import { sendWhatsAppNotificationForOrder } from '@/lib/whatsapp';
@@ -71,6 +72,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Las entradas se activan escaneando el QR de la entrada de papel.' },
         { status: 400 }
       );
+    }
+
+    if (paymentProofUrl && !isSafeProofUrl(String(paymentProofUrl))) {
+      return NextResponse.json({ success: false, error: 'El capture no es válido. Súbelo de nuevo.' }, { status: 400 });
     }
 
     if (!buyerName || !buyerPhone || (!quantity && !isDonation) || !paymentMethod) {

@@ -146,3 +146,20 @@ $$;
 
 REVOKE ALL ON FUNCTION public.claim_table(TEXT, TEXT, BOOLEAN) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_table(TEXT, TEXT, BOOLEAN) TO service_role;
+
+-- 8. Cerrar las tablas anteriores a la clave pública.
+--    La clave "anon" está en el código (que es público): con ella cualquiera podía
+--    cambiar los datos de Zelle/Pago Móvil que ven los compradores, o crear y aprobar
+--    órdenes. Desde ahora solo el servidor (clave de servicio) escribe en ellas.
+--    La configuración se sigue pudiendo leer (no tiene datos privados).
+DROP POLICY IF EXISTS "Allow service/anon write access on event_config" ON public.event_config;
+DROP POLICY IF EXISTS "Allow public read access on orders" ON public.orders;
+DROP POLICY IF EXISTS "Allow public insert and update on orders" ON public.orders;
+
+DO $$
+BEGIN
+    -- Los capture se suben desde el servidor; nadie más necesita subir archivos.
+    DROP POLICY IF EXISTS "Allow public uploads to comprobantes bucket" ON storage.objects;
+EXCEPTION WHEN others THEN
+    RAISE NOTICE 'No se pudo cambiar la política de storage: %', SQLERRM;
+END $$;

@@ -61,7 +61,7 @@ function PinsForm() {
         PIN de cada área
       </h2>
       <p className="mt-1 max-w-[62ch] text-ink-2">
-        El personal de puerta, cocina y taquilla entra con su PIN (de 4 a 8 números). Cámbialo si alguien que no debe lo
+        El personal de puerta, cocina y taquilla entra con su PIN (de 6 a 8 números). Cámbialo si alguien que no debe lo
         conoce.
       </p>
       {!pins ? (
@@ -84,7 +84,7 @@ function PinsForm() {
                   className="tabular"
                 />
               </Field>
-              <Button size="sm" className="mt-2" onClick={() => save(role)} loading={busy === role} disabled={(draft[role] || '').length < 4}>
+              <Button size="sm" className="mt-2" onClick={() => save(role)} loading={busy === role} disabled={(draft[role] || '').length < 6}>
                 Guardar PIN
               </Button>
             </div>

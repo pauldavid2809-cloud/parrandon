@@ -1,6 +1,6 @@
 import { route, ok, fail, readJson } from '@/lib/api';
 import { apartarMesa, aprobar, EntradaError, eventRules, rechazar } from '@/lib/entradas/service';
-import { store } from '@/lib/entradas/store';
+import { store, type Condicion } from '@/lib/entradas/store';
 import type { Entrada, MetodoPago } from '@/lib/entradas/types';
 
 type Ctx = { params: Promise<{ code: string }> };
@@ -21,6 +21,7 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
   const by = 'Administración';
   const now = new Date().toISOString();
   let patch: Partial<Entrada> | null = null;
+  let onlyIf: Condicion | null = null;
 
   switch (body.action) {
     case 'aprobar':
@@ -60,6 +61,7 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
         verifiedBy: by,
         rejectionReason: null,
       };
+      onlyIf = { status: 'sin_vender' };
       break;
     }
     case 'editar':
@@ -88,6 +90,12 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
       return fail('Acción desconocida.');
   }
 
-  if (patch) await store().updateEntrada(code, patch);
+  if (patch && onlyIf) {
+    if (!(await store().updateEntradaIf(code, onlyIf, patch))) {
+      throw new EntradaError('Esta entrada cambió mientras tanto. Recarga y vuelve a intentar.', 409);
+    }
+  } else if (patch) {
+    await store().updateEntrada(code, patch);
+  }
   return ok({ entrada: await store().getEntrada(code) });
 }, ['admin']);

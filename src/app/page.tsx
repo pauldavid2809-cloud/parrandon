@@ -32,10 +32,10 @@ export default function Home() {
   return (
     <>
       {/* Campo rojo: el evento y la entrada de papel */}
-      <section className="relative z-10 bg-rojo text-paper">
+      <section className="relative z-10 overflow-x-clip bg-rojo text-paper">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 pb-12 pt-8 sm:px-6 md:grid-cols-[1.1fr_1fr] md:gap-12 md:pb-16 md:pt-14">
           <div className="flex flex-col">
-            <h1 className="font-display text-[3.4rem] leading-[0.95] tracking-[-0.02em] sm:text-7xl lg:text-[5.6rem]">
+            <h1 className="font-display text-[min(3.4rem,14vw)] leading-[0.95] tracking-[-0.02em] sm:text-[min(4.5rem,11vw)] lg:text-[min(5.6rem,7vw)]">
               Parrandón Navideño
             </h1>
             <p className="mt-5 text-lg font-bold sm:text-xl">

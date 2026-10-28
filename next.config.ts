@@ -1,6 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Cabeceras de seguridad: nadie puede meter el admin dentro de otra página (clickjacking),
+  // el enlace secreto de una entrada no viaja como "referer" a otros sitios y la cámara
+  // solo la usa esta web.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "same-origin" },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
   // Rutas del sistema anterior (venta online con sillas) que ahora viven en otro lugar.
   async redirects() {
     return [

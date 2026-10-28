@@ -74,7 +74,8 @@ export default function ProofUpload({
         type="file"
         accept="image/*"
         className="sr-only"
-        aria-label="Capture del pago"
+        tabIndex={-1}
+        aria-hidden
         onChange={(e) => pick(e.target.files?.[0])}
       />
       {shown ? (

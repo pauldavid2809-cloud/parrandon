@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { EntradaStatus } from '@/lib/entradas/types';
@@ -192,9 +192,20 @@ export function Choice<T extends string>({
   name: string;
   className?: string;
 }) {
+  // Grupo de radio accesible: una sola parada de tabulación y flechas para moverse.
+  const focusIndex = Math.max(0, options.findIndex((o) => o.value === value));
+  const onKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = (i + step + options.length) % options.length;
+    onChange(options[next].value);
+    const buttons = e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role=radio]');
+    buttons?.[next]?.focus();
+  };
   return (
     <div role="radiogroup" aria-label={name} className={cn('grid gap-2', className)}>
-      {options.map((o) => {
+      {options.map((o, i) => {
         const active = value === o.value;
         return (
           <button
@@ -202,6 +213,8 @@ export function Choice<T extends string>({
             type="button"
             role="radio"
             aria-checked={active}
+            tabIndex={i === focusIndex ? 0 : -1}
+            onKeyDown={(e) => onKey(e, i)}
             onClick={() => onChange(o.value)}
             className={cn(
               'flex min-h-12 flex-col items-start justify-center rounded-xl border-2 px-4 py-2.5 text-left transition-colors',

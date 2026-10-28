@@ -14,7 +14,7 @@ export const POST = route(async (req) => {
   const { role, pin } = await readJson(req);
   if (!ROLES.includes(role as StaffRole)) return fail('Área desconocida.');
   const value = String(pin ?? '').trim();
-  if (!/^\d{4,8}$/.test(value)) return fail('El PIN debe tener entre 4 y 8 números.');
+  if (!/^\d{6,8}$/.test(value)) return fail('El PIN debe tener entre 6 y 8 números.');
   await store().setPin(role as StaffRole, value);
   return ok();
 }, ['admin']);

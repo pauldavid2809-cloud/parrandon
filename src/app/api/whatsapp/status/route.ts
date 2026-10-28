@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { hasRole, unauthorized } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -6,6 +7,7 @@ export const revalidate = 0;
 const BOT_URL = process.env.WHATSAPP_BOT_URL || 'https://parrandon-production.up.railway.app';
 
 export async function GET() {
+  if (!(await hasRole('admin'))) return unauthorized();
   try {
     const res = await fetch(`${BOT_URL}/status`, {
       method: 'GET',

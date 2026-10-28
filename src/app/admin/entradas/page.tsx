@@ -147,8 +147,13 @@ export default function EntradasAdmin() {
           </p>
 
           <div className="mt-3 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_26rem]">
-            <div className="overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]">
-              <table className="tabular w-full min-w-[44rem] text-left">
+            <div
+              role="region"
+              aria-label="Lista de entradas"
+              tabIndex={0}
+              className="overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]"
+            >
+              <table className="tabular w-full min-w-[40rem] text-left">
                 <thead className="border-b border-line text-sm text-ink-3">
                   <tr>
                     <th className="px-4 py-3 font-bold">N.º</th>

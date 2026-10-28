@@ -114,7 +114,7 @@ export default function StaffGate({
         <Button type="submit" size="lg" loading={busy} disabled={!secret} className="mt-4 w-full">
           Entrar
         </Button>
-        <Link href="/equipo" className="mt-4 block text-center text-sm font-bold text-ink-2 underline underline-offset-4">
+        <Link href="/equipo" className="mt-3 block py-2.5 text-center text-sm font-bold text-ink-2 underline underline-offset-4">
           Otras áreas del equipo
         </Link>
       </form>

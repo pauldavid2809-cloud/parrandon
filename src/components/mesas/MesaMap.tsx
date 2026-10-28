@@ -363,7 +363,7 @@ function Table({
     >
       <circle className="mesa-focus" cx={x} cy={y} r={R + 6} fill="none" stroke="var(--color-oro)" strokeWidth="3" />
       {isSelected && <circle cx={x} cy={y} r={R + 6} fill="none" stroke="var(--color-rojo)" strokeWidth="2" />}
-      <circle cx={x} cy={y + 2} r={R} fill="rgb(42 26 18 / 0.12)" />
+      <circle cx={x} cy={y + 2} r={R} fill="color-mix(in srgb, var(--color-ink) 12%, transparent)" />
       <circle cx={x} cy={y} r={R} fill={fill} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray={dash} />
       <text
         x={x}

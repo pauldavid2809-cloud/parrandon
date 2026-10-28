@@ -11,21 +11,24 @@ import ProofUpload from '@/components/pago/ProofUpload';
 import type { TicketView } from '@/lib/entradas/service';
 import { formatNumber } from '@/lib/site';
 
-interface Data {
+export interface Data {
   entrada: TicketView;
   rules: { canChangeTable: boolean; isEventDay: boolean; eventDateIso: string };
   pago: PagoInfo;
 }
 
+const noop = () => {};
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+// Fecha en hora de Venezuela (UTC−4, sin horario de verano). Se arma a mano para que el
+// servidor y el teléfono escriban exactamente el mismo texto.
 function fecha(iso: string | null) {
   if (!iso) return '';
-  return new Intl.DateTimeFormat('es-VE', {
-    day: 'numeric',
-    month: 'long',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'America/Caracas',
-  }).format(new Date(iso));
+  const d = new Date(Date.parse(iso) - 4 * 3600 * 1000);
+  const h = d.getUTCHours();
+  const hora = `${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+  return `${d.getUTCDate()} de ${MESES[d.getUTCMonth()]}, ${hora}`;
 }
 
 // Cierra la oración sin duplicar el punto de "a. m." / "p. m.".
@@ -33,9 +36,16 @@ function punto(text: string) {
   return text.endsWith('.') ? text : `${text}.`;
 }
 
-export default function EntradaClient({ code }: { code: string }) {
-  const [data, setData] = useState<Data | null>(null);
-  const [notFound, setNotFound] = useState(false);
+// `initial` llega desde el servidor: la página aparece completa, sin pantalla de carga.
+export default function EntradaClient({
+  code,
+  initial,
+}: {
+  code: string;
+  initial?: { data: Data | null; notFound: boolean };
+}) {
+  const [data, setData] = useState<Data | null>(initial?.data ?? null);
+  const [notFound, setNotFound] = useState(initial?.notFound ?? false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mesaWarning, setMesaWarning] = useState<string | null>(null);
 
@@ -55,7 +65,7 @@ export default function EntradaClient({ code }: { code: string }) {
     }
   }, [code]);
 
-  useAutoLoad(load);
+  useAutoLoad(initial ? noop : load);
 
   if (notFound) {
     return (
@@ -94,7 +104,7 @@ export default function EntradaClient({ code }: { code: string }) {
   const { entrada } = data;
   return (
     <Shell>
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="flex flex-col items-start gap-3">
         <div>
           <p className="font-bold text-ink-3">Parrandón Navideño 2026</p>
           <h1 className="tabular font-display text-4xl leading-none sm:text-5xl">Entrada N.º {formatNumber(entrada.number)}</h1>

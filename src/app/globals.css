@@ -210,14 +210,25 @@ p {
   animation: row-arrive 2.4s ease-out both;
 }
 
+/* Movimiento reducido: sin desplazamientos, escalas ni parpadeos. Los cambios de estado
+   siguen viéndose (aparecen de una vez) y el resaltado de llegadas en cocina, que es solo
+   color, se mantiene. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
+  html {
+    scroll-behavior: auto;
+  }
+  .ticket-arrive,
+  .flash-in,
+  .bulb {
+    animation: none;
+  }
+  .mesa[role="button"],
+  button,
+  a {
     transition-duration: 1ms !important;
-    scroll-behavior: auto !important;
+  }
+  .mesa[role="button"]:hover {
+    transform: none;
   }
 }
 

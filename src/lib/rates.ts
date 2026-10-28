@@ -12,7 +12,7 @@ async function fromSources(): Promise<number | null> {
     const res = await fetch('https://ve.dolarapi.com/v1/euros/oficial', {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(2500),
     });
     if (res.ok) {
       const data = await res.json();
@@ -25,7 +25,7 @@ async function fromSources(): Promise<number | null> {
     const res = await fetch('https://open.er-api.com/v6/latest/EUR', {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(2500),
     });
     if (res.ok) {
       const data = await res.json();

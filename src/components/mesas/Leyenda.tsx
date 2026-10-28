@@ -2,9 +2,10 @@ import { cn } from '@/lib/utils';
 import type { MesasResumen } from '@/lib/entradas/types';
 
 export function MesasResumenLine({ resumen, className }: { resumen: MesasResumen | null; className?: string }) {
-  if (!resumen) return <p className={cn('text-ink-2', className)}>Cargando mesas…</p>;
+  // Reserva dos renglones desde el principio para que el croquis no salte al cargar.
+  if (!resumen) return <p className={cn('min-h-[3.1em] text-ink-2', className)}>Cargando mesas…</p>;
   return (
-    <p className={cn('tabular text-ink-2', className)}>
+    <p className={cn('tabular min-h-[3.1em] text-ink-2', className)}>
       <strong className="text-verde-2">{resumen.mesasConCupo} mesas con puestos</strong>
       <span aria-hidden> · </span>
       <strong className="text-ink">

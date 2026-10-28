@@ -23,6 +23,11 @@ export interface EntradaLite {
   status: Entrada['status'];
 }
 
+export interface Condicion {
+  status?: Entrada['status'];
+  notCheckedIn?: boolean;
+}
+
 interface Store {
   listEntradas(): Promise<Entrada[]>;
   listEntradasLite(): Promise<EntradaLite[]>;
@@ -30,6 +35,8 @@ interface Store {
   getEntrada(code: string): Promise<Entrada | null>;
   getEntradaByNumber(n: number): Promise<Entrada | null>;
   updateEntrada(code: string, patch: Partial<Entrada>): Promise<Entrada | null>;
+  // Actualiza solo si la entrada sigue en el estado esperado (evita dobles ventas o dobles ingresos).
+  updateEntradaIf(code: string, cond: Condicion, patch: Partial<Entrada>): Promise<Entrada | null>;
   updateEntradas(codes: string[], patch: Partial<Entrada>): Promise<number>;
   updateRange(from: number, to: number, patch: Partial<Entrada>): Promise<number>;
   insertEntradas(rows: Entrada[]): Promise<void>;
@@ -165,6 +172,17 @@ function supabaseStore(): Store {
       fail('Guardando entrada', error);
       return data ? fromRow(data) : null;
     },
+    async updateEntradaIf(code, cond, patch) {
+      let q = db
+        .from('entradas')
+        .update({ ...toRow(patch), updated_at: new Date().toISOString() })
+        .eq('code', code);
+      if (cond.status) q = q.eq('status', cond.status);
+      if (cond.notCheckedIn) q = q.is('checked_in_at', null);
+      const { data, error } = await q.select('*').maybeSingle();
+      fail('Guardando entrada', error);
+      return data ? fromRow(data) : null;
+    },
     async updateEntradas(codes, patch) {
       if (codes.length === 0) return 0;
       const { data, error } = await db
@@ -186,10 +204,9 @@ function supabaseStore(): Store {
       return data?.length || 0;
     },
     async insertEntradas(rows) {
-      for (let i = 0; i < rows.length; i += 250) {
-        const { error } = await db.from('entradas').insert(rows.slice(i, i + 250).map(toRow));
-        fail('Creando entradas', error);
-      }
+      // Una sola inserción: o se crean todas o ninguna.
+      const { error } = await db.from('entradas').insert(rows.map(toRow));
+      fail('Creando entradas', error);
     },
     async claimTable(code, tableId, force) {
       const { data, error } = await db.rpc('claim_table', { p_code: code, p_table: tableId, p_force: force });
@@ -299,6 +316,14 @@ function localStore(): Store {
       return readLocal().entradas.find((e) => e.number === n) || null;
     },
     async updateEntrada(code, patch) {
+      patchAll((e) => e.code === code, patch);
+      return readLocal().entradas.find((e) => e.code === code) || null;
+    },
+    async updateEntradaIf(code, cond, patch) {
+      const current = readLocal().entradas.find((e) => e.code === code);
+      if (!current) return null;
+      if (cond.status && current.status !== cond.status) return null;
+      if (cond.notCheckedIn && current.checkedInAt) return null;
       patchAll((e) => e.code === code, patch);
       return readLocal().entradas.find((e) => e.code === code) || null;
     },

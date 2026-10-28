@@ -82,7 +82,12 @@ export default function VendedoresAdmin() {
         <h2 id="quien-tiene" className="font-display text-2xl">
           Quién tiene cada entrada
         </h2>
-        <div className="mt-4 overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]">
+        <div
+          role="region"
+          aria-label="Tabla de lotes"
+          tabIndex={0}
+          className="mt-4 overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]"
+        >
           <table className="tabular w-full min-w-[40rem] text-left">
             <thead className="border-b border-line text-sm text-ink-3">
               <tr>
