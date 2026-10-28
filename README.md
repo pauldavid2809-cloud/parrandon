@@ -26,7 +26,7 @@ Puerta, cocina y taquilla piden un PIN de 6 a 8 números (se define en `/admin/c
 2. Vuelve a desplegar en Vercel.
 3. **Supabase → SQL Editor:** pega y corre [`supabase/entradas.sql`](supabase/entradas.sql). Es lo único que hay que correr (`schema.sql` ya no hace falta). Crea las tablas `entradas`, `mesas`, `parroquias` y `staff_access` sin acceso público, crea `event_config` (configuración y datos de pago) y `orders` (donaciones) si no existen, y cierra estas dos a la clave pública: antes cualquiera con esa clave, que está en el código, podía cambiar los datos de Zelle y Pago Móvil que ven los compradores. Por eso la clave de servicio del paso 1 tiene que estar puesta antes.
 4. Entra a `/admin`, pulsa **Generar entradas**, define los PIN en Configuración y revisa los datos de Zelle y Pago Móvil.
-5. En `/admin/entradas` descarga el **PDF para imprenta** (4 entradas por hoja A4, QR vectorial) o el **CSV con códigos** si la imprenta hace la impresión de datos variables.
+5. En `/admin/entradas`, **Carpeta con todas las entradas** descarga un ZIP con el PDF completo para la imprenta, un PDF por lote (cada seminarista, cada parroquia, Padre Jorge, taquilla, sin asignar), el CSV con los códigos y un LEEME con los rangos. También puedes descargar solo el **PDF para imprenta** (4 entradas por hoja A4, QR vectorial) o el **CSV con códigos** si la imprenta hace la impresión de datos variables.
 
 **Al actualizar a una versión nueva:** corre otra vez `supabase/entradas.sql` en Supabase **antes** de publicarla. Es seguro repetirlo: solo agrega lo que falta (por ejemplo, las columnas de nombre, apellido y cédula) y no borra datos. Si se publica antes, `/admin` lo avisa y los pagos no se pueden registrar hasta correrlo.
 

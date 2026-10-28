@@ -43,6 +43,20 @@ async function fontBase64(path: string) {
   return btoa(binary);
 }
 
+// Se descargan una sola vez aunque se armen muchos PDF seguidos (carpeta por lotes).
+let fuentesCache: Promise<string[]> | null = null;
+function fuentes() {
+  fuentesCache ??= Promise.all([
+    fontBase64('/fonts/YoungSerif-Regular.ttf'),
+    fontBase64('/fonts/RedHatText-Regular.ttf'),
+    fontBase64('/fonts/RedHatText-Bold.ttf'),
+  ]).catch((err) => {
+    fuentesCache = null;
+    throw err;
+  });
+  return fuentesCache;
+}
+
 function shortDate(date: string) {
   // "Sábado, 12 de Diciembre de 2026" -> "Sábado 12 de diciembre"
   return date
@@ -58,13 +72,10 @@ function shortTime(time: string) {
 
 export async function buildEntradasPdf(tickets: PrintTicket[], event: PrintEvent, onProgress?: (n: number) => void) {
   const { jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  // compress: los QR son miles de rectángulos; comprimidos el PDF pesa una fracción.
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
 
-  const [serif, sans, sansBold] = await Promise.all([
-    fontBase64('/fonts/YoungSerif-Regular.ttf'),
-    fontBase64('/fonts/RedHatText-Regular.ttf'),
-    fontBase64('/fonts/RedHatText-Bold.ttf'),
-  ]);
+  const [serif, sans, sansBold] = await fuentes();
   doc.addFileToVFS('YoungSerif.ttf', serif);
   doc.addFont('YoungSerif.ttf', 'YoungSerif', 'normal');
   doc.addFileToVFS('RedHat.ttf', sans);

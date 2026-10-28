@@ -2,10 +2,11 @@
 
 import { useAutoLoad } from '@/lib/useAutoLoad';
 import { useCallback, useMemo, useState } from 'react';
-import { Download, Printer, Search } from 'lucide-react';
+import { Download, FolderDown, Printer, Search } from 'lucide-react';
 import { Button, Field, Notice, Spinner, StatusPill, TextInput } from '@/components/ui';
 import { api, PageTitle } from '@/components/admin/api';
 import { asistentesCsv, buildEntradasPdf, download, entradasCsv } from '@/lib/print/entradasPdf';
+import { buildCarpetaZip } from '@/lib/print/carpeta';
 import { formatCedula } from '@/lib/persona';
 import { HOLDER_LABEL, type Entrada, type EntradaStatus, type HolderType } from '@/lib/entradas/types';
 import type { EventConfig } from '@/types';
@@ -32,6 +33,27 @@ export default function EntradasAdmin() {
   const [selected, setSelected] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [printOpen, setPrintOpen] = useState(false);
+  const [carpeta, setCarpeta] = useState<number | null>(null); // % armado
+  const [carpetaError, setCarpetaError] = useState<string | null>(null);
+
+  const descargarCarpeta = async () => {
+    if (!entradas) return;
+    setCarpetaError(null);
+    setCarpeta(0);
+    try {
+      const { config } = await api<{ config: EventConfig }>('/api/config');
+      const zip = await buildCarpetaZip(
+        entradas,
+        { date: config.date, time: config.time, priceUsd: config.ticketPriceUsd },
+        (hechas, total) => setCarpeta(Math.floor((hechas / total) * 100))
+      );
+      download('entradas-parrandon-2026.zip', zip);
+    } catch (err) {
+      setCarpetaError(err instanceof Error ? err.message : 'No se pudo armar la carpeta.');
+    } finally {
+      setCarpeta(null);
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -69,6 +91,10 @@ export default function EntradasAdmin() {
       <PageTitle title="Entradas">
         {entradas && entradas.length > 0 && (
           <>
+            <Button size="sm" onClick={descargarCarpeta} loading={carpeta !== null} aria-live="polite">
+              {carpeta === null && <FolderDown className="h-4 w-4" aria-hidden />}
+              {carpeta === null ? 'Carpeta con todas las entradas' : `Armando la carpeta… ${carpeta}%`}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setPrintOpen((v) => !v)}>
               <Printer className="h-4 w-4" aria-hidden /> PDF para imprenta
             </Button>
@@ -94,6 +120,11 @@ export default function EntradasAdmin() {
         )}
       </PageTitle>
 
+      {carpetaError && (
+        <Notice tone="error" className="mb-6">
+          {carpetaError}
+        </Notice>
+      )}
       {printOpen && entradas && <Imprimir entradas={entradas} onClose={() => setPrintOpen(false)} />}
       {error && <Notice tone="error">{error}</Notice>}
       {!entradas && !error && <Spinner />}
