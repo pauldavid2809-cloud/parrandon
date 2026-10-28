@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.event_config (
     event_name TEXT NOT NULL DEFAULT 'Parrandón Navideño 2026',
     subtitle TEXT DEFAULT 'Seminario Mayor Santo Tomás de Aquino',
     edition TEXT DEFAULT 'Gran Fiesta Tradicional y Familiar',
-    date TEXT DEFAULT 'Sábado, 12 de Diciembre de 2026',
+    date TEXT DEFAULT 'Viernes, 11 de Diciembre de 2026',
     time TEXT DEFAULT '06:00 PM - 01:00 AM',
     venue TEXT DEFAULT 'Bulevar del Seminario Mayor Santo Tomás de Aquino',
     venue_address TEXT DEFAULT 'Sede del Seminario Santo Tomás de Aquino, Maracaibo, Estado Zulia',

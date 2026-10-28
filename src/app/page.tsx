@@ -39,7 +39,7 @@ export default function Home() {
               Parrandón Navideño
             </h1>
             <p className="mt-5 text-lg font-bold sm:text-xl">
-              Sábado 12 de diciembre · 6:00 p. m.
+              Viernes 11 de diciembre · 6:00 p. m.
               <br />
               Bulevar del Seminario Mayor Santo Tomás de Aquino, Maracaibo
             </p>

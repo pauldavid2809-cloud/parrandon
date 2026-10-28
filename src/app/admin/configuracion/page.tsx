@@ -100,7 +100,7 @@ function EventoForm({ config, onSaved }: { config: EventConfig; onSaved: (c: Eve
   const [v, setV] = useState({
     eventName: config.eventName,
     date: config.date,
-    eventDateIso: config.eventDateIso || '2026-12-12',
+    eventDateIso: config.eventDateIso || '2026-12-11',
     time: config.time,
     venue: config.venue,
     ticketPriceUsd: String(config.ticketPriceUsd),

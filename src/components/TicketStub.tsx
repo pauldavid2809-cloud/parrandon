@@ -42,7 +42,7 @@ export default function TicketStub({
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <div>
             <dt className="text-ink-3">Fecha</dt>
-            <dd className="font-bold">Sáb. 12 de diciembre</dd>
+            <dd className="font-bold">Vie. 11 de diciembre</dd>
           </div>
           <div>
             <dt className="text-ink-3">Hora</dt>

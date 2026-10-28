@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomBytes } from 'crypto';
-import { getEventConfig } from '@/lib/db';
+import { DEFAULT_CONFIG, getEventConfig } from '@/lib/db';
 import { fetchLiveEuroRate } from '@/lib/rates';
 import { isSafeProofUrl } from '@/lib/proof';
 import { erroresPersona, limpiarNombre, normalizarCedula, ocultarCedula, type PersonaInput, type ReglasPersona } from '@/lib/persona';
@@ -63,7 +63,7 @@ function caracasToday(): string {
 export async function eventRules() {
   const [config, rate] = await Promise.all([getEventConfig(), fetchLiveEuroRate()]);
   if (rate > 0) config.currentRateBs = rate;
-  const eventDateIso = config.eventDateIso || '2026-12-12';
+  const eventDateIso = config.eventDateIso || DEFAULT_CONFIG.eventDateIso!;
   const today = caracasToday();
   return {
     config,

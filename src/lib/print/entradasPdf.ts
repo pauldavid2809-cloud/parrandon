@@ -14,7 +14,7 @@ export interface PrintTicket {
 }
 
 export interface PrintEvent {
-  date: string; // "Sábado, 12 de Diciembre de 2026"
+  date: string; // "Viernes, 11 de Diciembre de 2026"
   time: string; // "06:00 PM - 01:00 AM"
   priceUsd: number;
 }
@@ -58,7 +58,7 @@ function fuentes() {
 }
 
 function shortDate(date: string) {
-  // "Sábado, 12 de Diciembre de 2026" -> "Sábado 12 de diciembre"
+  // "Viernes, 11 de Diciembre de 2026" -> "Viernes 11 de diciembre"
   return date
     .replace(/,/g, '')
     .replace(/ de \d{4}$/, '')

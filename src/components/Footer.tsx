@@ -14,7 +14,7 @@ export default function Footer() {
         <div>
           <p className="font-display text-2xl">Parrandón Navideño 2026</p>
           <p className="mt-2 max-w-sm text-paper/85">
-            Sábado 12 de diciembre, 6:00 p. m. Bulevar del Seminario Mayor Santo Tomás de Aquino, Maracaibo.
+            Viernes 11 de diciembre, 6:00 p. m. Bulevar del Seminario Mayor Santo Tomás de Aquino, Maracaibo.
           </p>
           <p className="mt-4 text-sm text-paper/75">
             Todo lo recaudado apoya la formación de los seminaristas.

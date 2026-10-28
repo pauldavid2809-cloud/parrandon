@@ -32,7 +32,7 @@ export async function sendWhatsAppNotificationForOrder(order: Order, baseUrl?: s
       `🎟️ *Entrada N°:* #${t.ticketNumber}\n` +
       `🪑 *Tu Ubicación:* Mesa ${t.tableId} • Silla #${t.seatNumber} (Sector ${t.sector || 'A'})\n` +
       `🍽️ *Incluye:* 1 Plato Navideño Tradicional Completo\n` +
-      `📅 *Fecha:* Sábado 12 de Diciembre de 2026 • 6:00 PM\n` +
+      `📅 *Fecha:* Viernes 11 de Diciembre de 2026 • 6:00 PM\n` +
       `📍 *Lugar:* Bulevar del Seminario Santo Tomás de Aquino (Maracaibo, Estado Zulia)\n\n` +
       `👉 *Abre tu código QR de acceso aquí:*\n${ticketUrl}\n\n` +
       `_Presenta este enlace en tu teléfono al momento de ingresar._`;
@@ -46,7 +46,7 @@ export async function sendWhatsAppNotificationForOrder(order: Order, baseUrl?: s
       `📦 *Paquete de Entradas:* ${order.quantity} Personas\n` +
       `🪑 *Ubicaciones Asignadas:*\n${ticketsSummary}\n\n` +
       `🍽️ *Incluye:* ${order.quantity} Platos Navideños Tradicionales Completos\n` +
-      `📅 *Fecha:* Sábado 12 de Diciembre de 2026 • 6:00 PM\n` +
+      `📅 *Fecha:* Viernes 11 de Diciembre de 2026 • 6:00 PM\n` +
       `📍 *Lugar:* Bulevar del Seminario Santo Tomás de Aquino (Maracaibo, Estado Zulia)\n\n` +
       `👉 *Abre tus ${order.quantity} pases digitales con QR aquí:*\n${orderUrl}\n\n` +
       `_Presenta este enlace en tu teléfono al momento de ingresar._`;

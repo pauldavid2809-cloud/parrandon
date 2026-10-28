@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.event_config (
     event_name TEXT NOT NULL DEFAULT 'Parrandón Navideño 2026',
     subtitle TEXT DEFAULT 'Seminario Mayor Santo Tomás de Aquino',
     edition TEXT DEFAULT 'Gran Fiesta Tradicional y Familiar',
-    date TEXT DEFAULT 'Sábado, 12 de Diciembre de 2026',
+    date TEXT DEFAULT 'Viernes, 11 de Diciembre de 2026',
     time TEXT DEFAULT '06:00 PM - 01:00 AM',
     venue TEXT DEFAULT 'Bulevar del Seminario Mayor Santo Tomás de Aquino',
     venue_address TEXT DEFAULT 'Sede del Seminario Santo Tomás de Aquino, Maracaibo, Estado Zulia',
@@ -78,7 +78,7 @@ CREATE POLICY "Allow public read access on event_config"
 
 -- 1. Fecha del evento en formato máquina (para cerrar cambios de mesa ese día)
 ALTER TABLE public.event_config
-  ADD COLUMN IF NOT EXISTS event_date_iso DATE DEFAULT '2026-12-12';
+  ADD COLUMN IF NOT EXISTS event_date_iso DATE DEFAULT '2026-12-11';
 
 -- 2. Mesas del bulevar (50 mesas de 10 puestos)
 CREATE TABLE IF NOT EXISTS public.mesas (

@@ -413,7 +413,7 @@ function report(code, extra = {}) {
   await report(c(60));
   r = await anon.post(`/api/entradas/${c(60)}/mesa`, { tableId: 'E5' });
   check('…pero quien no tenía mesa sí puede escoger una', r.status === 200);
-  await admin.post('/api/config', { eventDateIso: '2026-12-12' });
+  await admin.post('/api/config', { eventDateIso: '2026-12-11' });
 
   // ---------------------------------------------------------------- donaciones y archivos
   sec('Donaciones, órdenes y archivos');
