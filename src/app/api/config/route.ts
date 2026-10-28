@@ -1,6 +1,7 @@
+import { hasRole, unauthorized } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { getEventConfig, updateEventConfig } from '@/lib/db';
-import { fetchLiveEuroRate } from '@/app/api/rates/route';
+import { fetchLiveEuroRate } from '@/lib/rates';
 
 export async function GET() {
   try {
@@ -17,6 +18,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!(await hasRole('admin'))) return unauthorized();
   try {
     const body = await request.json();
     const updated = await updateEventConfig(body);

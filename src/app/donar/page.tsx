@@ -1,37 +1,25 @@
-'use client';
+import type { Metadata } from 'next';
+import DonarForm from './DonarForm';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Heart, ArrowLeft, Sparkles } from 'lucide-react';
-import DonationModal from '@/components/DonationModal';
-import { useRouter } from 'next/navigation';
+export const metadata: Metadata = { title: 'Donar · Parrandón Navideño 2026' };
 
 export default function DonarPage() {
-  const router = useRouter();
-  const [isOpen, setIsOpen] = useState(true);
-
-  const handleClose = () => {
-    setIsOpen(false);
-    router.push('/');
-  };
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
-      {/* Background ambient */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-rose-950/20 via-slate-950 to-slate-950 pointer-events-none" />
-
-      <div className="relative z-10 text-center max-w-lg mb-4">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-4 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Volver al Gran Parrandón Navideño</span>
-        </Link>
+    <div className="paper-grain flex-1">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-10 px-4 py-10 sm:px-6 md:grid-cols-[1fr_28rem] md:py-16">
+        <div>
+          <h1 className="font-display text-4xl leading-tight sm:text-5xl">Ayuda a formar a los futuros sacerdotes</h1>
+          <p className="mt-4 max-w-[52ch] text-lg text-ink-2">
+            Si no puedes ir al Parrandón, o quieres dar un poco más, tu donación va directo a la formación de los
+            seminaristas del Seminario Mayor Santo Tomás de Aquino.
+          </p>
+          <p className="mt-4 max-w-[52ch] text-lg text-ink-2">
+            Una donación no incluye entrada ni puesto en una mesa. Para asistir, consigue tu entrada de papel con un
+            seminarista o en tu parroquia.
+          </p>
+        </div>
+        <DonarForm />
       </div>
-
-      <DonationModal isOpen={isOpen} onClose={handleClose} />
     </div>
   );
 }

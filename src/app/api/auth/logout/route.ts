@@ -1,0 +1,7 @@
+import { route, ok } from '@/lib/api';
+import { clearSession } from '@/lib/auth';
+
+export const POST = route(async () => {
+  await clearSession();
+  return ok();
+});

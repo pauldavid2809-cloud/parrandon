@@ -1,3 +1,4 @@
+import { hasRole, unauthorized } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllOrders, createOrder, searchOrdersOrTickets } from '@/lib/db';
 import { sendWhatsAppNotificationForOrder } from '@/lib/whatsapp';
@@ -6,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
+  if (!(await hasRole('admin'))) return unauthorized();
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
@@ -62,6 +64,15 @@ export async function POST(request: NextRequest) {
       notes
     } = body;
 
+    // Las entradas ahora son físicas: por aquí solo entran donaciones (salvo administración).
+    const isAdmin = await hasRole('admin');
+    if (!isAdmin && (!isDonation || !['zelle', 'pago_movil'].includes(paymentMethod))) {
+      return NextResponse.json(
+        { success: false, error: 'Las entradas se activan escaneando el QR de la entrada de papel.' },
+        { status: 400 }
+      );
+    }
+
     if (!buyerName || !buyerPhone || (!quantity && !isDonation) || !paymentMethod) {
       return NextResponse.json(
         { success: false, error: 'Faltan campos obligatorios para registrar la operación.' },
@@ -86,10 +97,10 @@ export async function POST(request: NextRequest) {
       currency: currency || 'USD',
       convertedUsd: Number(convertedUsd),
       rateApplied: rateApplied ? Number(rateApplied) : undefined,
-      salesChannel: salesChannel || 'online',
+      salesChannel: isAdmin ? salesChannel || 'online' : 'online',
       sellerName,
       parishName,
-      status,
+      status: isAdmin ? status : undefined,
       notes
     });
 

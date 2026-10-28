@@ -1,375 +1,248 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useAutoLoad } from '@/lib/useAutoLoad';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { EventStats, Order } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import ProofModal from '@/components/ProofModal';
-import { 
-  Sparkles, 
-  DollarSign, 
-  Ticket, 
-  ReceiptText, 
-  Utensils, 
-  TrendingUp, 
-  Users, 
-  ArrowUpRight, 
-  CheckCircle, 
-  Clock, 
-  XCircle, 
-  PlusCircle, 
-  FileSpreadsheet, 
-  QrCode, 
-  RefreshCw,
-  Eye
-} from 'lucide-react';
+import { Button, Notice, Spinner } from '@/components/ui';
+import { api, PageTitle } from '@/components/admin/api';
+import { formatBs } from '@/components/pago/PaymentDetails';
+import { HOLDER_LABEL, type HolderType, type MesasResumen } from '@/lib/entradas/types';
 
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<EventStats | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedOrderForProof, setSelectedOrderForProof] = useState<Order | null>(null);
+interface Estado {
+  storeReady: boolean;
+  storeError: string | null;
+  localStore: boolean;
+  generadas: number;
+  pins: { puerta: boolean; cocina: boolean; taquilla: boolean };
+  defaultPassword: boolean;
+  sessionSecret: boolean;
+}
+interface Resumen {
+  generadas: number;
+  sinVender: number;
+  porVerificar: number;
+  activas: number;
+  anuladas: number;
+  vendidas: number;
+  sinMesa: number;
+  activadasEnPuerta: number;
+  ingresaron: number;
+  platosServidos: number;
+  mesas: MesasResumen;
+  recaudado: { zelleUsd: number; pagoMovilVes: number; efectivoUsd: number };
+  porResponsable: { type: HolderType; id: string | null; name: string; total: number; vendidas: number; activas: number }[];
+}
 
-  const fetchData = async () => {
+export default function AdminResumen() {
+  const [estado, setEstado] = useState<Estado | null>(null);
+  const [resumen, setResumen] = useState<Resumen | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const load = useCallback(async () => {
     try {
-      setLoading(true);
-      const [statsRes, ordersRes] = await Promise.all([
-        fetch('/api/stats'),
-        fetch('/api/orders')
-      ]);
-      const statsData = await statsRes.json();
-      const ordersData = await ordersRes.json();
-
-      if (statsData.success) setStats(statsData.stats);
-      if (ordersData.success) setOrders(ordersData.orders);
+      const e = await api<Estado>('/api/admin/estado');
+      setEstado(e);
+      if (e.storeReady && !e.storeError && e.generadas > 0) {
+        const r = await api<{ resumen: Resumen }>('/api/admin/resumen');
+        setResumen(r.resumen);
+      }
+      setError(null);
     } catch (err) {
-      console.error('Error loading admin dashboard:', err);
-    } finally {
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'No se pudo cargar el resumen.');
     }
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
 
-  const handleApproveOrder = async (orderId: string) => {
+  useAutoLoad(load, 20000);
+
+  const generar = async () => {
+    if (!confirm('¿Generar las 500 entradas? Esto se hace una sola vez y reparte #001–#234 entre los 39 seminaristas (6 cada uno).')) return;
+    setGenerating(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'approved', verifiedBy: 'Anabella (Admin)' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchData();
-      }
+      await api('/api/admin/entradas/generar', { method: 'POST' });
+      await load();
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : 'No se pudieron generar.');
+    } finally {
+      setGenerating(false);
     }
   };
 
-  const handleRejectOrder = async (orderId: string, reason: string) => {
-    try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'rejected', rejectionReason: reason, verifiedBy: 'Anabella (Admin)' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchData();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const totalSold = stats?.totalSoldTickets || 0;
-  const totalQuota = stats?.totalQuota || 350;
-  const percentFilled = Math.min(100, Math.round((totalSold / totalQuota) * 100));
+  if (!estado && !error) return <Spinner />;
 
   return (
-    <div className="space-y-8">
-      {/* Top Welcome & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-white">Panel de Anabella</h1>
-            <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-400 border border-amber-500/30">
-              Admin Parrandón 2026
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Resumen financiero en tiempo real, validación de comprobantes y control de asistencia para el Seminario.
-          </p>
-        </div>
+    <div className="max-w-6xl">
+      <PageTitle title="Resumen" />
+      {error && <Notice tone="error" className="mb-6">{error}</Notice>}
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchData}
-            className="flex items-center gap-1.5 rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-300 hover:text-white hover:border-slate-700 transition-colors"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
-            <span>Actualizar</span>
-          </button>
-          <Link
-            href="/admin/nueva-venta"
-            className="flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-amber-500/20 transition-all"
-          >
-            <PlusCircle className="h-4 w-4" />
-            <span>Venta en Taquilla</span>
-          </Link>
-        </div>
-      </div>
+      {estado && <Puesta estado={estado} onGenerar={generar} generating={generating} />}
 
-      {/* Alert if pending orders exist */}
-      {stats && stats.pendingOrdersCount > 0 && (
-        <div className="rounded-2xl border border-rose-500/40 bg-gradient-to-r from-rose-950/60 via-slate-900/60 to-slate-900/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
-              <ReceiptText className="h-5 w-5" />
+      {resumen && (
+        <div className="space-y-10">
+          <section aria-labelledby="ventas">
+            <h2 id="ventas" className="sr-only">
+              Ventas
+            </h2>
+            <dl className="tabular grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line shadow-[var(--shadow-soft)] sm:grid-cols-3 lg:grid-cols-6">
+              <Stat label="Vendidas" value={`${resumen.vendidas}`} detail={`de ${resumen.generadas}`} />
+              <Stat label="Por verificar" value={`${resumen.porVerificar}`} href="/admin/verificaciones" tone={resumen.porVerificar ? 'oro' : undefined} />
+              <Stat label="Activas" value={`${resumen.activas}`} tone="verde" />
+              <Stat label="Mesas llenas" value={`${resumen.mesas.mesasLlenas}`} detail={`${resumen.mesas.puestosLibres} puestos libres`} href="/admin/mesas" />
+              <Stat label="Adentro" value={`${resumen.ingresaron}`} detail="escaneados en puerta" />
+              <Stat label="Platos servidos" value={`${resumen.platosServidos}`} />
+            </dl>
+            {(resumen.sinMesa > 0 || resumen.activadasEnPuerta > 0) && (
+              <div className="mt-4 flex flex-wrap gap-3">
+                {resumen.sinMesa > 0 && (
+                  <Notice tone="warn">
+                    {resumen.sinMesa} {resumen.sinMesa === 1 ? 'entrada pagada no tiene' : 'entradas pagadas no tienen'} mesa todavía.
+                  </Notice>
+                )}
+                {resumen.activadasEnPuerta > 0 && (
+                  <Notice tone="warn">
+                    <Link href="/admin/verificaciones?tab=puerta" className="underline underline-offset-4">
+                      {resumen.activadasEnPuerta} activadas en la puerta por revisar
+                    </Link>
+                  </Notice>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section aria-labelledby="recaudado">
+            <h2 id="recaudado" className="font-display text-2xl">
+              Recaudado y verificado
+            </h2>
+            <dl className="tabular mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl bg-card p-5 shadow-[var(--shadow-soft)]">
+                <dt className="text-ink-3">Zelle</dt>
+                <dd className="mt-1 font-display text-3xl">${resumen.recaudado.zelleUsd.toFixed(2)}</dd>
+              </div>
+              <div className="rounded-2xl bg-card p-5 shadow-[var(--shadow-soft)]">
+                <dt className="text-ink-3">Pago Móvil</dt>
+                <dd className="mt-1 font-display text-3xl">{formatBs(resumen.recaudado.pagoMovilVes)}</dd>
+              </div>
+              <div className="rounded-2xl bg-card p-5 shadow-[var(--shadow-soft)]">
+                <dt className="text-ink-3">Efectivo (taquilla y puerta)</dt>
+                <dd className="mt-1 font-display text-3xl">${resumen.recaudado.efectivoUsd.toFixed(2)}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section aria-labelledby="responsables">
+            <h2 id="responsables" className="font-display text-2xl">
+              Por responsable
+            </h2>
+            <div className="mt-4 overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]">
+              <table className="tabular w-full min-w-[34rem] text-left">
+                <thead className="border-b border-line text-sm text-ink-3">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Responsable</th>
+                    <th className="px-4 py-3 font-bold">Tipo</th>
+                    <th className="px-4 py-3 text-right font-bold">Entradas</th>
+                    <th className="px-4 py-3 text-right font-bold">Vendidas</th>
+                    <th className="px-4 py-3 text-right font-bold">Activas</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {resumen.porResponsable.map((h) => (
+                    <tr key={`${h.type}-${h.id}`}>
+                      <td className="px-4 py-2.5 font-bold">{h.name}</td>
+                      <td className="px-4 py-2.5 text-ink-2">{HOLDER_LABEL[h.type]}</td>
+                      <td className="px-4 py-2.5 text-right">{h.total}</td>
+                      <td className="px-4 py-2.5 text-right">{h.vendidas}</td>
+                      <td className="px-4 py-2.5 text-right">{h.activas}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">
-                ¡Tienes {stats.pendingOrdersCount} comprobante(s) pendiente(s) por verificar!
-              </h3>
-              <p className="text-xs text-slate-300">
-                Los compradores están esperando la aprobación de su pago para recibir sus entradas con código QR.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/admin/comprobantes"
-            className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-950/50 transition-colors text-center shrink-0"
-          >
-            Revisar Comprobantes Ahora →
-          </Link>
+          </section>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Primary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Card 1: Total Revenue */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Total Recaudado</span>
-            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <DollarSign className="h-4 w-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-400">
-              ${stats?.totalRevenueUsd.toFixed(2) || '0.00'} USD
-            </div>
-            <span className="text-[11px] text-slate-400">
-              En fondos confirmados y aprobados
-            </span>
-          </div>
-          <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 space-y-0.5">
-            <div>💵 Zelle: <strong>${stats?.revenueByMethod.zelle.totalUsd.toFixed(2) || 0}</strong></div>
-            <div>📱 Pago Móvil: <strong>Bs. {stats?.revenueByMethod.pago_movil.totalVes.toLocaleString('es-VE') || 0}</strong></div>
-            <div>🪙 Binance: <strong>{stats?.revenueByMethod.binance.totalUsdt.toFixed(2) || 0} USDT</strong></div>
-          </div>
+function Stat({
+  label,
+  value,
+  detail,
+  href,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  href?: string;
+  tone?: 'oro' | 'verde';
+}) {
+  const body = (
+    <>
+      <dt className="text-sm font-bold text-ink-3">{label}</dt>
+      <dd className={tone === 'oro' ? 'font-display text-4xl text-oro-ink' : tone === 'verde' ? 'font-display text-4xl text-verde-2' : 'font-display text-4xl'}>
+        {value}
+      </dd>
+      {detail && <dd className="text-sm text-ink-3">{detail}</dd>}
+    </>
+  );
+  return href ? (
+    <Link href={href} className="block bg-card p-4 transition-colors hover:bg-paper-2">
+      {body}
+    </Link>
+  ) : (
+    <div className="bg-card p-4">{body}</div>
+  );
+}
+
+function Puesta({ estado, onGenerar, generating }: { estado: Estado; onGenerar: () => void; generating: boolean }) {
+  const pinsFaltan = Object.entries(estado.pins).filter(([, v]) => !v).map(([k]) => k);
+  if (!estado.storeReady) {
+    return (
+      <Notice tone="error" title="Falta conectar la base de datos de entradas" className="mb-8">
+        <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <li>En Supabase abre SQL Editor, pega el archivo <code>supabase/entradas.sql</code> y dale Run.</li>
+          <li>
+            En Vercel → Settings → Environment Variables agrega <code>SUPABASE_SERVICE_ROLE_KEY</code> (Supabase →
+            Project Settings → API → service_role) y vuelve a desplegar.
+          </li>
+        </ol>
+      </Notice>
+    );
+  }
+  return (
+    <div className="mb-8 space-y-3">
+      {estado.storeError && (
+        <Notice tone="error" title="La base de datos respondió con un error">
+          {estado.storeError} ¿Ya corriste <code>supabase/entradas.sql</code> en Supabase?
+        </Notice>
+      )}
+      {!estado.storeError && estado.generadas === 0 && (
+        <div className="rounded-2xl bg-card p-6 shadow-[var(--shadow-soft)]">
+          <p className="font-display text-2xl">Genera las 500 entradas</p>
+          <p className="mt-1 max-w-[60ch] text-ink-2">
+            Se crean los 500 códigos secretos (uno por entrada) y se asignan #001–#234 a los 39 seminaristas, 6 a cada
+            uno, en el orden del directorio. Después podrás descargar el PDF para la imprenta.
+          </p>
+          <Button className="mt-4" onClick={onGenerar} loading={generating}>
+            Generar entradas
+          </Button>
         </div>
-
-        {/* Card 2: Tickets Quota */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Entradas Vendidas</span>
-            <div className="h-8 w-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Ticket className="h-4 w-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-white">
-              {totalSold} <span className="text-sm font-normal text-slate-400">/ {totalQuota}</span>
-            </div>
-            <div className="w-full bg-slate-800 h-2 rounded-full mt-2 overflow-hidden">
-              <div
-                className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${percentFilled}%` }}
-              />
-            </div>
-          </div>
-          <div className="pt-2 border-t border-slate-800 flex justify-between text-[11px]">
-            <span className="text-emerald-400 font-medium">✅ {stats?.confirmedTickets || 0} Confirmadas</span>
-            <span className="text-amber-400 font-medium">⏳ {stats?.pendingTickets || 0} Pendientes</span>
-          </div>
-        </div>
-
-        {/* Card 3: Attendance / Platos */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Platos Navideños</span>
-            <div className="h-8 w-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
-              <Utensils className="h-4 w-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-white">
-              {stats?.attendance.mealsServedCount || 0}
-            </div>
-            <span className="text-[11px] text-slate-400">
-              Platos servidos / entregados en puerta
-            </span>
-          </div>
-          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between">
-            <span>Asistentes en sala: <strong className="text-white">{stats?.attendance.scannedCount || 0}</strong></span>
-            <span>Por llegar: <strong className="text-amber-400">{stats?.attendance.pendingScanCount || 0}</strong></span>
-          </div>
-        </div>
-
-        {/* Card 4: Quick Scanner Launch */}
-        <div className="rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-slate-900/80 to-slate-950 p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Control de Puerta</span>
-              <QrCode className="h-5 w-5 text-emerald-400" />
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Usa cualquier teléfono para escanear y validar los códigos QR de los asistentes.
-            </p>
-          </div>
-          <Link
-            href="/escanear"
-            className="mt-4 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-950/40 transition-colors"
-          >
-            <QrCode className="h-4 w-4" />
-            <span>Abrir Escáner de Puerta</span>
+      )}
+      {estado.localStore && <Notice tone="warn">Modo de prueba: los datos se guardan en un archivo local, no en Supabase.</Notice>}
+      {estado.defaultPassword && (
+        <Notice tone="warn" title="La contraseña de administración es la de siempre">
+          Cualquiera que vea el código del proyecto la conoce. Define <code>ADMIN_PASSWORD</code> en Vercel.
+        </Notice>
+      )}
+      {pinsFaltan.length > 0 && (
+        <Notice tone="warn">
+          Falta definir el PIN de {pinsFaltan.join(', ')}.{' '}
+          <Link href="/admin/configuracion" className="font-bold underline underline-offset-4">
+            Definir PIN
           </Link>
-        </div>
-
-      </div>
-
-      {/* Recent Orders Table */}
-      <div className="rounded-3xl border border-slate-800 bg-slate-900/70 overflow-hidden shadow-xl">
-        <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <ReceiptText className="h-4 w-4 text-amber-400" />
-              Órdenes y Ventas Recientes
-            </h2>
-            <p className="text-xs text-slate-400">
-              Visualiza y valida los comprobantes recibidos para el Parrandón 2026.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin/comprobantes"
-              className="text-xs text-amber-400 hover:underline font-semibold"
-            >
-              Ver Solo Pendientes ({stats?.pendingOrdersCount || 0}) →
-            </Link>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-[11px] uppercase font-bold text-slate-400 border-b border-slate-800">
-              <tr>
-                <th className="px-4 py-3">ID Orden</th>
-                <th className="px-4 py-3">Comprador</th>
-                <th className="px-4 py-3">Entradas</th>
-                <th className="px-4 py-3">Método / Ref</th>
-                <th className="px-4 py-3">Monto</th>
-                <th className="px-4 py-3">Estatus</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {orders.slice(0, 10).map((order) => (
-                <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="px-4 py-3.5 font-mono font-bold text-amber-300">
-                    {order.id}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <strong className="text-white block">{order.buyerName}</strong>
-                    <span className="text-[11px] text-slate-400">{order.buyerPhone}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="font-bold text-white">{order.quantity}</span>
-                    <span className="text-[10px] text-slate-400 block">{order.quantity} platos</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="uppercase font-semibold text-slate-200 block text-[11px]">
-                      {order.paymentMethod}
-                    </span>
-                    <code className="text-amber-300/90 font-mono text-[10px]">
-                      {order.paymentReference}
-                    </code>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <strong className="text-emerald-400 block">
-                      {formatCurrency(order.amountPaid, order.currency)}
-                    </strong>
-                    <span className="text-[10px] text-slate-400">
-                      (${order.convertedUsd} USD)
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        order.status === 'approved'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : order.status === 'rejected'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                      }`}
-                    >
-                      {order.status === 'approved' ? (
-                        <>
-                          <CheckCircle className="h-3 w-3" /> Aprobado
-                        </>
-                      ) : order.status === 'rejected' ? (
-                        <>
-                          <XCircle className="h-3 w-3" /> Rechazado
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="h-3 w-3 animate-pulse" /> Pendiente
-                        </>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right space-x-1.5">
-                    <button
-                      onClick={() => setSelectedOrderForProof(order)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold text-slate-200 transition-colors"
-                      title="Ver Comprobante y Detalles"
-                    >
-                      <Eye className="h-3.5 w-3.5 text-amber-400" />
-                      <span>Comprobante</span>
-                    </button>
-                    {order.status === 'approved' && (
-                      <Link
-                        href={`/orden/${order.id}`}
-                        target="_blank"
-                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-950 border border-emerald-500/40 hover:bg-emerald-900 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-300 transition-colors"
-                        title="Ver Entradas QR"
-                      >
-                        <Ticket className="h-3.5 w-3.5" />
-                        <span>QRs</span>
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Proof Modal */}
-      <ProofModal
-        order={selectedOrderForProof}
-        isOpen={!!selectedOrderForProof}
-        onClose={() => setSelectedOrderForProof(null)}
-        onApprove={handleApproveOrder}
-        onReject={handleRejectOrder}
-      />
+        </Notice>
+      )}
     </div>
   );
 }

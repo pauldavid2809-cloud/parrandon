@@ -1,187 +1,252 @@
 @import "tailwindcss";
 
-:root {
-  --background: #060913;
-  --foreground: #f8fafc;
-  --primary-gold: #f59e0b;
-  --primary-emerald: #059669;
-  --primary-ruby: #dc2626;
-  --ease-out-spring: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-active-press: cubic-bezier(0.25, 1, 0.5, 1);
+/* Parrandón Navideño 2026 · Navidad zuliana cálida.
+   Papel de entrada color crema, campos de rojo navideño y verde pino, dorado como adorno. */
+@theme {
+  --color-paper: #fbf4e6;
+  --color-paper-2: #f3e6cc;
+  --color-paper-3: #e8d6b4;
+  --color-card: #fffaf0;
+  --color-line: #dfccaa;
+  --color-ink: #2a1a12;
+  --color-ink-2: #5e4636;
+  --color-ink-3: #7a6152;
+  --color-rojo: #b3122e;
+  --color-rojo-2: #8f0e24;
+  --color-rojo-soft: #f7dcd6;
+  --color-verde: #1f5a3d;
+  --color-verde-2: #154530;
+  --color-verde-soft: #dbeadb;
+  --color-oro: #c99a2e;
+  --color-oro-ink: #86600f;
+  --color-oro-soft: #f6e7bf;
+  --color-noche: #1a120d;
+  --color-noche-2: #261a13;
+  --color-noche-3: #3a2a20;
+
+  --font-display: var(--font-young-serif), "Georgia", serif;
+  --font-sans: var(--font-red-hat), ui-sans-serif, system-ui, sans-serif;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-ticket: 0 1px 1px rgb(42 26 18 / 0.06), 0 10px 24px -8px rgb(42 26 18 / 0.28), 0 30px 60px -30px rgb(42 26 18 / 0.35);
+  --shadow-soft: 0 1px 2px rgb(42 26 18 / 0.06), 0 6px 16px -8px rgb(42 26 18 / 0.2);
 }
 
-html, body {
-  background-color: #060913;
-  color: #f8fafc;
-  font-family: -apple-system, BlinkMacSystemFont, 'Geist', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  overflow-x: hidden;
-  width: 100%;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  scroll-behavior: smooth;
 }
 
-@keyframes modal-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.95) translateY(8px);
+body {
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-rojo);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-oro);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--color-rojo);
+}
+
+a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barras de desplazamiento del color del papel */
+* {
+  scrollbar-color: var(--color-paper-3) transparent;
+  scrollbar-width: thin;
+}
+
+/* Papel con un grano muy leve, para que el crema no se vea plano en pantallas grandes */
+.paper-grain {
+  background-color: var(--color-paper);
+  background-image: radial-gradient(rgb(42 26 18 / 0.035) 1px, transparent 1px);
+  background-size: 5px 5px;
+}
+
+/* Borde de entrada troquelada: muescas semicirculares en los extremos de una línea punteada */
+.perforation {
+  position: relative;
+  height: 0;
+  border-top: 2px dashed var(--color-line);
+}
+.perforation::before,
+.perforation::after {
+  content: "";
+  position: absolute;
+  top: -11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--perforation-bg, var(--color-paper));
+}
+.perforation::before {
+  left: -11px;
+}
+.perforation::after {
+  right: -11px;
+}
+
+/* Talón vertical (entrada horizontal) */
+.perforation-v {
+  position: relative;
+  width: 0;
+  border-left: 2px dashed var(--color-line);
+}
+.perforation-v::before,
+.perforation-v::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--perforation-bg, var(--color-paper));
+}
+.perforation-v::before {
+  top: -11px;
+}
+.perforation-v::after {
+  bottom: -11px;
+}
+
+/* Festón bajo los campos de color: medias lunas recortadas, como un faldón */
+.scallop-edge {
+  -webkit-mask: radial-gradient(16px at 50% 100%, #0000 98%, #000) 50% / 32px 100%;
+  mask: radial-gradient(16px at 50% 100%, #0000 98%, #000) 50% / 32px 100%;
+}
+
+@keyframes ticket-in {
+  from {
+    transform: translateY(18px) rotate(var(--tilt, -3deg));
+    filter: blur(4px);
+    opacity: 0.4;
   }
+  to {
+    transform: translateY(0) rotate(var(--tilt, -3deg));
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+
+.ticket-arrive {
+  animation: ticket-in 900ms var(--ease-out-expo) both;
+}
+
+@keyframes bulb {
+  0%,
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.animate-modal-pop {
-  animation: modal-pop 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Emil Kowalski Button & Interactive Press Feedback */
-button, a, [role="button"], input[type="submit"] {
-  transition: transform 140ms var(--ease-active-press), opacity 140ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-button:active, a:active, [role="button"]:active {
-  transform: scale(0.975);
-}
-
-/* High-End Glassmorphism Refractions */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.72);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-}
-
-.glass-panel-gold {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  box-shadow: 0 12px 36px -8px rgba(245, 158, 11, 0.15), inset 0 1px 0 0 rgba(245, 158, 11, 0.3);
-}
-
-.glass-card-hover {
-  transition: transform 200ms var(--ease-out-spring), border-color 200ms ease, box-shadow 200ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .glass-card-hover:hover {
-    transform: translateY(-2px);
-    border-color: rgba(245, 158, 11, 0.4);
-    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(245, 158, 11, 0.15);
-  }
-}
-
-/* Custom festive glow & utilities */
-.glow-gold {
-  box-shadow: 0 0 30px -5px rgba(245, 158, 11, 0.35);
-}
-
-.glow-blue {
-  box-shadow: 0 0 30px -5px rgba(2, 132, 199, 0.35);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
-}
-
-/* Micro animations */
-@keyframes festive-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
-}
-
-.animate-festive-float {
-  animation: festive-float 4s ease-in-out infinite;
-}
-
-@keyframes festive-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.shimmer-gold {
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0) 0%, rgba(245, 158, 11, 0.15) 50%, rgba(245, 158, 11, 0) 100%);
-  background-size: 200% 100%;
-  animation: festive-shimmer 3.5s infinite;
-}
-
-/* Nocturnal Gala Luminescence Animations */
-@keyframes bokeh-drift {
-  0%, 100% {
-    transform: translate(0px, 0px) scale(1);
-    opacity: 0.35;
   }
   50% {
-    transform: translate(15px, -15px) scale(1.1);
-    opacity: 0.65;
+    opacity: 0.55;
   }
 }
 
-.animate-bokeh-drift {
-  animation: bokeh-drift 8s ease-in-out infinite alternate;
+.bulb {
+  animation: bulb 2.8s ease-in-out infinite;
 }
 
-@keyframes starlight-twinkle {
-  0%, 100% { opacity: 0.2; transform: scale(0.8); }
-  50% { opacity: 0.9; transform: scale(1.2); }
-}
-
-.animate-starlight {
-  animation: starlight-twinkle 3s ease-in-out infinite;
-}
-
-.glass-gala {
-  background: rgba(14, 22, 40, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(251, 191, 36, 0.18);
-  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(251, 191, 36, 0.25);
-}
-
-.glass-gala-hover {
-  transition: transform 220ms var(--ease-out-spring), border-color 220ms ease, box-shadow 220ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .glass-gala-hover:hover {
-    transform: translateY(-3px);
-    border-color: rgba(251, 191, 36, 0.45);
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 25px -3px rgba(245, 158, 11, 0.2);
+@keyframes flash-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #060913;
-}
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #f59e0b;
+.flash-in {
+  animation: flash-in 220ms var(--ease-out-expo) both;
 }
 
-/* Print styles for digital tickets */
+@keyframes row-arrive {
+  from {
+    background-color: var(--color-oro-soft);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.row-arrive {
+  animation: row-arrive 2.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @media print {
-  body {
-    background-color: white !important;
-    color: black !important;
-  }
   .no-print {
     display: none !important;
   }
-  .print-only {
-    display: block !important;
+}
+
+/* Mesas del croquis */
+.mesa .mesa-focus {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.mesa:focus-visible .mesa-focus {
+  opacity: 1;
+}
+.mesa[role="button"] {
+  transition: transform 180ms var(--ease-out-expo);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mesa[role="button"]:hover {
+    transform: scale(1.07);
   }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

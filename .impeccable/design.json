@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T06:10:00Z",
+  "title": "Design System: Parrandón Navideño 2026",
+  "extensions": {
+    "colorMeta": {
+      "rojo": { "role": "primary", "displayName": "Rojo navideño" },
+      "verde": { "role": "secondary", "displayName": "Verde pino" },
+      "oro": { "role": "tertiary", "displayName": "Dorado de faroles" },
+      "paper": { "role": "neutral", "displayName": "Papel de entrada" },
+      "ink": { "role": "neutral", "displayName": "Tinta marrón" },
+      "noche": { "role": "neutral", "displayName": "Noche de puerta" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Young Serif", "purpose": "Nombre del evento, títulos, números de entrada y de mesa." },
+      "body": { "displayName": "Red Hat Text", "purpose": "Texto, etiquetas, controles y datos." }
+    },
+    "shadows": [
+      { "name": "shadow-soft", "value": "0 1px 2px rgb(42 26 18 / 0.06), 0 6px 16px -8px rgb(42 26 18 / 0.2)", "purpose": "Tarjetas y tablas." },
+      { "name": "shadow-ticket", "value": "0 1px 1px rgb(42 26 18 / 0.06), 0 10px 24px -8px rgb(42 26 18 / 0.28), 0 30px 60px -30px rgb(42 26 18 / 0.35)", "purpose": "La entrada y los paneles que flotan." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Llegada de la entrada en el inicio y aparición de paneles." },
+      { "name": "bulb", "value": "2.8s ease-in-out infinite", "purpose": "Parpadeo suave de las luces del croquis y del indicador En vivo." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal en rojo navideño.",
+      "html": "<button class=\"ds-btn-primary\">Activar entrada</button>",
+      "css": ".ds-btn-primary { background: #b3122e; color: #fbf4e6; height: 48px; padding: 0 20px; border: 0; border-radius: 12px; font: 700 16px 'Red Hat Text', system-ui, sans-serif; box-shadow: 0 1px 2px rgb(42 26 18 / 0.06), 0 6px 16px -8px rgb(42 26 18 / 0.2); transition: background-color 150ms, transform 150ms; } .ds-btn-primary:hover { background: #8f0e24; } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 3px solid #c99a2e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo con borde de papel que pasa a tinta al enfocar.",
+      "html": "<label class=\"ds-field\"><span>Nombre y apellido</span><input class=\"ds-input\" placeholder=\"María Pérez\"></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font: 700 15px 'Red Hat Text', system-ui, sans-serif; color: #2a1a12; } .ds-input { height: 48px; padding: 0 16px; background: #fffaf0; border: 2px solid #dfccaa; border-radius: 12px; font: 400 16px 'Red Hat Text', system-ui, sans-serif; color: #2a1a12; } .ds-input:focus { outline: none; border-color: #2a1a12; }"
+    },
+    {
+      "name": "Estado de entrada",
+      "kind": "chip",
+      "refersTo": "pill-activa",
+      "description": "Pastilla de estado con punto de color y texto.",
+      "html": "<span class=\"ds-pill\"><i></i>Activa</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: #dbeadb; color: #154530; font: 700 14px 'Red Hat Text', system-ui, sans-serif; } .ds-pill i { width: 6px; height: 6px; border-radius: 999px; background: #1f5a3d; }"
+    },
+    {
+      "name": "Mesa del croquis",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Mesa redonda con su identificador y los puestos libres.",
+      "html": "<div class=\"ds-mesa\"><b>C4</b><small>6 libres</small></div>",
+      "css": ".ds-mesa { width: 56px; height: 56px; border-radius: 999px; background: #fffaf0; border: 2.5px solid #1f5a3d; display: grid; place-content: center; text-align: center; box-shadow: 0 2px 0 rgb(42 26 18 / 0.12); } .ds-mesa b { font: 400 16px 'Young Serif', Georgia, serif; color: #2a1a12; } .ds-mesa small { font: 700 10px 'Red Hat Text', system-ui, sans-serif; color: #154530; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La entrada de papel y el bulevar",
+    "overview": "La entrada física con su QR es el objeto central y el bulevar del seminario es el mapa. Navidad zuliana cálida: papel crema, campos de rojo navideño y verde pino, dorado como adorno.",
+    "keyCharacteristics": ["Talón troquelado", "Croquis ilustrado con luces de Navidad", "Números de mesa enormes donde se necesitan"],
+    "rules": [
+      { "name": "La regla del campo", "body": "El color ocupa regiones completas, no acentos sueltos.", "section": "colors" },
+      { "name": "Estado con nombre", "body": "Cada estado lleva texto además de color.", "section": "colors" }
+    ],
+    "dos": ["Mostrar la mesa en grande en puerta y taquilla", "Acciones fijas abajo con fondo opaco en el teléfono"],
+    "donts": ["Texto dorado sobre rojo", "Etiquetas en mayúsculas sobre los títulos", "Volver a mostrar sillas"]
+  }
+}

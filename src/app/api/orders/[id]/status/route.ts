@@ -1,3 +1,4 @@
+import { hasRole, unauthorized } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateOrderStatus } from '@/lib/db';
 import { sendWhatsAppNotificationForOrder } from '@/lib/whatsapp';
@@ -6,6 +7,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  if (!(await hasRole('admin'))) return unauthorized();
   try {
     const { id } = await context.params;
     const body = await request.json();

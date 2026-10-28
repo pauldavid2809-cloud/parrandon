@@ -89,6 +89,7 @@ export interface EventConfig {
   subtitle: string;
   edition: string;
   date: string;
+  eventDateIso?: string; // YYYY-MM-DD, cierra los cambios de mesa ese día
   time: string;
   venue: string;
   venueAddress: string;

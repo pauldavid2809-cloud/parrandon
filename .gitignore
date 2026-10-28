@@ -43,3 +43,7 @@ next-env.d.ts
 .data/whatsapp_auth/
 whatsapp-service/node_modules/
 whatsapp-service/auth_info/
+
+# Base local de pruebas del sistema de entradas (contiene códigos)
+.data/entradas_local.json
+.impeccable/review/
