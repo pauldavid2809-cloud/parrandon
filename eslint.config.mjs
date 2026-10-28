@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Servicios de WhatsApp aparte (Node con require y Baileys): no son parte de la app de Next.
+    "whatsapp-service/**",
+    "scripts/whatsapp-bot.js",
+    // Herramientas de la skill de diseño (código de terceros empaquetado).
+    ".claude/**",
   ]),
 ]);
 

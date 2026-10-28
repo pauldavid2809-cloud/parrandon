@@ -1,4 +1,4 @@
-import { Order, Ticket } from '@/types';
+import { Order } from '@/types';
 
 const BOT_URL = process.env.WHATSAPP_BOT_URL || 'https://parrandon-production.up.railway.app';
 
@@ -67,7 +67,7 @@ export async function sendWhatsAppNotificationForOrder(order: Order, baseUrl?: s
     } else {
       console.log(`⚠️ WhatsApp no enviado (${data.error || 'bot no conectado'}). El usuario igual puede ver sus entradas por la web.`);
     }
-  } catch (err: any) {
-    console.log(`ℹ️ WhatsApp bot no disponible en este momento (${err.message}).`);
+  } catch (err) {
+    console.log(`ℹ️ WhatsApp bot no disponible en este momento (${err instanceof Error ? err.message : err}).`);
   }
 }

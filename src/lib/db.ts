@@ -67,6 +67,8 @@ function ensureDataDir() {
   }
 }
 
+// Filas de Supabase sin tipar: cada campo se copia tal cual al modelo.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapDbRowToOrder(row: any): Order {
   return {
     id: row.id,
@@ -97,7 +99,7 @@ function mapDbRowToOrder(row: any): Order {
   };
 }
 
-function mapOrderToDbRow(order: Order): any {
+function mapOrderToDbRow(order: Order): Record<string, unknown> {
   return {
     id: order.id,
     created_at: order.createdAt || new Date().toISOString(),
@@ -721,7 +723,7 @@ export async function createOrder(data: {
     const db = await readDb();
     db.orders.unshift(newOrder);
     writeDb(db);
-  } catch (e) {}
+  } catch {}
 
   return newOrder;
 }
@@ -801,7 +803,7 @@ export async function updateOrderStatus(
       db.orders[idx] = order;
       writeDb(db);
     }
-  } catch (e) {}
+  } catch {}
 
   return order;
 }
@@ -874,7 +876,7 @@ export async function scanTicket(ticketCode: string, scannedBy: string = 'Person
           db.orders[oIdx] = order;
           writeDb(db);
         }
-      } catch (e) {}
+      } catch {}
 
       return {
         success: true,
