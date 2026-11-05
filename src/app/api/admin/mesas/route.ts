@@ -4,7 +4,8 @@ import { store } from '@/lib/entradas/store';
 
 // Mesas con la gente sentada en cada una (solo administración).
 export const GET = route(async () => {
-  const [{ mesas, resumen }, entradas] = await Promise.all([mesasEstado(), store().listEntradas()]);
+  const entradas = await store().listCampos(['code', 'number', 'status', 'tableId', 'attendeeName', 'attendeePhone', 'checkedInAt']);
+  const { mesas, resumen } = await mesasEstado(entradas);
   const gente = entradas
     .filter((e) => e.tableId && (e.status === 'activa' || e.status === 'por_verificar'))
     .map((e) => ({

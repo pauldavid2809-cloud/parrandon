@@ -30,10 +30,16 @@ export interface Condicion {
   sinPersona?: boolean; // todavía no tiene nombre registrado
 }
 
+// Filtro por igualdad que se resuelve en la base de datos (no se traen las demás filas).
+export type FiltroEntradas = Partial<Pick<Entrada, 'holderType' | 'holderId' | 'saleId'>>;
+
 interface Store {
   // false si a la tabla le faltan columnas nuevas (no se ha vuelto a correr supabase/entradas.sql).
   schemaAlDia(): Promise<boolean>;
-  listEntradas(): Promise<Entrada[]>;
+  listEntradas(filtro?: FiltroEntradas): Promise<Entrada[]>;
+  // Solo las columnas que usa cada pantalla. Puerta, cocina y administración se refrescan cada
+  // pocos segundos y leen las 500 entradas cada vez: el plan gratis de Supabase cuenta los datos que salen.
+  listCampos<K extends keyof Entrada>(campos: readonly K[], filtro?: FiltroEntradas): Promise<Pick<Entrada, K>[]>;
   listEntradasLite(): Promise<EntradaLite[]>;
   countEntradas(): Promise<number>;
   getEntrada(code: string): Promise<Entrada | null>;
@@ -55,7 +61,7 @@ interface Store {
   getVenta(id: string): Promise<Venta | null>;
   saveVenta(v: Venta): Promise<void>;
   updateVenta(id: string, patch: Partial<Venta>): Promise<void>;
-  listVentas(): Promise<Venta[]>;
+  listVentas(ids?: string[]): Promise<Venta[]>;
 }
 
 // ---------- mapeo snake_case <-> camelCase ----------
@@ -158,6 +164,18 @@ function fromRow(row: Record<string, unknown>): Entrada {
   return entrada;
 }
 
+function elegir<K extends keyof Entrada>(e: Entrada, campos: readonly K[]): Pick<Entrada, K> {
+  const out = {} as Pick<Entrada, K>;
+  for (const k of campos) out[k] = e[k];
+  return out;
+}
+
+function cumple(e: Entrada, filtro: FiltroEntradas = {}) {
+  return (Object.entries(filtro) as [keyof FiltroEntradas, unknown][]).every(
+    ([key, value]) => value === undefined || (e[key] ?? null) === value
+  );
+}
+
 function mesaFromRow(row: Record<string, unknown>): Mesa {
   return {
     id: String(row.id),
@@ -189,6 +207,16 @@ function supabaseStore(): Store {
   const fail = (what: string, error: { message: string } | null) => {
     if (error) throw new Error(`${what}: ${error.message}`);
   };
+  const leer = async (columnas: string, filtro: FiltroEntradas = {}) => {
+    let q = db.from('entradas').select(columnas);
+    for (const [key, value] of Object.entries(filtro) as [keyof FiltroEntradas, string | null | undefined][]) {
+      if (value === undefined) continue;
+      q = value === null ? q.is(COLS[key], null) : q.eq(COLS[key], value);
+    }
+    const { data, error } = await q.order('number').limit(2000);
+    fail('Leyendo entradas', error);
+    return (data || []) as unknown as Record<string, unknown>[];
+  };
 
   return {
     async schemaAlDia() {
@@ -198,10 +226,12 @@ function supabaseStore(): Store {
       ]);
       return !entradas.error && !ventas.error;
     },
-    async listEntradas() {
-      const { data, error } = await db.from('entradas').select('*').order('number').limit(2000);
-      fail('Leyendo entradas', error);
-      return (data || []).map(fromRow);
+    async listEntradas(filtro) {
+      return (await leer('*', filtro)).map(fromRow);
+    },
+    async listCampos(campos, filtro) {
+      const rows = await leer(campos.map((k) => COLS[k]).join(','), filtro);
+      return rows.map((r) => elegir(fromRow(r), campos));
     },
     async listEntradasLite() {
       const { data, error } = await db.from('entradas').select('number,table_id,status').limit(2000);
@@ -331,8 +361,10 @@ function supabaseStore(): Store {
       const { error } = await db.from('ventas').update(ventaToRow(patch)).eq('id', id);
       fail('Guardando venta', error);
     },
-    async listVentas() {
-      const { data, error } = await db.from('ventas').select('*').order('received_at', { ascending: false }).limit(2000);
+    async listVentas(ids) {
+      let q = db.from('ventas').select('*');
+      if (ids) q = q.in('id', ids);
+      const { data, error } = await q.order('received_at', { ascending: false }).limit(2000);
       fail('Leyendo ventas', error);
       return (data || []).map(ventaFromRow);
     },
@@ -366,6 +398,12 @@ function writeLocal(data: LocalData) {
   fs.writeFileSync(LOCAL_FILE, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+function localEntradas(filtro?: FiltroEntradas) {
+  return readLocal()
+    .entradas.filter((e) => cumple(e, filtro))
+    .sort((a, b) => a.number - b.number);
+}
+
 function localStore(): Store {
   const patchAll = (pred: (e: Entrada) => boolean, patch: Partial<Entrada>) => {
     const data = readLocal();
@@ -384,8 +422,11 @@ function localStore(): Store {
     async schemaAlDia() {
       return true;
     },
-    async listEntradas() {
-      return readLocal().entradas.sort((a, b) => a.number - b.number);
+    async listEntradas(filtro) {
+      return localEntradas(filtro);
+    },
+    async listCampos(campos, filtro) {
+      return localEntradas(filtro).map((e) => elegir(e, campos));
     },
     async listEntradasLite() {
       return readLocal().entradas.map((e) => ({ number: e.number, tableId: e.tableId, status: e.status }));
@@ -487,8 +528,10 @@ function localStore(): Store {
       data.ventas = (data.ventas || []).map((v) => (v.id === id ? { ...v, ...patch, id } : v));
       writeLocal(data);
     },
-    async listVentas() {
-      return [...(readLocal().ventas || [])].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+    async listVentas(ids) {
+      return (readLocal().ventas || [])
+        .filter((v) => !ids || ids.includes(v.id))
+        .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
     },
   };
 }

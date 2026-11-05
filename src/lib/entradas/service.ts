@@ -116,8 +116,11 @@ export function ticketView(e: Entrada) {
 
 export type TicketView = ReturnType<typeof ticketView>;
 
-export async function mesasEstado(): Promise<{ mesas: MesaEstado[]; resumen: MesasResumen }> {
-  const [mesas, entradas] = await Promise.all([store().listMesas(), store().listEntradasLite()]);
+// Quien ya leyó las entradas las pasa, para no leerlas otra vez.
+export async function mesasEstado(
+  leidas?: Pick<Entrada, 'tableId' | 'status'>[]
+): Promise<{ mesas: MesaEstado[]; resumen: MesasResumen }> {
+  const [mesas, entradas] = await Promise.all([store().listMesas(), leidas ?? store().listEntradasLite()]);
   const taken = new Map<string, number>();
   for (const e of entradas) {
     if (e.tableId && OCUPA_PUESTO.includes(e.status)) taken.set(e.tableId, (taken.get(e.tableId) || 0) + 1);
@@ -528,7 +531,8 @@ export async function ventaTaquilla(
 // ---------- cocina ----------
 
 export async function cocinaEstado() {
-  const [entradas, { mesas }] = await Promise.all([store().listEntradas(), mesasEstado()]);
+  const entradas = await store().listCampos(['number', 'status', 'attendeeName', 'tableId', 'checkedInAt', 'mealServedAt']);
+  const { mesas } = await mesasEstado(entradas);
   const enMesa = entradas.filter((e) => e.tableId && OCUPA_PUESTO.includes(e.status));
   const llegadas = enMesa
     .filter((e) => e.checkedInAt)
@@ -573,7 +577,7 @@ export async function cocinaEstado() {
 }
 
 export async function despacharMesa(tableId: string) {
-  const entradas = await store().listEntradas();
+  const entradas = await store().listCampos(['code', 'status', 'tableId', 'checkedInAt', 'mealServedAt']);
   const codes = entradas
     .filter((e) => e.tableId === tableId && e.checkedInAt && !e.mealServedAt && OCUPA_PUESTO.includes(e.status))
     .map((e) => e.code);
@@ -613,10 +617,11 @@ export async function asignarLote(from: number, to: number, type: HolderType, id
 }
 
 export async function loteDe(type: HolderType, id: string) {
-  const entradas = await store().listEntradas();
-  return entradas
-    .filter((e) => e.holderType === type && e.holderId === id)
-    .map((e) => ({
+  const entradas = await store().listCampos(['number', 'status', 'tableId', 'attendeeName', 'checkedInAt'], {
+    holderType: type,
+    holderId: id,
+  });
+  return entradas.map((e) => ({
       number: e.number,
       status: e.status,
       tableId: e.tableId,
@@ -628,11 +633,24 @@ export async function loteDe(type: HolderType, id: string) {
 // ---------- resumen administrativo ----------
 
 export async function resumenAdmin() {
-  const [entradas, { resumen }] = await Promise.all([store().listEntradas(), mesasEstado()]);
-  const count = (pred: (e: Entrada) => boolean) => entradas.filter(pred).length;
+  const entradas = await store().listCampos([
+    'status',
+    'tableId',
+    'holderType',
+    'holderId',
+    'holderName',
+    'paymentMethod',
+    'amount',
+    'doorActivated',
+    'checkedInAt',
+    'mealServedAt',
+  ]);
+  type Fila = (typeof entradas)[number];
+  const { resumen } = await mesasEstado(entradas);
+  const count = (pred: (e: Fila) => boolean) => entradas.filter(pred).length;
   const vendidas = entradas.filter((e) => OCUPA_PUESTO.includes(e.status));
   const activas = entradas.filter((e) => e.status === 'activa');
-  const sum = (list: Entrada[], method: MetodoPago) =>
+  const sum = (list: Fila[], method: MetodoPago) =>
     list.filter((e) => e.paymentMethod === method).reduce((s, e) => s + (e.amount || 0), 0);
 
   const holders = new Map<string, { type: HolderType; id: string | null; name: string; total: number; vendidas: number; activas: number }>();
@@ -675,7 +693,18 @@ export async function resumenAdmin() {
 }
 
 export async function resumenTaquilla() {
-  const entradas = await store().listEntradas();
+  const entradas = await store().listCampos([
+    'number',
+    'status',
+    'holderType',
+    'attendeeName',
+    'tableId',
+    'paymentMethod',
+    'amount',
+    'currency',
+    'reportedBy',
+    'reportedAt',
+  ]);
   const ventas = entradas
     .filter((e) => e.reportedBy === 'taquilla')
     .sort((a, b) => ((b.reportedAt || '') > (a.reportedAt || '') ? 1 : -1));

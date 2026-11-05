@@ -26,7 +26,10 @@ function horaVenta(raw: unknown, ahora: Date) {
 }
 
 // El estado sale de las entradas: si administración rechaza o mueve una, la orden lo refleja.
-export function estadoVenta(v: Venta, entradas: Entrada[]) {
+type DeVenta = Pick<Entrada, 'saleId' | 'number' | 'status'>;
+const CAMPOS_VENTA = ['saleId', 'number', 'status'] as const;
+
+export function estadoVenta<E extends DeVenta>(v: Venta, entradas: E[]) {
   const suyas = entradas.filter((e) => e.saleId === v.id).sort((a, b) => a.number - b.number);
   const porVerificar = suyas.filter((e) => e.status === 'por_verificar');
   const estado: VentaEstado = porVerificar.length ? 'por_verificar' : suyas.some((e) => e.status === 'activa') ? 'verificada' : 'rechazada';
@@ -34,7 +37,7 @@ export function estadoVenta(v: Venta, entradas: Entrada[]) {
 }
 
 // Lo que ve el vendedor de su orden (sin códigos ni datos de nadie).
-export function vistaVendedor(v: Venta, entradas: Entrada[]) {
+export function vistaVendedor(v: Venta, entradas: DeVenta[]) {
   const { estado, suyas } = estadoVenta(v, entradas);
   return {
     id: v.id,
@@ -53,7 +56,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
 
   // Reintento de una venta que ya llegó (el teléfono no recibió la respuesta): se devuelve igual.
   const existente = await store().getVenta(id);
-  if (existente) return vistaVendedor(existente, await store().listEntradas());
+  if (existente) return vistaVendedor(existente, await store().listCampos(CAMPOS_VENTA, { saleId: id }));
 
   const seller = (input.seller ?? {}) as Record<string, unknown>;
   const sellerType = seller.type as HolderType;
@@ -149,21 +152,24 @@ export async function registrarVenta(input: Record<string, unknown>) {
     rejectionReason: null,
   };
   await store().saveVenta(venta);
-  return vistaVendedor(venta, await store().listEntradas());
+  return vistaVendedor(venta, await store().listCampos(CAMPOS_VENTA, { saleId: id }));
 }
 
 // El teléfono del vendedor pregunta cómo van sus órdenes (los id solo los conoce ese teléfono).
 export async function estadoVentas(ids: string[]) {
-  const validos = new Set(ids.filter((i) => ID_RE.test(i)).slice(0, 100));
-  if (validos.size === 0) return [];
-  const [ventas, entradas] = await Promise.all([store().listVentas(), store().listEntradas()]);
-  return ventas.filter((v) => validos.has(v.id)).map((v) => vistaVendedor(v, entradas));
+  const validos = [...new Set(ids.filter((i) => ID_RE.test(i)))].slice(0, 100);
+  if (validos.length === 0) return [];
+  const [ventas, entradas] = await Promise.all([store().listVentas(validos), store().listCampos(CAMPOS_VENTA)]);
+  return ventas.map((v) => vistaVendedor(v, entradas));
 }
 
 // ---------- administración ----------
 
 export async function ventasAdmin() {
-  const [ventas, entradas] = await Promise.all([store().listVentas(), store().listEntradas()]);
+  const [ventas, entradas] = await Promise.all([
+    store().listVentas(),
+    store().listCampos([...CAMPOS_VENTA, 'attendeeName', 'tableId']),
+  ]);
   const porVendedor = new Map<
     string,
     { nombre: string; lote: string | null; ventas: number; entradas: number; efectivoPorEntregar: number; pagosPorVerificar: number; verificadas: number }
@@ -206,7 +212,7 @@ export type VentaAdmin = Awaited<ReturnType<typeof ventasAdmin>>['ventas'][numbe
 async function entradasDe(id: string) {
   const venta = await store().getVenta(id);
   if (!venta) throw new EntradaError('Venta no encontrada.', 404);
-  const entradas = (await store().listEntradas()).filter((e) => e.saleId === id && e.status === 'por_verificar');
+  const entradas = (await store().listEntradas({ saleId: id })).filter((e) => e.status === 'por_verificar');
   return { venta, entradas };
 }
 

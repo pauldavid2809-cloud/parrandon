@@ -5,7 +5,10 @@ import { store } from '@/lib/entradas/store';
 import { OCUPA_PUESTO } from '@/lib/entradas/types';
 
 export const GET = route(async () => {
-  const [entradas, config] = await Promise.all([store().listEntradas(), getEventConfig()]);
+  const [entradas, config] = await Promise.all([
+    store().listCampos(['number', 'status', 'attendeeName', 'tableId', 'checkedInAt', 'doorActivated']),
+    getEventConfig(),
+  ]);
   const dentro = entradas
     .filter((e) => e.checkedInAt)
     .sort((a, b) => (b.checkedInAt! > a.checkedInAt! ? 1 : -1));
