@@ -42,9 +42,38 @@ export interface Entrada {
   checkedInBy: string | null;
   mealServedAt: string | null;
   notes: string | null;
+  saleId: string | null; // orden del vendedor con la que se vendió
   createdAt: string;
   updatedAt: string;
 }
+
+// Orden de un vendedor: una o varias entradas con un solo pago. Se crea en el teléfono
+// (a veces sin internet) y se sube después; el id lo pone el teléfono para no duplicarla.
+export interface Venta {
+  id: string;
+  sellerType: HolderType;
+  sellerId: string | null;
+  sellerName: string | null; // de quién es el lote: seminarista, Padre Jorge, parroquia
+  vendedor: string | null; // quién vendió, si no es el mismo dueño del lote
+  method: MetodoPago;
+  reference: string | null;
+  proofUrl: string | null;
+  buyerName: string | null;
+  buyerPhone: string | null;
+  priceUsd: number;
+  rateApplied: number | null;
+  numbers: number[]; // entradas escaneadas en la orden
+  problemas: { number: number | null; motivo: string }[]; // las que no se pudieron vender
+  soldAt: string; // hora del teléfono al vender
+  receivedAt: string; // hora en que llegó al servidor
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  rejectionReason: string | null;
+}
+
+export type VentaEstado = 'por_verificar' | 'verificada' | 'rechazada';
+
+export const MAX_ENTRADAS_POR_VENTA = 10;
 
 export interface Mesa {
   id: string; // "A1" … "E10"

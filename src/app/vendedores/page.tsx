@@ -4,6 +4,10 @@ import VendedoresClient from './VendedoresClient';
 export const metadata: Metadata = {
   title: 'Vendedores · Parrandón Navideño 2026',
   robots: { index: false, follow: false },
+  // Se instala en el teléfono como app y abre sin internet (ver public/sw-vendedores.js).
+  manifest: '/vendedores.webmanifest',
+  appleWebApp: { capable: true, title: 'Vender entradas', statusBarStyle: 'default' },
+  icons: { apple: '/icons/vendedores-180.png' },
 };
 
 export default function VendedoresPage() {

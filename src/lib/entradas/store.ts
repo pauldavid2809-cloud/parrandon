@@ -9,6 +9,7 @@ import {
   OCUPA_PUESTO,
   Parroquia,
   SECTORES,
+  Venta,
   MESAS_POR_SECTOR,
   CAPACIDAD_MESA,
   StaffRole,
@@ -26,6 +27,7 @@ export interface EntradaLite {
 export interface Condicion {
   status?: Entrada['status'];
   notCheckedIn?: boolean;
+  sinPersona?: boolean; // todavía no tiene nombre registrado
 }
 
 interface Store {
@@ -50,6 +52,10 @@ interface Store {
   deleteParroquia(id: string): Promise<void>;
   getPin(role: StaffRole): Promise<string | null>;
   setPin(role: StaffRole, pin: string | null): Promise<void>;
+  getVenta(id: string): Promise<Venta | null>;
+  saveVenta(v: Venta): Promise<void>;
+  updateVenta(id: string, patch: Partial<Venta>): Promise<void>;
+  listVentas(): Promise<Venta[]>;
 }
 
 // ---------- mapeo snake_case <-> camelCase ----------
@@ -83,9 +89,52 @@ const COLS: Record<keyof Entrada, string> = {
   checkedInBy: 'checked_in_by',
   mealServedAt: 'meal_served_at',
   notes: 'notes',
+  saleId: 'sale_id',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 };
+
+const VENTA_COLS: Record<keyof Venta, string> = {
+  id: 'id',
+  sellerType: 'seller_type',
+  sellerId: 'seller_id',
+  sellerName: 'seller_name',
+  vendedor: 'vendedor',
+  method: 'method',
+  reference: 'reference',
+  proofUrl: 'proof_url',
+  buyerName: 'buyer_name',
+  buyerPhone: 'buyer_phone',
+  priceUsd: 'price_usd',
+  rateApplied: 'rate_applied',
+  numbers: 'numbers',
+  problemas: 'problemas',
+  soldAt: 'sold_at',
+  receivedAt: 'received_at',
+  verifiedAt: 'verified_at',
+  verifiedBy: 'verified_by',
+  rejectionReason: 'rejection_reason',
+};
+
+function ventaToRow(patch: Partial<Venta>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    const col = VENTA_COLS[key as keyof Venta];
+    if (col) row[col] = value;
+  }
+  return row;
+}
+
+function ventaFromRow(row: Record<string, unknown>): Venta {
+  const v = {} as Record<string, unknown>;
+  for (const [key, col] of Object.entries(VENTA_COLS)) v[key] = row[col] ?? null;
+  const venta = v as unknown as Venta;
+  venta.priceUsd = Number(row.price_usd);
+  venta.rateApplied = row.rate_applied == null ? null : Number(row.rate_applied);
+  venta.numbers = Array.isArray(row.numbers) ? (row.numbers as number[]).map(Number) : [];
+  venta.problemas = Array.isArray(row.problemas) ? (row.problemas as Venta['problemas']) : [];
+  return venta;
+}
 
 function toRow(patch: Partial<Entrada>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
@@ -143,8 +192,11 @@ function supabaseStore(): Store {
 
   return {
     async schemaAlDia() {
-      const { error } = await db.from('entradas').select(Object.values(COLS).join(',')).limit(1);
-      return !error;
+      const [entradas, ventas] = await Promise.all([
+        db.from('entradas').select(Object.values(COLS).join(',')).limit(1),
+        db.from('ventas').select(Object.values(VENTA_COLS).join(',')).limit(1),
+      ]);
+      return !entradas.error && !ventas.error;
     },
     async listEntradas() {
       const { data, error } = await db.from('entradas').select('*').order('number').limit(2000);
@@ -188,6 +240,7 @@ function supabaseStore(): Store {
         .eq('code', code);
       if (cond.status) q = q.eq('status', cond.status);
       if (cond.notCheckedIn) q = q.is('checked_in_at', null);
+      if (cond.sinPersona) q = q.is('attendee_name', null);
       const { data, error } = await q.select('*').maybeSingle();
       fail('Guardando entrada', error);
       return data ? fromRow(data) : null;
@@ -265,6 +318,24 @@ function supabaseStore(): Store {
       const { error } = await db.from('staff_access').upsert({ role, pin });
       fail('Guardando PIN', error);
     },
+    async getVenta(id) {
+      const { data, error } = await db.from('ventas').select('*').eq('id', id).maybeSingle();
+      fail('Buscando venta', error);
+      return data ? ventaFromRow(data) : null;
+    },
+    async saveVenta(v) {
+      const { error } = await db.from('ventas').upsert(ventaToRow(v));
+      fail('Guardando venta', error);
+    },
+    async updateVenta(id, patch) {
+      const { error } = await db.from('ventas').update(ventaToRow(patch)).eq('id', id);
+      fail('Guardando venta', error);
+    },
+    async listVentas() {
+      const { data, error } = await db.from('ventas').select('*').order('received_at', { ascending: false }).limit(2000);
+      fail('Leyendo ventas', error);
+      return (data || []).map(ventaFromRow);
+    },
   };
 }
 
@@ -275,6 +346,7 @@ interface LocalData {
   mesas: Mesa[];
   parroquias: Parroquia[];
   pins: Partial<Record<StaffRole, string | null>>;
+  ventas?: Venta[];
 }
 
 const LOCAL_FILE = path.join(process.cwd(), '.data', 'entradas_local.json');
@@ -336,6 +408,7 @@ function localStore(): Store {
       if (!current) return null;
       if (cond.status && current.status !== cond.status) return null;
       if (cond.notCheckedIn && current.checkedInAt) return null;
+      if (cond.sinPersona && current.attendeeName) return null;
       patchAll((e) => e.code === code, patch);
       return readLocal().entradas.find((e) => e.code === code) || null;
     },
@@ -400,6 +473,22 @@ function localStore(): Store {
       const data = readLocal();
       data.pins[role] = pin;
       writeLocal(data);
+    },
+    async getVenta(id) {
+      return readLocal().ventas?.find((v) => v.id === id) || null;
+    },
+    async saveVenta(v) {
+      const data = readLocal();
+      data.ventas = [...(data.ventas || []).filter((x) => x.id !== v.id), v];
+      writeLocal(data);
+    },
+    async updateVenta(id, patch) {
+      const data = readLocal();
+      data.ventas = (data.ventas || []).map((v) => (v.id === id ? { ...v, ...patch, id } : v));
+      writeLocal(data);
+    },
+    async listVentas() {
+      return [...(readLocal().ventas || [])].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
     },
   };
 }

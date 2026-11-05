@@ -1,7 +1,7 @@
 'use client';
 
 import { useAutoLoad } from '@/lib/useAutoLoad';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button, Notice, Spinner, TextInput } from '@/components/ui';
 import { api, fechaCorta, PageTitle, patchEntrada } from '@/components/admin/api';
 import { formatBs } from '@/components/pago/PaymentDetails';
@@ -9,6 +9,8 @@ import { METODO_LABEL, type Entrada } from '@/lib/entradas/types';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 import { formatCedula } from '@/lib/persona';
+import Link from 'next/link';
+import CaptureDialog from '@/components/admin/CaptureDialog';
 
 const MOTIVOS = ['No aparece el pago en la cuenta.', 'El monto está incompleto.', 'La referencia no coincide.'];
 const POR: Record<string, string> = {
@@ -38,8 +40,11 @@ export default function Verificaciones() {
 
   useAutoLoad(load);
 
+  // Las entradas de órdenes de vendedores se verifican por orden, en Ventas.
+  const deOrdenes = (entradas || []).filter((e) => e.status === 'por_verificar' && e.saleId);
+  const ordenes = new Set(deOrdenes.map((e) => e.saleId)).size;
   const pendientes = (entradas || [])
-    .filter((e) => e.status === 'por_verificar')
+    .filter((e) => e.status === 'por_verificar' && !e.saleId)
     .sort((a, b) => (a.reportedAt || '').localeCompare(b.reportedAt || ''));
   const puerta = pendientes.filter((e) => e.doorActivated);
   const lista = tab === 'puerta' ? puerta : pendientes;
@@ -65,6 +70,15 @@ export default function Verificaciones() {
           </button>
         ))}
       </div>
+      {ordenes > 0 && (
+        <Notice tone="info" className="mb-6">
+          Además hay {ordenes === 1 ? '1 venta' : `${ordenes} ventas`} de vendedores por verificar ({deOrdenes.length}{' '}
+          {deOrdenes.length === 1 ? 'entrada' : 'entradas'}).{' '}
+          <Link href="/admin/ventas" className="font-bold underline underline-offset-4">
+            Verlas en Ventas
+          </Link>
+        </Notice>
+      )}
       {error && <Notice tone="error">{error}</Notice>}
       {!entradas && !error && <Spinner />}
       {entradas && lista.length === 0 && (
@@ -215,31 +229,5 @@ function PagoCard({ entrada, onDone }: { entrada: Entrada; onDone: () => void })
         <CaptureDialog src={proof} alt={`Capture del pago de la entrada ${entrada.number}`} onClose={() => setZoom(false)} />
       )}
     </li>
-  );
-}
-
-// Diálogo nativo: atrapa el foco, se cierra con Escape y devuelve el foco al botón.
-function CaptureDialog({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    // Al desmontarse, el diálogo sale del DOM y se cierra solo; no hace falta cerrarlo aquí.
-    if (ref.current && !ref.current.open) ref.current.showModal();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      aria-label="Capture del pago"
-      onClose={onClose}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      className="m-auto max-h-[92vh] max-w-[92vw] rounded-2xl bg-card p-3 backdrop:bg-noche/85"
-    >
-      <div className="mb-2 flex justify-end">
-        <Button size="sm" variant="quiet" onClick={onClose} autoFocus>
-          Cerrar
-        </Button>
-      </div>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} className="max-h-[80vh] max-w-full rounded-xl" />
-    </dialog>
   );
 }

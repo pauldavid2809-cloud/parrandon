@@ -15,6 +15,15 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
         ],
       },
+      // El service worker de la app de vendedores se revisa en cada visita, así las versiones
+      // nuevas llegan a los teléfonos.
+      {
+        source: "/sw-vendedores.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        ],
+      },
     ];
   },
   // Rutas del sistema anterior (venta online con sillas) que ahora viven en otro lugar.

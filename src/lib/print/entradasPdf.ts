@@ -242,7 +242,8 @@ export function asistentesCsv(rows: Entrada[]) {
   };
   const lines = ['Numero,Nombre,Apellido,Cedula,Telefono,Mesa,Estado,Pago,Referencia,Lote,Ingreso'];
   for (const e of rows) {
-    if (!e.attendeeName || e.status === 'anulada') continue;
+    // Las vendidas entran aunque la persona todavía no haya puesto sus datos.
+    if (e.status === 'anulada' || (!e.attendeeName && e.status === 'sin_vender')) continue;
     lines.push(
       [
         formatNumber(e.number),

@@ -134,6 +134,7 @@ CREATE TABLE IF NOT EXISTS public.entradas (
     checked_in_by TEXT,
     meal_served_at TIMESTAMPTZ,
     notes TEXT,
+    sale_id TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -143,6 +144,36 @@ ALTER TABLE public.entradas
   ADD COLUMN IF NOT EXISTS attendee_first_name TEXT,
   ADD COLUMN IF NOT EXISTS attendee_last_name TEXT,
   ADD COLUMN IF NOT EXISTS attendee_cedula TEXT;
+
+-- Orden del vendedor con la que se vendió cada entrada (para bases creadas antes)
+ALTER TABLE public.entradas ADD COLUMN IF NOT EXISTS sale_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_entradas_sale ON public.entradas(sale_id);
+
+-- Ventas de los vendedores: una o varias entradas con un solo pago. El id lo pone el
+-- teléfono del vendedor (las ventas se pueden hacer sin internet y subirse después).
+CREATE TABLE IF NOT EXISTS public.ventas (
+    id TEXT PRIMARY KEY,
+    seller_type TEXT NOT NULL,
+    seller_id TEXT,
+    seller_name TEXT,
+    vendedor TEXT,
+    method TEXT NOT NULL,
+    reference TEXT,
+    proof_url TEXT,
+    buyer_name TEXT,
+    buyer_phone TEXT,
+    price_usd NUMERIC NOT NULL,
+    rate_applied NUMERIC,
+    numbers JSONB NOT NULL DEFAULT '[]'::jsonb,
+    problemas JSONB NOT NULL DEFAULT '[]'::jsonb,
+    sold_at TIMESTAMPTZ NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    verified_at TIMESTAMPTZ,
+    verified_by TEXT,
+    rejection_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ventas_received ON public.ventas(received_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_entradas_table ON public.entradas(table_id);
 CREATE INDEX IF NOT EXISTS idx_entradas_status ON public.entradas(status);
@@ -163,6 +194,7 @@ ALTER TABLE public.mesas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.parroquias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entradas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ventas ENABLE ROW LEVEL SECURITY;
 
 -- 7. Apartar una mesa sin pasarse de 10 personas, aunque muchos elijan a la vez.
 --    Bloquea la fila de la mesa, cuenta los puestos ocupados y asigna.

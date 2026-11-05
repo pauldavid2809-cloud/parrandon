@@ -382,24 +382,96 @@ function report(code, extra = {}) {
   r = await admin.get('/api/admin/entradas');
   check('Renombrar la parroquia actualiza sus entradas', r.json.entradas.find((e) => e.number === 240).holderName === 'Parroquia Santa Bárbara (Casco)');
 
-  // ---------------------------------------------------------------- vendedor
-  sec('Vendedor registra una venta');
-  r = await anon.post('/api/vendedores/reportar', {
-    code: c(50),
-    firstName: 'Jorge',
-    lastName: 'Ruiz',
-    cedula: 'V-18765432',
-    phone: '0412-5550000',
-    method: 'zelle',
-    reference: 'ZL998877',
-    proofUrl: PROOF,
-    sellerName: 'Otro Seminarista',
-  });
-  check('Venta del vendedor queda por verificar', r.json?.entrada?.status === 'por_verificar' && r.json.entrada.reportedBy === 'vendedor');
-  r = await anon.post('/api/vendedores/reportar', { code: c(51), firstName: 'Jorge', lastName: 'Ruiz', phone: '0412-5550000', method: 'zelle', reference: 'ZL998878', proofUrl: PROOF });
-  check('El vendedor también tiene que poner la cédula', r.status === 400 && /cédula/i.test(r.json.error));
-  r = await anon.post('/api/vendedores/reportar', { code: 'P050', firstName: 'x' });
-  check('Sin el código completo (secreto) no se puede registrar', r.status === 400);
+  // ---------------------------------------------------------------- órdenes de vendedores
+  sec('Órdenes de vendedores (varias entradas, sin internet)');
+  const semId = byNum(103).holderId;
+  const orden = (extra = {}) =>
+    anon.post('/api/vendedores/ordenes', {
+      id: 'v-' + Math.random().toString(36).slice(2, 12),
+      seller: { type: 'seminarista', id: semId },
+      codes: [c(103), c(104)],
+      method: 'efectivo_usd',
+      soldAt: new Date().toISOString(),
+      ...extra,
+    });
+  r = await orden({ id: 'x' });
+  check('Venta sin identificador válido → 400', r.status === 400);
+  r = await orden({ seller: { type: 'seminarista', id: 'f1-6' } });
+  check('Un seminarista que no está en el directorio no puede vender', r.status === 400 && /no encontrado/i.test(r.json.error), r.json?.error);
+  r = await orden({ seller: { type: 'padre_jorge', id: 'padre-jorge' } });
+  check('Lote del Padre Jorge: hay que decir quién vende', r.status === 400 && /quien vende/i.test(r.json.error), r.json?.error);
+  r = await orden({ method: 'pago_movil' });
+  check('Pago Móvil sin referencia → 400', r.status === 400 && /referencia/i.test(r.json.error));
+  r = await orden({ codes: [] });
+  check('Venta sin entradas → 400', r.status === 400);
+  r = await orden({ codes: ['P103'] });
+  check('Sin el código completo (con su secreto) no se puede vender', r.status === 400);
+  r = await orden({ codes: Array.from({ length: 11 }, (_, i) => c(110 + i)) });
+  check('Más de 10 entradas en una venta → 400', r.status === 400 && /10/.test(r.json.error));
+  const idV1 = 'venta-prueba-0001';
+  const horaVenta = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+  r = await orden({ id: idV1, codes: [c(103), c(104), c(104)], soldAt: horaVenta, buyerName: 'Familia Rincón' });
+  check(
+    'Venta de 2 entradas en efectivo (escanear dos veces la misma cuenta una)',
+    r.status === 200 && r.json.venta.estado === 'por_verificar' && r.json.venta.entradas.join() === '103,104' && r.json.venta.problemas.length === 0,
+    JSON.stringify(r.json)
+  );
+  r = await admin.get(`/api/admin/entradas/${c(103)}`);
+  const e103 = r.json.entrada;
+  check(
+    '…queda por verificar, del vendedor, sin datos de persona y con la hora de la venta',
+    e103.status === 'por_verificar' && e103.reportedBy === 'vendedor' && e103.saleId === idV1 && !e103.attendeeName && e103.reportedAt === horaVenta && e103.paymentMethod === 'efectivo_usd',
+    JSON.stringify(e103)
+  );
+  r = await orden({ id: idV1, codes: [c(103), c(104)] });
+  check('Subir la misma venta otra vez (reintento sin señal) no la duplica', r.status === 200 && r.json.venta.entradas.join() === '103,104' && r.json.venta.problemas.length === 0);
+  const idV2 = 'venta-prueba-0002';
+  r = await orden({ id: idV2, codes: [c(104), c(105), 'P105-ZZZZZZZZ'], method: 'pago_movil', reference: '778812', rateBs: 0.5 });
+  check(
+    'Con una entrada ya vendida y un código inventado: vende la libre y avisa del resto',
+    r.status === 200 && r.json.venta.entradas.join() === '105' && r.json.venta.problemas.length === 2,
+    JSON.stringify(r.json)
+  );
+  r = await admin.get(`/api/admin/entradas/${c(105)}`);
+  check('…si la tasa del teléfono está muy lejos de la de hoy, se usa la de hoy', r.json.entrada.rateApplied > 1 && r.json.entrada.currency === 'VES');
+  r = await anon.get(`/api/vendedores/ordenes?ids=${idV1},${idV2},no-existe`);
+  check('El teléfono consulta cómo van sus ventas', r.json?.ventas?.length === 2 && r.json.ventas.every((v) => v.estado === 'por_verificar'));
+  const idV3 = 'venta-prueba-0003';
+  r = await orden({ id: idV3, seller: { type: 'padre_jorge', id: 'padre-jorge', vendedor: 'María Briceño' }, codes: [c(262)], method: 'zelle', reference: 'ZL5544', proofUrl: PROOF });
+  check('Alguien con entradas del Padre Jorge vende con su propio nombre', r.status === 200 && r.json.venta.entradas.join() === '262');
+
+  r = await anon.get(`/api/entradas/${c(103)}`);
+  check('El comprador ve su entrada vendida, todavía sin datos', r.json.entrada.status === 'por_verificar' && !r.json.entrada.attendeeName && r.json.entrada.reportedBy === 'vendedor');
+  r = await anon.post(`/api/entradas/${c(103)}/datos`, { firstName: 'Luisa', lastName: 'Rincón', phone: '0414-5556677' });
+  check('Completar datos sin cédula → 400', r.status === 400 && /cédula/i.test(r.json.error));
+  r = await anon.post(`/api/entradas/${c(103)}/datos`, { firstName: 'Luisa', lastName: 'Rincón', cedula: '20555666', phone: '0414-5556677' });
+  check('El comprador completa nombre, apellido, cédula y teléfono', r.status === 200 && r.json.entrada.attendeeName === 'Luisa Rincón', JSON.stringify(r.json));
+  r = await anon.post(`/api/entradas/${c(103)}/datos`, { firstName: 'Otra', lastName: 'Persona', cedula: '11222333', phone: '0414-0000000' });
+  check('…y nadie puede reemplazarlos después (409)', r.status === 409);
+  r = await anon.post(`/api/entradas/${c(106)}/datos`, { firstName: 'Luisa', lastName: 'Rincón', cedula: '20555666', phone: '0414-5556677' });
+  check('No se completan datos de una entrada que nadie ha vendido', r.status === 400);
+  r = await anon.post(`/api/entradas/${c(103)}/mesa`, { tableId: 'C8' });
+  check('…después escoge su mesa', r.status === 200 && r.json.entrada.tableId === 'C8');
+
+  r = await anon.get('/api/admin/ventas');
+  check('Ventas de vendedores: solo administración', r.status === 401);
+  r = await admin.get('/api/admin/ventas');
+  const fila = r.json?.vendedores?.find((v) => v.nombre === byNum(103).holderName);
+  check('Rendición: el seminarista debe entregar $40 en efectivo y tiene 1 Pago Móvil por verificar', fila && fila.efectivoPorEntregar === 40 && fila.pagosPorVerificar === 1 && fila.entradas === 3, JSON.stringify(fila));
+  check('…María Briceño aparece aparte, como vendedora del lote del Padre Jorge', r.json.vendedores.some((v) => v.nombre === 'María Briceño' && v.lote === 'Padre Jorge'));
+  check('…la lista no trae los capture embebidos', r.json.ventas.every((v) => !String(v.proofUrl || '').startsWith('data:')));
+  r = await admin.patch(`/api/admin/ventas/${idV1}`, { action: 'aprobar' });
+  check('«Efectivo recibido» activa las 2 entradas de la venta', r.json?.aprobadas === 2, JSON.stringify(r.json));
+  r = await admin.get('/api/admin/ventas');
+  check('…y el seminarista ya no debe efectivo', r.json.vendedores.find((v) => v.nombre === byNum(103).holderName).efectivoPorEntregar === 0 && r.json.ventas.find((v) => v.id === idV1).estado === 'verificada');
+  r = await admin.patch(`/api/admin/ventas/${idV2}`, { action: 'rechazar', reason: 'No llegó el Pago Móvil' });
+  check('Rechazar una venta devuelve sus entradas a sin vender', r.json?.rechazadas === 1, JSON.stringify(r.json));
+  r = await admin.get(`/api/admin/entradas/${c(105)}`);
+  check('…sin la orden y con el motivo para el comprador', r.json.entrada.status === 'sin_vender' && !r.json.entrada.saleId && /Pago Móvil/.test(r.json.entrada.rejectionReason));
+  r = await anon.get(`/api/vendedores/ordenes?ids=${idV2}`);
+  check('…y el teléfono del vendedor la ve rechazada, con el motivo', r.json.ventas[0].estado === 'rechazada' && /Pago Móvil/.test(r.json.ventas[0].rejectionReason));
+  r = await admin.get(`/api/admin/ventas/${idV3}`);
+  check('Administración puede ver el capture de una venta', r.json?.proofUrl === PROOF);
 
   // ---------------------------------------------------------------- fecha del evento
   sec('Cambio de mesa y fecha del evento');

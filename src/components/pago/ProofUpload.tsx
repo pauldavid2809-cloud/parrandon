@@ -5,7 +5,7 @@ import { ImagePlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Achica la foto antes de subirla: los capture del teléfono pesan mucho con datos móviles.
-async function shrink(file: File): Promise<Blob> {
+export async function shrink(file: File): Promise<Blob> {
   if (!file.type.startsWith('image/') || file.size < 700_000) return file;
   try {
     const bitmap = await createImageBitmap(file);

@@ -74,7 +74,7 @@ export async function eventRules() {
   };
 }
 
-function amountFor(method: MetodoPago, priceUsd: number, rate: number) {
+export function amountFor(method: MetodoPago, priceUsd: number, rate: number) {
   if (method === 'pago_movil') {
     return { amount: Math.round(priceUsd * rate * 100) / 100, currency: 'VES' as const, rateApplied: rate };
   }
@@ -200,6 +200,7 @@ export async function generarEntradas(total = TOTAL_ENTRADAS): Promise<number> {
       checkedInBy: null,
       mealServedAt: null,
       notes: null,
+      saleId: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -328,6 +329,7 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
   const ok = await store().updateEntradaIf(code, { status: 'por_verificar', notCheckedIn: true }, {
     status: 'sin_vender',
     tableId: null,
+    saleId: null,
     rejectionReason: clean(reason, 300) || 'No se encontró el pago.',
     verifiedAt: new Date().toISOString(),
     verifiedBy: by,
@@ -359,6 +361,7 @@ const ESTADO_INICIAL: Partial<Entrada> = {
   checkedInAt: null,
   checkedInBy: null,
   mealServedAt: null,
+  saleId: null,
 };
 
 function horaCaracas(date: Date) {
@@ -384,6 +387,22 @@ export async function reiniciarEntrada(code: string, by = 'Administración') {
     .join(', ');
   const nota = `Reiniciada por ${by} el ${horaCaracas(new Date())}${antes ? ` (antes: ${antes})` : ''}.`;
   return store().updateEntrada(code, { ...ESTADO_INICIAL, notes: nota.slice(0, 500) });
+}
+
+// ---------- el comprador completa sus datos ----------
+
+// Cuando la venta la registró un vendedor, cada persona escanea su entrada y escribe sus datos.
+// Solo se llenan si faltan: no se reemplazan los de otra persona.
+export async function completarDatos(code: string, input: PersonaInput) {
+  const entrada = await store().getEntrada(code);
+  if (!entrada) throw new EntradaError('Entrada no encontrada.', 404);
+  if (!OCUPA_PUESTO.includes(entrada.status)) throw new EntradaError('Primero hay que registrar el pago de la entrada.');
+  if (entrada.checkedInAt) throw new EntradaError('Esta entrada ya ingresó al evento.');
+  if (entrada.attendeeName) throw new EntradaError('Esta entrada ya tiene sus datos registrados.', 409, 'ya_registrada');
+  const persona = datosPersona(input, { cedula: true, phone: true });
+  const ok = await store().updateEntradaIf(code, { sinPersona: true, notCheckedIn: true }, persona);
+  if (!ok) throw new EntradaError('Esta entrada ya tiene sus datos registrados.', 409, 'ya_registrada');
+  return ok;
 }
 
 // ---------- puerta ----------

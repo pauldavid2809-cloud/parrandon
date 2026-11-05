@@ -226,7 +226,7 @@ function ResultPanel({
   if (result.state === 'adelante' && e) {
     return (
       <Panel tone="verde" icon={<CheckCircle2 className="h-12 w-12 text-oro" aria-hidden />} title="Adelante">
-        <p className="text-xl font-bold">{e.attendeeName}</p>
+        <p className="text-xl font-bold">{e.attendeeName || 'Sin nombre registrado'}</p>
         <p className="tabular text-paper/80">
           {head}
           {ci}
@@ -245,7 +245,7 @@ function ResultPanel({
       <Panel tone="rojo" icon={<OctagonX className="h-12 w-12" aria-hidden />} title="Esta entrada ya entró">
         <p className="text-xl font-bold">Entró a las {hora(e.checkedInAt)}</p>
         <p className="mt-1 text-paper/85">
-          {e.attendeeName} · {head}
+          {e.attendeeName || 'Sin nombre registrado'} · {head}
           {ci} · Mesa {e.tableId}
         </p>
         <p className="mt-4 text-paper/85">Si la persona dice que es suya, pide ayuda a administración.</p>
@@ -270,7 +270,7 @@ function ResultPanel({
   if (result.state === 'por_verificar' && e) {
     return (
       <Panel tone="oro" icon={<TriangleAlert className="h-12 w-12" aria-hidden />} title="Pago por verificar">
-        <p className="text-xl font-bold">{e.attendeeName}</p>
+        <p className="text-xl font-bold">{e.attendeeName || 'Sin nombre registrado'}</p>
         <p className="tabular">
           {head}
           {ci} · Mesa {e.tableId}
@@ -297,7 +297,7 @@ function ResultPanel({
       <div className="flash-in rounded-2xl bg-noche-2 p-5">
         <p className="font-display text-3xl">Falta escoger la mesa</p>
         <p className="mt-1 text-paper/80">
-          {e.attendeeName} · {head}. Escojan juntos dónde se va a sentar.
+          {e.attendeeName || 'Sin nombre registrado'} · {head}. Escojan juntos dónde se va a sentar.
         </p>
         <MesaPicker
           className="mt-4"

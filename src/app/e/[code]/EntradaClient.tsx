@@ -107,8 +107,10 @@ export default function EntradaClient({
 
   const { entrada } = data;
   const reportada = entrada.status === 'por_verificar' || entrada.status === 'activa';
+  // Si la venta la registró un vendedor, la persona pone sus datos al escanear (paso 1).
+  const faltanDatos = reportada && !entrada.attendeeName && !entrada.checkedInAt;
   // Paso 2: con el pago ya reportado, falta la mesa.
-  const faltaMesa = reportada && !entrada.tableId && !entrada.checkedInAt;
+  const faltaMesa = reportada && !faltanDatos && !entrada.tableId && !entrada.checkedInAt;
   return (
     <Shell>
       <header className="flex flex-col items-start gap-3">
@@ -137,6 +139,7 @@ export default function EntradaClient({
           </Notice>
         )}
         {entrada.status === 'sin_vender' && <ReportarPago data={data} code={code} onDone={setData} reload={load} />}
+        {faltanDatos && <CompletarDatos data={data} code={code} onDone={setData} reload={load} />}
         {faltaMesa && (
           <EscogerMesa
             data={data}
@@ -147,7 +150,7 @@ export default function EntradaClient({
             }}
           />
         )}
-        {reportada && !faltaMesa && <EntradaReportada data={data} code={code} onChange={load} recienApartada={recienApartada} />}
+        {reportada && !faltanDatos && !faltaMesa && <EntradaReportada data={data} code={code} onChange={load} recienApartada={recienApartada} />}
       </div>
     </Shell>
   );
@@ -163,8 +166,11 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 // Dos pasos: 1) datos y pago, 2) mesa. La mesa se escoge con el pago ya reportado,
 // así el pago queda registrado aunque la persona cierre la página antes de escogerla.
-function Pasos({ actual }: { actual: 1 | 2 }) {
-  const pasos = ['Tus datos y tu pago', 'Tu mesa'];
+const PASOS_COMPRADOR = ['Tus datos y tu pago', 'Tu mesa'];
+// Cuando el pago lo registró el vendedor, la persona solo pone sus datos.
+const PASOS_VENDEDOR = ['Tus datos', 'Tu mesa'];
+
+function Pasos({ actual, pasos = PASOS_COMPRADOR }: { actual: 1 | 2; pasos?: string[] }) {
   return (
     <ol aria-label="Pasos para activar tu entrada" className="grid grid-cols-2 gap-2">
       {pasos.map((label, i) => {
@@ -341,6 +347,77 @@ function Seccion({ id, title, children }: { id: string; title: string; children:
   );
 }
 
+// ---------- paso 1 cuando vendió un vendedor: los datos de quien usa la entrada ----------
+
+function CompletarDatos({
+  data,
+  code,
+  onDone,
+  reload,
+}: {
+  data: Data;
+  code: string;
+  onDone: (d: Data) => void;
+  reload: () => void;
+}) {
+  const { entrada } = data;
+  const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
+  const submit = async (ev: FormEvent) => {
+    ev.preventDefault();
+    setServerError(null);
+    const e = erroresPersona(persona, { cedula: true, phone: true });
+    setErrors(e);
+    if (Object.keys(e).length) {
+      document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch(`/api/entradas/${encodeURIComponent(code)}/datos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(persona),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        if (json.reason === 'ya_registrada') reload();
+        throw new Error(json.error);
+      }
+      onDone({ ...data, entrada: json.entrada });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'No se pudo guardar. Intenta de nuevo.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} noValidate className="space-y-10">
+      <div className="space-y-4">
+        <Pasos actual={1} pasos={PASOS_VENDEDOR} />
+        <Notice tone="ok" title={entrada.status === 'activa' ? 'Tu entrada ya está pagada' : 'Tu pago ya está registrado'}>
+          {punto(`Lo registró quien te vendió la entrada${entrada.reportedAt ? ` el ${fecha(entrada.reportedAt)}` : ''}`)} Solo
+          faltan tus datos y tu mesa.
+        </Notice>
+      </div>
+      <Seccion id="datos" title="¿Quién va a usar esta entrada?">
+        <PersonaFields value={persona} onChange={setPersona} errors={errors} phoneHint="Por si hay que contactarte." />
+      </Seccion>
+      <div className="sticky bottom-3 z-20 space-y-2">
+        {serverError && <Notice tone="error">{serverError}</Notice>}
+        <Button type="submit" size="lg" loading={sending} className="w-full shadow-[var(--shadow-ticket)]">
+          Guardar y escoger mi mesa
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 // ---------- paso 2: mesa ----------
 
 function EscogerMesa({ data, code, onDone }: { data: Data; code: string; onDone: (d: Data) => void }) {
@@ -386,7 +463,7 @@ function EscogerMesa({ data, code, onDone }: { data: Data; code: string; onDone:
 
   return (
     <div className="space-y-8">
-      <Pasos actual={2} />
+      <Pasos actual={2} pasos={entrada.reportedBy === 'vendedor' ? PASOS_VENDEDOR : PASOS_COMPRADOR} />
       <Notice tone="ok" title={aviso.title}>
         {aviso.body}
       </Notice>
