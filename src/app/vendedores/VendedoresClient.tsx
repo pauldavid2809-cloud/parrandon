@@ -104,13 +104,10 @@ interface Lista {
   parroquias: { id: string; name: string }[];
 }
 
-function QuienEres({ onChoose }: { onChoose: (s: Seller) => void }) {
+// Seminaristas y parroquias: de internet, o lo último guardado en el teléfono.
+function useLista() {
   const [lista, setLista] = useState<Lista | null>(() => leerGuardado<Lista>(LISTA_KEY));
-  const [type, setType] = useState<Seller['type'] | null>(null);
-  const [id, setId] = useState('');
-  const [vendedor, setVendedor] = useState('');
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     fetch('/api/vendedores/lista', { cache: 'no-store' })
       .then((r) => r.json())
@@ -123,18 +120,92 @@ function QuienEres({ onChoose }: { onChoose: (s: Seller) => void }) {
         if (!leerGuardado(LISTA_KEY)) setError('No se pudo cargar la lista. La primera vez hace falta internet.');
       });
   }, []);
+  return { lista, error };
+}
 
+const SELECT = 'h-12 w-full rounded-xl border-2 border-line bg-card px-3 text-base focus:border-ink focus:outline-none';
+const OTRA_PERSONA = '__otra';
+
+function OpcionesSeminaristas({ lista }: { lista: Lista | null }) {
   const stages = lista ? Array.from(new Set(lista.seminaristas.map((s) => s.stage))) : [];
-  const pideNombre = type === 'padre_jorge' || type === 'parroquia';
+  return (
+    <>
+      {stages.map((stage) => (
+        <optgroup key={stage} label={stage}>
+          {lista!.seminaristas
+            .filter((s) => s.stage === stage)
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+        </optgroup>
+      ))}
+    </>
+  );
+}
+
+// Quién vende las entradas de una parroquia: un seminarista de la lista u otra persona.
+interface QuienVendeValor {
+  id: string; // id del seminarista, OTRA_PERSONA o ''
+  nombre: string; // solo si es otra persona
+}
+
+function QuienVende({ lista, value, onChange }: { lista: Lista | null; value: QuienVendeValor; onChange: (v: QuienVendeValor) => void }) {
+  return (
+    <>
+      <Field label="¿Qué seminarista vende?" htmlFor="vende-seminarista" hint="Quien vende y entrega el dinero a administración.">
+        <select id="vende-seminarista" value={value.id} onChange={(e) => onChange({ ...value, id: e.target.value })} className={SELECT}>
+          <option value="">Selecciona el seminarista</option>
+          <OpcionesSeminaristas lista={lista} />
+          <option value={OTRA_PERSONA}>Otra persona (no es seminarista)</option>
+        </select>
+      </Field>
+      {value.id === OTRA_PERSONA && (
+        <Field label="Nombre de quien vende" htmlFor="vendedor">
+          <TextInput
+            id="vendedor"
+            value={value.nombre}
+            onChange={(e) => onChange({ ...value, nombre: e.target.value })}
+            autoComplete="name"
+            autoCapitalize="words"
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
+function vendedorDe(v: QuienVendeValor, lista: Lista | null): Pick<Seller, 'vendedor' | 'vendedorId'> | null {
+  if (v.id === OTRA_PERSONA) return v.nombre.trim().length >= 3 ? { vendedor: v.nombre.trim() } : null;
+  const sem = lista?.seminaristas.find((s) => s.id === v.id);
+  return sem ? { vendedor: sem.name, vendedorId: sem.id } : null;
+}
+
+function QuienEres({ onChoose }: { onChoose: (s: Seller) => void }) {
+  const { lista, error } = useLista();
+  const [type, setType] = useState<Seller['type'] | null>(null);
+  const [id, setId] = useState('');
+  const [vendedor, setVendedor] = useState('');
+  const [vende, setVende] = useState<QuienVendeValor>({ id: '', nombre: '' });
+
+  const deParroquia = type === 'parroquia' ? vendedorDe(vende, lista) : null;
+  const listo =
+    type === 'seminarista'
+      ? Boolean(id)
+      : type === 'padre_jorge'
+        ? vendedor.trim().length >= 3
+        : type === 'parroquia'
+          ? Boolean(id && deParroquia)
+          : false;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!type) return;
-    const quien = vendedor.trim() || undefined;
-    if (type === 'padre_jorge') return onChoose({ type, id: 'padre-jorge', name: 'Padre Jorge', vendedor: quien });
+    if (!type || !listo) return;
+    if (type === 'padre_jorge') return onChoose({ type, id: 'padre-jorge', name: 'Padre Jorge', vendedor: vendedor.trim() });
     const found =
       type === 'seminarista' ? lista?.seminaristas.find((s) => s.id === id) : lista?.parroquias.find((p) => p.id === id);
-    if (found) onChoose({ type, id: found.id, name: found.name, vendedor: type === 'parroquia' ? quien : undefined });
+    if (found) onChoose({ type, id: found.id, name: found.name, ...(type === 'parroquia' ? deParroquia : {}) });
   };
 
   return (
@@ -165,81 +236,68 @@ function QuienEres({ onChoose }: { onChoose: (s: Seller) => void }) {
       </Field>
       {type === 'seminarista' && (
         <Field label="Tu nombre" htmlFor="seminarista">
-          <select
-            id="seminarista"
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            className="h-12 w-full rounded-xl border-2 border-line bg-card px-3 text-base focus:border-ink focus:outline-none"
-          >
+          <select id="seminarista" value={id} onChange={(e) => setId(e.target.value)} className={SELECT}>
             <option value="">Selecciona tu nombre</option>
-            {stages.map((stage) => (
-              <optgroup key={stage} label={stage}>
-                {lista!.seminaristas
-                  .filter((s) => s.stage === stage)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
+            <OpcionesSeminaristas lista={lista} />
           </select>
         </Field>
       )}
       {type === 'parroquia' && (
-        <Field label="Parroquia" htmlFor="parroquia">
-          {lista && lista.parroquias.length === 0 ? (
-            <Notice tone="warn">Todavía no hay parroquias con entradas asignadas. Pídele a administración que te registre.</Notice>
-          ) : (
-            <select
-              id="parroquia"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              className="h-12 w-full rounded-xl border-2 border-line bg-card px-3 text-base focus:border-ink focus:outline-none"
-            >
-              <option value="">Selecciona la parroquia</option>
-              {lista?.parroquias.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
+        <>
+          <Field label="Parroquia" htmlFor="parroquia">
+            {lista && lista.parroquias.length === 0 ? (
+              <Notice tone="warn">Todavía no hay parroquias con entradas asignadas. Pídele a administración que te registre.</Notice>
+            ) : (
+              <select id="parroquia" value={id} onChange={(e) => setId(e.target.value)} className={SELECT}>
+                <option value="">Selecciona la parroquia</option>
+                {lista?.parroquias.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <QuienVende lista={lista} value={vende} onChange={setVende} />
+        </>
       )}
-      {pideNombre && (
+      {type === 'padre_jorge' && (
         <Field label="Tu nombre" htmlFor="vendedor" hint="Quien vende y entrega el dinero a administración.">
           <TextInput id="vendedor" value={vendedor} onChange={(e) => setVendedor(e.target.value)} autoComplete="name" autoCapitalize="words" />
         </Field>
       )}
-      <Button
-        type="submit"
-        size="lg"
-        disabled={!type || (type !== 'padre_jorge' && !id) || (pideNombre && vendedor.trim().length < 3)}
-      >
+      <Button type="submit" size="lg" disabled={!listo}>
         Entrar
       </Button>
     </form>
   );
 }
 
+// Para quien entró antes de que se pidiera quién vende.
 function TuNombre({ seller, onExit }: { seller: Seller; onExit: () => void }) {
+  const { lista } = useLista();
   const [vendedor, setVendedor] = useState('');
+  const [vende, setVende] = useState<QuienVendeValor>({ id: '', nombre: '' });
+  const elegido = seller.type === 'parroquia' ? vendedorDe(vende, lista) : vendedor.trim().length >= 3 ? { vendedor: vendedor.trim() } : null;
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (vendedor.trim().length >= 3) writeSeller({ ...seller, vendedor: vendedor.trim() });
+        if (elegido) writeSeller({ ...seller, ...elegido });
       }}
       className="space-y-6"
     >
       <h1 className="font-display text-3xl leading-tight sm:text-4xl">¿Quién vende las entradas de {seller.name}?</h1>
-      <p className="text-lg text-ink-2">Escribe tu nombre: así administración sabe a quién pedirle el efectivo de cada venta.</p>
-      <Field label="Tu nombre" htmlFor="vendedor">
-        <TextInput id="vendedor" value={vendedor} onChange={(e) => setVendedor(e.target.value)} autoComplete="name" autoCapitalize="words" />
-      </Field>
+      <p className="text-lg text-ink-2">Así administración sabe a quién pedirle el efectivo de cada venta.</p>
+      {seller.type === 'parroquia' ? (
+        <QuienVende lista={lista} value={vende} onChange={setVende} />
+      ) : (
+        <Field label="Tu nombre" htmlFor="vendedor">
+          <TextInput id="vendedor" value={vendedor} onChange={(e) => setVendedor(e.target.value)} autoComplete="name" autoCapitalize="words" />
+        </Field>
+      )}
       <div className="flex flex-wrap items-center gap-4">
-        <Button type="submit" size="lg" disabled={vendedor.trim().length < 3}>
+        <Button type="submit" size="lg" disabled={!elegido}>
           Seguir
         </Button>
         <button type="button" onClick={onExit} className="font-bold text-ink-2 underline underline-offset-4">

@@ -59,7 +59,9 @@ export async function registrarVenta(input: Record<string, unknown>) {
   const sellerType = seller.type as HolderType;
   if (!VENDEDORES.includes(sellerType)) throw new EntradaError('Indica quién vende.');
   const holder = await holderInfo(sellerType, clean(seller.id, 80) || null);
-  const vendedor = clean(seller.vendedor, 80) || null;
+  // Quien vende las entradas de una parroquia suele ser un seminarista: su nombre sale del directorio.
+  const vendedorId = clean(seller.vendedorId, 40);
+  const vendedor = vendedorId ? (await holderInfo('seminarista', vendedorId)).name : clean(seller.vendedor, 80) || null;
   if (sellerType !== 'seminarista' && !vendedor) throw new EntradaError('Escribe el nombre de quien vende.');
 
   const method = input.method as MetodoPago;

@@ -472,6 +472,11 @@ function report(code, extra = {}) {
   const idV3 = 'venta-prueba-0003';
   r = await orden({ id: idV3, seller: { type: 'padre_jorge', id: 'padre-jorge', vendedor: 'María Briceño' }, codes: [c(262)], method: 'zelle', reference: 'ZL5544', proofUrl: PROOF });
   check('Alguien con entradas del Padre Jorge vende con su propio nombre', r.status === 200 && r.json.venta.entradas.join() === '262');
+  const idV4 = 'venta-prueba-0004';
+  r = await orden({ id: idV4, seller: { type: 'parroquia', id: parr.id, vendedorId: 't4-3', vendedor: 'nombre mal escrito' }, codes: [c(245), c(246)] });
+  check('Venta de entradas de una parroquia hecha por un seminarista de la lista', r.status === 200 && r.json.venta.entradas.join() === '245,246', JSON.stringify(r.json));
+  r = await orden({ seller: { type: 'parroquia', id: parr.id, vendedorId: 'f1-6' }, codes: [c(247)] });
+  check('…el seminarista tiene que estar en el directorio', r.status === 400 && /no encontrado/i.test(r.json.error), r.json?.error);
 
   r = await anon.get(`/api/entradas/${c(103)}`);
   check('El comprador ve su entrada vendida, todavía sin datos', r.json.entrada.status === 'por_verificar' && !r.json.entrada.attendeeName && r.json.entrada.reportedBy === 'vendedor');
@@ -492,6 +497,8 @@ function report(code, extra = {}) {
   const fila = r.json?.vendedores?.find((v) => v.nombre === byNum(103).holderName);
   check('Rendición: el seminarista debe entregar $40 en efectivo y tiene 1 Pago Móvil por verificar', fila && fila.efectivoPorEntregar === 40 && fila.pagosPorVerificar === 1 && fila.entradas === 3, JSON.stringify(fila));
   check('…María Briceño aparece aparte, como vendedora del lote del Padre Jorge', r.json.vendedores.some((v) => v.nombre === 'María Briceño' && v.lote === 'Padre Jorge'));
+  const deParroquia = r.json.vendedores.find((v) => v.lote?.startsWith('Parroquia Santa Bárbara'));
+  check('…y el seminarista que vendió en la parroquia, con su nombre del directorio y $40 por entregar', deParroquia?.nombre === 'Ricardo José Morillo Medina' && deParroquia.efectivoPorEntregar === 40, JSON.stringify(deParroquia));
   check('…la lista no trae los capture embebidos', r.json.ventas.every((v) => !String(v.proofUrl || '').startsWith('data:')));
   r = await admin.patch(`/api/admin/ventas/${idV1}`, { action: 'aprobar' });
   check('«Efectivo recibido» activa las 2 entradas de la venta', r.json?.aprobadas === 2, JSON.stringify(r.json));

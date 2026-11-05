@@ -11,6 +11,7 @@ export interface VendedorLocal {
   id: string;
   name: string; // dueño del lote
   vendedor?: string; // quien vende, si no es el dueño del lote
+  vendedorId?: string; // si quien vende es un seminarista del directorio
 }
 
 export interface RespuestaVenta {
@@ -148,7 +149,7 @@ export function sincronizar(): Promise<void> {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: v.id,
-            seller: { type: v.seller.type, id: v.seller.id, vendedor: v.seller.vendedor },
+            seller: { type: v.seller.type, id: v.seller.id, vendedor: v.seller.vendedor, vendedorId: v.seller.vendedorId },
             codes: v.entradas.map((e) => e.code),
             method: v.method,
             reference: v.reference,
