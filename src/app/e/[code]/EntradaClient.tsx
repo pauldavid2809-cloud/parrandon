@@ -224,7 +224,8 @@ function ReportarPago({
 }) {
   const { entrada, pago } = data;
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
-  const [method, setMethod] = useState<'pago_movil' | 'zelle' | null>(null);
+  // Con Pago Móvil pausado solo queda Zelle: ya viene marcado.
+  const [method, setMethod] = useState<'pago_movil' | 'zelle' | null>(pago.pagoMovilActivo ? null : 'zelle');
   const [reference, setReference] = useState('');
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -278,8 +279,10 @@ function ReportarPago({
           </Notice>
         )}
         <p className="text-lg text-ink-2">
-          Escribe tus datos y reporta tu pago de <strong className="text-ink">${pago.priceUsd}</strong> (
-          {formatBs(montoBs(pago))} por Pago Móvil). Al enviarlo pasas a escoger tu mesa.
+          Escribe tus datos y reporta tu pago de <strong className="text-ink">${pago.priceUsd}</strong>
+          {pago.pagoMovilActivo ? ` (${formatBs(montoBs(pago))} por Pago Móvil)` : ' por Zelle'}. Al enviarlo pasas a escoger tu
+          mesa.
+          {!pago.pagoMovilActivo && ' Si prefieres pagar en efectivo, págale a quien te vendió la entrada y que la registre.'}
         </p>
       </div>
 
@@ -295,8 +298,8 @@ function ReportarPago({
             onChange={(v) => setMethod(v)}
             className="grid-cols-2"
             options={[
-              { value: 'pago_movil', label: 'Pago Móvil', detail: formatBs(montoBs(pago)) },
-              { value: 'zelle', label: 'Zelle', detail: `$${pago.priceUsd.toFixed(2)}` },
+              ...(pago.pagoMovilActivo ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: formatBs(montoBs(pago)) }] : []),
+              { value: 'zelle' as const, label: 'Zelle', detail: `$${pago.priceUsd.toFixed(2)}` },
             ]}
           />
           {errors.method && <p className="mt-1.5 text-sm font-bold text-rojo">{errors.method}</p>}

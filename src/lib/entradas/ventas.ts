@@ -1,5 +1,6 @@
 import 'server-only';
 import { isSafeProofUrl } from '@/lib/proof';
+import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { store } from './store';
 import { amountFor, aprobar, EntradaError, eventRules, extractCode, holderInfo, rechazar } from './service';
 import { MAX_ENTRADAS_POR_VENTA, type Entrada, type HolderType, type MetodoPago, type Venta, type VentaEstado } from './types';
@@ -80,6 +81,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
   // El monto en bolívares es el que vio el comprador en el teléfono del vendedor, salvo que
   // esa tasa esté muy lejos de la de hoy (teléfono sin internet por días).
   const { config } = await eventRules();
+  if (method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
   const tasaTelefono = Number(input.rateBs);
   const tasa =
     Number.isFinite(tasaTelefono) && tasaTelefono > config.currentRateBs * 0.8 && tasaTelefono < config.currentRateBs * 1.25

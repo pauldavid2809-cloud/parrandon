@@ -256,6 +256,7 @@ function pagoDe(config: EventConfig): PagoInfo {
   return {
     priceUsd: config.ticketPriceUsd,
     rateBs: config.currentRateBs,
+    pagoMovilActivo: config.paymentDetails.pagoMovil.activo === true,
     pagoMovil: config.paymentDetails.pagoMovil,
     zelle: config.paymentDetails.zelle,
   };

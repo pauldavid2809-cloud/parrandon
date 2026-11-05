@@ -34,6 +34,7 @@ interface Found {
   entrada: StaffView;
   priceUsd: number;
   rateBs: number;
+  pagoMovil: boolean; // Pago Móvil activo en Configuración
 }
 
 const METODO: Record<MetodoPago, string> = { pago_movil: 'Pago Móvil', zelle: 'Zelle', efectivo_usd: 'Efectivo $' };
@@ -211,7 +212,7 @@ export default function TaquillaClient() {
 }
 
 function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => void; onDone: (e: StaffView) => void }) {
-  const { entrada, priceUsd, rateBs } = found;
+  const { entrada, priceUsd, rateBs, pagoMovil } = found;
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
   const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<MetodoPago | null>(null);
@@ -284,11 +285,11 @@ function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => 
           name="Método de pago"
           value={method}
           onChange={setMethod}
-          className="sm:grid-cols-3"
+          className={pagoMovil ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}
           options={[
-            { value: 'efectivo_usd', label: 'Efectivo $', detail: `$${priceUsd.toFixed(2)}` },
-            { value: 'pago_movil', label: 'Pago Móvil', detail: formatBs(bs) },
-            { value: 'zelle', label: 'Zelle', detail: `$${priceUsd.toFixed(2)}` },
+            { value: 'efectivo_usd' as const, label: 'Efectivo $', detail: `$${priceUsd.toFixed(2)}` },
+            ...(pagoMovil ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: formatBs(bs) }] : []),
+            { value: 'zelle' as const, label: 'Zelle', detail: `$${priceUsd.toFixed(2)}` },
           ]}
         />
       </Field>

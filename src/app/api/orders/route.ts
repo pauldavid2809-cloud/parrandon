@@ -1,7 +1,8 @@
 import { hasRole, unauthorized } from '@/lib/auth';
 import { isSafeProofUrl } from '@/lib/proof';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllOrders, createOrder, searchOrdersOrTickets } from '@/lib/db';
+import { getAllOrders, createOrder, getEventConfig, searchOrdersOrTickets } from '@/lib/db';
+import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { sendWhatsAppNotificationForOrder } from '@/lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Las entradas se activan escaneando el QR de la entrada de papel.' },
         { status: 400 }
       );
+    }
+
+    if (!isAdmin && paymentMethod === 'pago_movil' && !aceptaPagoMovil(await getEventConfig())) {
+      return NextResponse.json({ success: false, error: PAGO_MOVIL_PAUSADO }, { status: 400 });
     }
 
     if (paymentProofUrl && !isSafeProofUrl(String(paymentProofUrl))) {

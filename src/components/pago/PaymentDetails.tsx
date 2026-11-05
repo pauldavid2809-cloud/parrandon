@@ -6,6 +6,7 @@ import { Check, Copy } from 'lucide-react';
 export interface PagoInfo {
   priceUsd: number;
   rateBs: number;
+  pagoMovilActivo?: boolean;
   pagoMovil: { bank: string; phone: string; docId: string; holder: string };
   zelle: { email: string; holder: string };
 }

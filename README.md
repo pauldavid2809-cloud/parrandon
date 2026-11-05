@@ -15,6 +15,8 @@ Sistema de las 500 entradas físicas con QR del Parrandón del Seminario Mayor S
    - `/cocina`: en vivo quién va llegando y cuántos platos faltan por mesa; «Despachar» sirve a los que ya llegaron (con opción de deshacer).
    - `/taquilla`: vende entradas del lote de taquilla (Pago Móvil, Zelle o efectivo en dólares), asigna mesa y registra la entrada.
 
+**Pago Móvil se puede pausar** en `/admin/configuracion` → «Aceptar Pago Móvil». Viene apagado: mientras tanto solo se cobra en efectivo y por Zelle, y Pago Móvil no aparece (ni se acepta) en el QR, la app de vendedores, la taquilla, la puerta ni las donaciones. Al encenderlo vuelve a todas partes; los textos fijos del inicio y de `/activar` hablan de efectivo y Zelle y habría que ajustarlos.
+
 Puerta, cocina y taquilla piden un PIN de 6 a 8 números (se define en `/admin/configuracion`). Administración pide la contraseña.
 
 ## Puesta en marcha (una sola vez)

@@ -32,7 +32,8 @@ export const DEFAULT_CONFIG: EventConfig = {
       bank: "0102 - Banco de Venezuela",
       phone: "0412-0308674",
       docId: "J-30456789-0",
-      holder: "Seminario Santo Tomás de Aquino"
+      holder: "Seminario Santo Tomás de Aquino",
+      activo: false
     },
     zelle: {
       email: "parrandonseminariosta@gmail.com",

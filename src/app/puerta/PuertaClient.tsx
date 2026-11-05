@@ -20,6 +20,7 @@ interface Result {
   entrada?: StaffView;
 }
 interface Resumen {
+  pagoMovil: boolean;
   ingresaron: number;
   esperados: number;
   recientes: { number: number; name: string | null; tableId: string | null; at: string; doorActivated: boolean }[];
@@ -179,7 +180,7 @@ export default function PuertaClient() {
           </div>
 
           {result && (
-            <ResultPanel result={result} busy={busy} error={error} onNext={clear} onAct={act} />
+            <ResultPanel result={result} busy={busy} error={error} onNext={clear} onAct={act} pagoMovil={resumen?.pagoMovil ?? false} />
           )}
         </div>
 
@@ -212,12 +213,14 @@ function ResultPanel({
   error,
   onNext,
   onAct,
+  pagoMovil,
 }: {
   result: Result;
   busy: boolean;
   error: string | null;
   onNext: () => void;
   onAct: (url: string, body: unknown) => void;
+  pagoMovil: boolean;
 }) {
   const e = result.entrada;
   const head = e ? `Entrada N.º ${formatNumber(e.number)}` : '';
@@ -315,7 +318,7 @@ function ResultPanel({
   }
 
   if (result.state === 'sin_activar' && e) {
-    return <ActivarAqui entrada={e} busy={busy} error={error} onAct={onAct} onCancel={onNext} />;
+    return <ActivarAqui entrada={e} busy={busy} error={error} onAct={onAct} onCancel={onNext} pagoMovil={pagoMovil} />;
   }
 
   return null;
@@ -363,12 +366,14 @@ function ActivarAqui({
   error,
   onAct,
   onCancel,
+  pagoMovil,
 }: {
   entrada: StaffView;
   busy: boolean;
   error: string | null;
   onAct: (url: string, body: unknown) => void;
   onCancel: () => void;
+  pagoMovil: boolean;
 }) {
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
   const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
@@ -413,11 +418,11 @@ function ActivarAqui({
           name="Método de pago"
           value={method}
           onChange={setMethod}
-          className="grid-cols-3"
+          className={pagoMovil ? 'grid-cols-3' : 'grid-cols-2'}
           options={[
-            { value: 'pago_movil', label: 'Pago Móvil' },
-            { value: 'zelle', label: 'Zelle' },
-            { value: 'efectivo_usd', label: 'Efectivo $' },
+            ...(pagoMovil ? [{ value: 'pago_movil' as const, label: 'Pago Móvil' }] : []),
+            { value: 'zelle' as const, label: 'Zelle' },
+            { value: 'efectivo_usd' as const, label: 'Efectivo $' },
           ]}
         />
       </Field>

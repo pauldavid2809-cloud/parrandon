@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { DEFAULT_CONFIG, getEventConfig } from '@/lib/db';
 import { fetchLiveRate } from '@/lib/rates';
 import { isSafeProofUrl } from '@/lib/proof';
+import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { erroresPersona, limpiarNombre, normalizarCedula, ocultarCedula, type PersonaInput, type ReglasPersona } from '@/lib/persona';
 import { SEMINARISTAS_DIRECTORY } from '@/lib/seminaristas';
 import { store } from './store';
@@ -276,8 +277,9 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
   if (entrada.status !== 'sin_vender') {
     throw new EntradaError('El pago de esta entrada ya fue reportado.', 409, 'ya_reportada');
   }
-  const data = validarReporte(input, { requireProof: true, methods: ['zelle', 'pago_movil'] });
   const { config } = await eventRules();
+  if (input.method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
+  const data = validarReporte(input, { requireProof: true, methods: ['zelle', 'pago_movil'] });
   const money = amountFor(data.method, config.ticketPriceUsd, config.currentRateBs);
 
   const reportado = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
@@ -441,6 +443,7 @@ export async function activarEnPuerta(code: string, input: Partial<ActivacionPue
   if (!['zelle', 'pago_movil', 'efectivo_usd'].includes(method)) throw new EntradaError('Elige el método de pago.');
 
   const { config } = await eventRules();
+  if (method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
   const soldBy = clean(input.soldBy, 120);
   if (entrada.status === 'sin_vender') {
     await store().updateEntradaIf(code, { status: 'sin_vender' }, {
@@ -482,6 +485,7 @@ export async function ventaTaquilla(
   if (proofUrl && !isSafeProofUrl(proofUrl)) throw new EntradaError('El capture no es válido. Súbelo de nuevo.');
 
   const { config } = await eventRules();
+  if (method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
   const now = new Date().toISOString();
   const vendida = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'activa',

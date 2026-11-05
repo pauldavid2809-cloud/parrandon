@@ -109,6 +109,7 @@ export interface EventConfig {
       phone: string;
       docId: string;
       holder: string;
+      activo?: boolean; // si se acepta Pago Móvil (apagado si falta)
     };
     zelle: {
       email: string;

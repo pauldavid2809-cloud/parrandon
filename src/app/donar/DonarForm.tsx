@@ -31,6 +31,7 @@ export default function DonarForm() {
         setPago({
           priceUsd: 20,
           rateBs: d.config.currentRateBs,
+          pagoMovilActivo: d.config.paymentDetails.pagoMovil.activo === true,
           pagoMovil: d.config.paymentDetails.pagoMovil,
           zelle: d.config.paymentDetails.zelle,
         });
@@ -144,8 +145,8 @@ export default function DonarForm() {
           onChange={setMethod}
           className="grid-cols-2"
           options={[
-            { value: 'pago_movil', label: 'Pago Móvil', detail: formatBs(bs) },
-            { value: 'zelle', label: 'Zelle', detail: `$${usd.toFixed(2)}` },
+            ...(pago?.pagoMovilActivo ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: formatBs(bs) }] : []),
+            { value: 'zelle' as const, label: 'Zelle', detail: `$${usd.toFixed(2)}` },
           ]}
         />
       </Field>

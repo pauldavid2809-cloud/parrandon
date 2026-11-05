@@ -173,8 +173,41 @@ function report(code, extra = {}) {
   check('#001–#006 son del primer seminarista del directorio', [1, 2, 3, 4, 5, 6].every((n) => byNum(n).holderId === 't4-1') && byNum(7).holderId === 't4-2');
 
   // ---------------------------------------------------------------- vista pública
-  sec('Vista pública de una entrada');
   const c = (n) => byNum(n).code;
+
+  // ---------------------------------------------------------------- pago móvil pausado
+  sec('Pago Móvil pausado (por ahora solo efectivo y Zelle)');
+  r = await anon.get('/api/config');
+  const pagoMovilBase = r.json.config.paymentDetails.pagoMovil;
+  // Se apaga explícitamente: la configuración local queda guardada entre corridas.
+  r = await admin.post('/api/config', { paymentDetails: { pagoMovil: { ...pagoMovilBase, activo: false } } });
+  check('Administración apaga Pago Móvil', r.json?.config?.paymentDetails?.pagoMovil?.activo === false);
+  r = await anon.get(`/api/entradas/${c(18)}`);
+  check('La página del QR lo sabe (solo ofrece Zelle)', r.json?.pago?.pagoMovilActivo === false);
+  r = await report(c(18));
+  check('El comprador no puede reportar Pago Móvil', r.status === 400 && /Pago Móvil/.test(r.json.error), r.json?.error);
+  r = await report(c(18), { method: 'zelle', reference: 'ZL1111' });
+  check('…por Zelle sí', r.status === 200 && r.json.entrada.paymentMethod === 'zelle');
+  r = await anon.post('/api/vendedores/ordenes', { id: 'venta-pm-pausado-1', seller: { type: 'seminarista', id: byNum(19).holderId }, codes: [c(19)], method: 'pago_movil', reference: '123456' });
+  check('El vendedor no puede registrar Pago Móvil', r.status === 400 && /Pago Móvil/.test(r.json.error), r.json?.error);
+  r = await taquilla.post('/api/taquilla/vender', { code: c(483), firstName: 'Ana', lastName: 'Paz', cedula: 'V-12121212', method: 'pago_movil', reference: '998877', tableId: 'D2' });
+  check('La taquilla tampoco', r.status === 400 && /Pago Móvil/.test(r.json.error), r.json?.error);
+  r = await puerta.post('/api/puerta/activar', { code: c(42), firstName: 'Ana', lastName: 'Paz', cedula: 'V-12121212', method: 'pago_movil', tableId: 'B6' });
+  check('Ni la puerta', r.status === 400 && /Pago Móvil/.test(r.json.error), r.json?.error);
+  r = await anon.post('/api/orders', { isDonation: true, buyerName: 'Rosa Díaz', buyerPhone: '04145550000', paymentMethod: 'pago_movil', paymentReference: '1234', amountPaid: 100, currency: 'VES', convertedUsd: 1 });
+  check('Ni las donaciones', r.status === 400 && /Pago Móvil/.test(r.json.error), r.json?.error);
+  r = await puerta.get('/api/puerta/resumen');
+  check('La puerta sabe que Pago Móvil está apagado', r.json?.pagoMovil === false);
+  for (const n of [42, 483]) {
+    r = await admin.get(`/api/admin/entradas/${c(n)}`);
+    check(`…y la N.º ${n} sigue sin vender`, r.json.entrada.status === 'sin_vender');
+  }
+  r = await admin.post('/api/config', { paymentDetails: { pagoMovil: { ...pagoMovilBase, activo: true } } });
+  check('Administración vuelve a encender Pago Móvil', r.json?.config?.paymentDetails?.pagoMovil?.activo === true, JSON.stringify(r.json?.config?.paymentDetails?.pagoMovil));
+  r = await anon.get(`/api/entradas/${c(20)}`);
+  check('…y el QR vuelve a ofrecerlo', r.json?.pago?.pagoMovilActivo === true);
+
+  sec('Vista pública de una entrada');
   r = await anon.get(`/api/entradas/${c(10)}`);
   check('Ver entrada por su código', r.status === 200 && r.json.entrada.number === 10);
   check('La vista pública no trae datos internos (notas, verificador, capture)', !('notes' in r.json.entrada) && !('verifiedBy' in r.json.entrada) && !('paymentProofUrl' in r.json.entrada));

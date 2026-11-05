@@ -1,6 +1,7 @@
 import { route, ok, fail } from '@/lib/api';
 import { eventRules, extractCode, ticketView } from '@/lib/entradas/service';
 import { store } from '@/lib/entradas/store';
+import { aceptaPagoMovil } from '@/lib/metodos';
 
 type Ctx = { params: Promise<{ code: string }> };
 
@@ -18,6 +19,7 @@ export const GET = route<Ctx>(async (_req, { params }) => {
       priceUsd: config.ticketPriceUsd,
       rateBs: config.currentRateBs,
       pagoMovil: config.paymentDetails.pagoMovil,
+          pagoMovilActivo: aceptaPagoMovil(config),
       zelle: config.paymentDetails.zelle,
     },
   });

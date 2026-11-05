@@ -108,12 +108,13 @@ function EventoForm({ config, onSaved }: { config: EventConfig; onSaved: (c: Eve
     pmPhone: config.paymentDetails.pagoMovil.phone,
     pmDoc: config.paymentDetails.pagoMovil.docId,
     pmHolder: config.paymentDetails.pagoMovil.holder,
+    pmActivo: config.paymentDetails.pagoMovil.activo === true,
     zEmail: config.paymentDetails.zelle.email,
     zHolder: config.paymentDetails.zelle.holder,
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
-  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
+  const set = (k: Exclude<keyof typeof v, 'pmActivo'>) => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
 
   const save = async () => {
     setBusy(true);
@@ -131,7 +132,7 @@ function EventoForm({ config, onSaved }: { config: EventConfig; onSaved: (c: Eve
           venue: v.venue,
           ticketPriceUsd: price,
           paymentDetails: {
-            pagoMovil: { bank: v.pmBank, phone: v.pmPhone, docId: v.pmDoc, holder: v.pmHolder },
+            pagoMovil: { bank: v.pmBank, phone: v.pmPhone, docId: v.pmDoc, holder: v.pmHolder, activo: v.pmActivo },
             zelle: { email: v.zEmail, holder: v.zHolder },
           },
         },
@@ -154,6 +155,22 @@ function EventoForm({ config, onSaved }: { config: EventConfig; onSaved: (c: Eve
         <p className="-mt-3 text-ink-2">Es lo que ven los compradores al activar su entrada. Revísalo con cuidado.</p>
         <div className="grid gap-4 rounded-2xl bg-card p-5 shadow-[var(--shadow-soft)] sm:grid-cols-2 sm:p-6">
           <p className="font-bold sm:col-span-2">Pago Móvil</p>
+          <label className="flex items-start gap-3 sm:col-span-2">
+            <input
+              type="checkbox"
+              id="pm-activo"
+              checked={v.pmActivo}
+              onChange={(e) => setV({ ...v, pmActivo: e.target.checked })}
+              className="mt-1 h-5 w-5 accent-[var(--color-rojo)]"
+            />
+            <span>
+              <span className="font-bold">Aceptar Pago Móvil</span>
+              <span className="block text-sm text-ink-2">
+                Apagado, Pago Móvil no aparece en el QR, la app de vendedores, la taquilla, la puerta ni las donaciones: se cobra
+                solo en efectivo y por Zelle.
+              </span>
+            </span>
+          </label>
           <Field label="Banco" htmlFor="pm-banco"><TextInput id="pm-banco" value={v.pmBank} onChange={set('pmBank')} /></Field>
           <Field label="Teléfono" htmlFor="pm-tel"><TextInput id="pm-tel" value={v.pmPhone} onChange={set('pmPhone')} /></Field>
           <Field label="RIF o cédula" htmlFor="pm-doc"><TextInput id="pm-doc" value={v.pmDoc} onChange={set('pmDoc')} /></Field>

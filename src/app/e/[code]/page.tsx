@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import EntradaClient, { type Data } from './EntradaClient';
 import { eventRules, extractCode, ticketView } from '@/lib/entradas/service';
 import { store } from '@/lib/entradas/store';
+import { aceptaPagoMovil } from '@/lib/metodos';
 
 export const metadata: Metadata = {
   title: 'Mi entrada · Parrandón Navideño 2026',
@@ -26,6 +27,7 @@ async function loadInitial(code: string): Promise<{ data: Data | null; notFound:
           priceUsd: config.ticketPriceUsd,
           rateBs: config.currentRateBs,
           pagoMovil: config.paymentDetails.pagoMovil,
+          pagoMovilActivo: aceptaPagoMovil(config),
           zelle: config.paymentDetails.zelle,
         },
       },

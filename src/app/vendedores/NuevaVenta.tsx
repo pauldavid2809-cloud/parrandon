@@ -226,10 +226,12 @@ export default function NuevaVenta({
             name="Método de pago"
             value={method}
             onChange={setMethod}
-            className="grid-cols-1 sm:grid-cols-3"
+            className={cn('grid-cols-1', pago?.pagoMovilActivo ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}
             options={[
               { value: 'efectivo_usd', label: 'Efectivo $', detail: n ? `$${totalUsd.toFixed(2)}` : `$${precio.toFixed(2)} c/u` },
-              { value: 'pago_movil', label: 'Pago Móvil', detail: totalBs != null && n ? formatBs(totalBs) : 'en bolívares' },
+              ...(pago?.pagoMovilActivo
+                ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: totalBs != null && n ? formatBs(totalBs) : 'en bolívares' }]
+                : []),
               { value: 'zelle', label: 'Zelle', detail: n ? `$${totalUsd.toFixed(2)}` : `$${precio.toFixed(2)} c/u` },
             ]}
           />

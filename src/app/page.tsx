@@ -14,7 +14,7 @@ const PASOS = [
   {
     titulo: 'Escanéala y reporta tu pago',
     texto:
-      'Abre la cámara del teléfono y apunta al QR. Escribe tu nombre, apellido y cédula, y reporta tu pago por Zelle o Pago Móvil con la referencia y el capture. La organización lo verifica.',
+      'Abre la cámara del teléfono y apunta al QR. Escribe tu nombre, apellido y cédula, y reporta tu pago por Zelle con la referencia y el capture, o paga en efectivo a quien te vendió la entrada. La organización lo verifica.',
   },
   {
     titulo: 'Escoge tu mesa',
@@ -177,7 +177,7 @@ export default function Home() {
             </li>
             <li>
               <p className="font-bold">En la taquilla, esa misma noche</p>
-              <p className="text-ink-2">Mientras queden entradas. Aceptan Pago Móvil, Zelle y dólares en efectivo.</p>
+              <p className="text-ink-2">Mientras queden entradas. Aceptan dólares en efectivo y Zelle.</p>
             </li>
             <li className="flex flex-wrap gap-3 pt-2">
               <a

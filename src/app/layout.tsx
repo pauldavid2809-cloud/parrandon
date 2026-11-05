@@ -20,7 +20,7 @@ const redHat = Red_Hat_Text({
 export const metadata: Metadata = {
   title: "Parrandón Navideño 2026 · Seminario Mayor Santo Tomás de Aquino",
   description:
-    "Activa tu entrada del Parrandón Navideño 2026, reporta tu pago por Zelle o Pago Móvil y escoge tu mesa en el Bulevar del Seminario.",
+    "Activa tu entrada del Parrandón Navideño 2026, reporta tu pago y escoge tu mesa en el Bulevar del Seminario.",
 };
 
 export const viewport: Viewport = {
