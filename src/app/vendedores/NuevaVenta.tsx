@@ -113,6 +113,7 @@ export default function NuevaVenta({
     if (!file) return;
     try {
       setProof(await leerImagen(await shrink(file)));
+      setErrors((e) => ({ ...e, proof: '' }));
     } catch {
       setAviso({ tone: 'error', text: 'No se pudo leer la foto. Intenta de nuevo.' });
     }
@@ -124,6 +125,7 @@ export default function NuevaVenta({
     if (n === 0) e.entradas = 'Escanea al menos una entrada.';
     if (!method) e.method = 'Elige cómo pagaron.';
     if (method && method !== 'efectivo_usd' && reference.trim().length < 4) e.reference = 'Escribe la referencia (al menos 4 dígitos).';
+    if (method && method !== 'efectivo_usd' && !proof) e.proof = 'Agrega la foto del capture del pago.';
     setErrors(e);
     if (Object.keys(e).length) return;
     setSaving(true);
@@ -134,6 +136,7 @@ export default function NuevaVenta({
       method: method!,
       reference: reference.trim(),
       proofUrl: method === 'efectivo_usd' ? null : proof,
+      capturaObligatoria: true,
       buyerName: buyerName.trim(),
       soldAt: new Date().toISOString(),
       priceUsd: precio,
@@ -248,8 +251,8 @@ export default function NuevaVenta({
                 onChange={(e) => setReference(e.target.value)}
               />
             </Field>
-            <div>
-              <p className="mb-1.5 text-[0.95rem] font-bold">Capture (opcional)</p>
+            <div data-error={Boolean(errors.proof)}>
+              <p className="mb-1.5 text-[0.95rem] font-bold">Capture del pago</p>
               {proof ? (
                 <div className="flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -263,6 +266,7 @@ export default function NuevaVenta({
                   <ImagePlus className="h-4 w-4" aria-hidden /> Agregar foto del capture
                 </Button>
               )}
+              {errors.proof && <p className="mt-1.5 text-sm font-bold text-rojo">{errors.proof}</p>}
               <input
                 ref={fileRef}
                 type="file"

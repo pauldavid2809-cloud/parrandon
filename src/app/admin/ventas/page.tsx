@@ -287,7 +287,7 @@ function VentaCard({
         </Notice>
       )}
 
-      {(venta.estado === 'por_verificar' || venta.estado === 'rechazada' || venta.proofUrl) && (
+      {(venta.estado === 'por_verificar' || venta.estado === 'rechazada' || venta.proofUrl || !efectivo) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {venta.estado === 'rechazada' && (
             <Button variant="outline" onClick={onDeshacer}>
@@ -304,10 +304,12 @@ function VentaCard({
               </Button>
             </>
           )}
-          {venta.proofUrl && (
+          {venta.proofUrl ? (
             <Button variant="quiet" onClick={verCapture}>
               Ver capture
             </Button>
+          ) : (
+            !efectivo && <span className="text-sm font-bold text-rojo-2">Sin capture</span>
           )}
         </div>
       )}

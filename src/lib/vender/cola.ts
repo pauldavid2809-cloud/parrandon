@@ -29,6 +29,9 @@ export interface VentaLocal {
   method: MetodoPago;
   reference: string;
   proofUrl: string | null; // imagen embebida; se borra del teléfono al subir
+  // Hecha con la app que ya pide el capture en Zelle y Pago Móvil. Las guardadas antes no lo
+  // traen y se suben igual, para no perder ventas que ya se entregaron.
+  capturaObligatoria?: boolean;
   buyerName: string;
   soldAt: string;
   priceUsd: number;
@@ -154,6 +157,7 @@ export function sincronizar(): Promise<void> {
             method: v.method,
             reference: v.reference,
             proofUrl: v.proofUrl,
+            capturaObligatoria: v.capturaObligatoria === true,
             buyerName: v.buyerName,
             soldAt: v.soldAt,
             rateBs: v.rateBs,

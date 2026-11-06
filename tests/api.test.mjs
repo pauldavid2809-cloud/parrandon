@@ -462,6 +462,8 @@ function report(code, extra = {}) {
   check('Lote del Padre Jorge: hay que decir quién vende', r.status === 400 && /quien vende/i.test(r.json.error), r.json?.error);
   r = await orden({ method: 'pago_movil' });
   check('Pago Móvil sin referencia → 400', r.status === 400 && /referencia/i.test(r.json.error));
+  r = await orden({ method: 'zelle', reference: 'ZL9090', capturaObligatoria: true });
+  check('Zelle sin capture (app que ya lo pide) → 400 y no vende nada', r.status === 400 && /capture/i.test(r.json.error), r.json?.error);
   r = await orden({ codes: [] });
   check('Venta sin entradas → 400', r.status === 400);
   r = await orden({ codes: ['P103'] });
@@ -497,7 +499,7 @@ function report(code, extra = {}) {
   r = await anon.get(`/api/vendedores/ordenes?ids=${idV1},${idV2},no-existe`);
   check('El teléfono consulta cómo van sus ventas', r.json?.ventas?.length === 2 && r.json.ventas.every((v) => v.estado === 'por_verificar'));
   const idV3 = 'venta-prueba-0003';
-  r = await orden({ id: idV3, seller: { type: 'padre_jorge', id: 'padre-jorge', vendedor: 'María Briceño' }, codes: [c(262)], method: 'zelle', reference: 'ZL5544', proofUrl: PROOF });
+  r = await orden({ id: idV3, seller: { type: 'padre_jorge', id: 'padre-jorge', vendedor: 'María Briceño' }, codes: [c(262)], method: 'zelle', reference: 'ZL5544', proofUrl: PROOF, capturaObligatoria: true });
   check('Alguien con entradas del Padre Jorge vende con su propio nombre', r.status === 200 && r.json.venta.entradas.join() === '262');
   const idV4 = 'venta-prueba-0004';
   r = await orden({ id: idV4, seller: { type: 'parroquia', id: parr.id, vendedorId: 't4-3', vendedor: 'nombre mal escrito' }, codes: [c(245), c(246)] });

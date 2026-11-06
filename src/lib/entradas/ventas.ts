@@ -75,6 +75,11 @@ export async function registrarVenta(input: Record<string, unknown>) {
   }
   const proofUrl = clean(input.proofUrl, 4_000_000) || null;
   if (proofUrl && !isSafeProofUrl(proofUrl)) throw new EntradaError('El capture no es válido. Tómalo de nuevo.');
+  // Zelle y Pago Móvil llevan capture. Las ventas guardadas en un teléfono con la app de antes
+  // (sin esa regla) se aceptan igual: ya se entregaron las entradas y no se pueden perder.
+  if (method !== 'efectivo_usd' && !proofUrl && input.capturaObligatoria === true) {
+    throw new EntradaError('Falta el capture del pago. Agrega la foto y guarda la venta otra vez.');
+  }
 
   const crudos = Array.isArray(input.codes) ? input.codes : [];
   const codes = [...new Set(crudos.map((c) => extractCode(String(c ?? ''))).filter((c): c is string => Boolean(c)))];
