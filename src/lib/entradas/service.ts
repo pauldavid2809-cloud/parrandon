@@ -295,6 +295,7 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
     reportedBy: by,
     reportedAt: new Date().toISOString(),
     rejectionReason: null,
+    notes: sinNotaDeMesa(entrada.notes),
   });
   if (!reportado) throw new EntradaError('El pago de esta entrada ya fue reportado.', 409, 'ya_reportada');
 
@@ -331,6 +332,7 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
   if (entrada.status !== 'por_verificar') throw new EntradaError('Esta entrada no está esperando verificación.');
   if (entrada.checkedInAt) throw new EntradaError('Esta persona ya entró al evento. Resuélvelo directamente con ella.');
   // Vuelve a "sin vender" y libera el puesto; la persona puede reportar de nuevo.
+  // La mesa que tenía queda anotada, por si el rechazo fue un error y hay que deshacerlo.
   const ok = await store().updateEntradaIf(code, { status: 'por_verificar', notCheckedIn: true }, {
     status: 'sin_vender',
     tableId: null,
@@ -339,9 +341,54 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
     verifiedAt: new Date().toISOString(),
     verifiedBy: by,
     doorActivated: false,
+    notes: entrada.tableId ? `Tenía la mesa ${entrada.tableId} antes del rechazo. ${entrada.notes ?? ''}`.trim().slice(0, 500) : entrada.notes,
   });
   if (!ok) throw new EntradaError('Esta entrada cambió mientras tanto. Recarga la lista.', 409);
   return ok;
+}
+
+// ---------- deshacer un rechazo (administración) ----------
+
+const NOTA_MESA = /Tenía la mesa ([A-Z]+\d+) antes del rechazo\.\s*/;
+// Al venderse o reportarse de nuevo, la nota de la mesa del rechazo ya no sirve.
+export const sinNotaDeMesa = (notes: string | null) => notes?.replace(NOTA_MESA, '').trim() || null;
+const mismaHora = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) < 1000;
+
+// Un rechazo por error: la entrada vuelve a «por verificar» con sus datos y su pago, de nuevo en la
+// venta del vendedor de la que salió, y con su mesa si nadie la tomó mientras tanto.
+export async function deshacerRechazo(code: string) {
+  const entrada = await store().getEntrada(code);
+  if (!entrada) throw new EntradaError('Entrada no encontrada.', 404);
+  if (entrada.status !== 'sin_vender' || !entrada.rejectionReason || !entrada.reportedAt) {
+    throw new EntradaError('Esta entrada no tiene un rechazo que deshacer.');
+  }
+  const reportada = entrada.reportedAt;
+  // La orden del vendedor guarda los números que llevaba y la hora en que se vendió.
+  const venta =
+    entrada.reportedBy === 'vendedor'
+      ? ((await store().listVentas()).find((v) => v.numbers.includes(entrada.number) && mismaHora(v.soldAt, reportada)) ?? null)
+      : null;
+  const mesaAntes = entrada.notes?.match(NOTA_MESA)?.[1] ?? null;
+  const ok = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
+    status: 'por_verificar',
+    rejectionReason: null,
+    verifiedAt: null,
+    verifiedBy: null,
+    saleId: venta?.id ?? null,
+    notes: sinNotaDeMesa(entrada.notes),
+  });
+  if (!ok) throw new EntradaError('Esta entrada cambió mientras tanto. Recarga la lista.', 409);
+  if (venta?.rejectionReason) await store().updateVenta(venta.id, { rejectionReason: null, verifiedAt: null, verifiedBy: null });
+  let mesa: string | null = null;
+  if (mesaAntes) {
+    try {
+      await apartarMesa(code, mesaAntes);
+      mesa = mesaAntes;
+    } catch {
+      // Alguien tomó ese puesto mientras tanto: administración o la persona escogen otra mesa.
+    }
+  }
+  return { entrada: (await store().getEntrada(code))!, mesa, mesaAntes, venta: venta?.id ?? null };
 }
 
 // ---------- reinicio (administración) ----------
@@ -459,7 +506,7 @@ export async function activarEnPuerta(code: string, input: Partial<ActivacionPue
       reportedAt: new Date().toISOString(),
       doorActivated: true,
       rejectionReason: null,
-      notes: soldBy ? `Dice que la compró a: ${soldBy}` : entrada.notes,
+      notes: soldBy ? `Dice que la compró a: ${soldBy}` : sinNotaDeMesa(entrada.notes),
     });
   }
   await apartarMesa(code, input.tableId);
@@ -502,6 +549,7 @@ export async function ventaTaquilla(
     verifiedAt: now,
     verifiedBy: by,
     rejectionReason: null,
+    notes: sinNotaDeMesa(entrada.notes),
   });
   if (!vendida) throw new EntradaError('Esta entrada se acaba de vender en otra caja. Usa otra.', 409);
   try {

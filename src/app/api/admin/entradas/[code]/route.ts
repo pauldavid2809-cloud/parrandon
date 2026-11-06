@@ -3,11 +3,13 @@ import {
   apartarMesa,
   aprobar,
   datosPersona,
+  deshacerRechazo,
   EntradaError,
   eventRules,
   rechazar,
   reiniciarEntrada,
   SIN_PERSONA,
+  sinNotaDeMesa,
 } from '@/lib/entradas/service';
 import { store, type Condicion } from '@/lib/entradas/store';
 import type { Entrada, MetodoPago } from '@/lib/entradas/types';
@@ -39,6 +41,10 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
     case 'rechazar':
       await rechazar(code, String(body.reason ?? ''), by);
       break;
+    case 'deshacer_rechazo': {
+      const r = await deshacerRechazo(code);
+      return ok({ entrada: r.entrada, mesa: r.mesa, mesaAntes: r.mesaAntes });
+    }
     case 'anular':
       if (entrada.checkedInAt) throw new EntradaError('Esta entrada ya ingresó; no se puede anular.');
       patch = { status: 'anulada', tableId: null, notes: text(body.reason) ?? entrada.notes };
@@ -68,6 +74,7 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
         verifiedAt: now,
         verifiedBy: by,
         rejectionReason: null,
+        notes: sinNotaDeMesa(entrada.notes),
       };
       onlyIf = { status: 'sin_vender' };
       break;

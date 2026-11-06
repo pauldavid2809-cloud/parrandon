@@ -313,6 +313,33 @@ function report(code, extra = {}) {
   check('Puede reportar de nuevo tras el rechazo', r.status === 200 && r.json.entrada.status === 'por_verificar');
   r = await anon.get(`/api/entradas/${c(11)}`);
   check('El motivo anterior se borra al reportar otra vez', !r.json.entrada.rejectionReason);
+  r = await admin.get(`/api/admin/entradas/${c(11)}`);
+  check('…y también la nota de la mesa que tenía antes del rechazo', !/Tenía la mesa/.test(r.json.entrada.notes || ''), r.json.entrada.notes);
+
+  sec('Deshacer un rechazo hecho por error');
+  r = await report(c(61), { method: 'zelle', reference: 'ZL6161', tableId: 'A4' });
+  check('(preparación) pago reportado con mesa A4', r.status === 200 && r.json.entrada.tableId === 'A4', JSON.stringify(r.json));
+  r = await admin.patch(`/api/admin/entradas/${c(61)}`, { action: 'rechazar', reason: 'Lo rechacé sin querer' });
+  check('Al rechazar queda anotada la mesa que tenía', r.json?.entrada?.status === 'sin_vender' && /Tenía la mesa A4/.test(r.json.entrada.notes || ''), JSON.stringify(r.json));
+  r = await anon.patch(`/api/admin/entradas/${c(61)}`, { action: 'deshacer_rechazo' });
+  check('Deshacer un rechazo: solo administración', r.status === 401);
+  r = await admin.patch(`/api/admin/entradas/${c(61)}`, { action: 'deshacer_rechazo' });
+  check(
+    'Deshacer el rechazo: vuelve a por verificar con sus datos, su pago y su mesa',
+    r.status === 200 && r.json.entrada.status === 'por_verificar' && r.json.mesa === 'A4' && r.json.entrada.tableId === 'A4' &&
+      r.json.entrada.attendeeName === 'Ana Pérez' && r.json.entrada.paymentReference === 'ZL6161' && !r.json.entrada.rejectionReason && !r.json.entrada.verifiedAt,
+    JSON.stringify(r.json)
+  );
+  check('…y se borra la nota de la mesa', !/Tenía la mesa/.test(r.json.entrada?.notes || ''));
+  r = await admin.patch(`/api/admin/entradas/${c(61)}`, { action: 'deshacer_rechazo' });
+  check('No se deshace una entrada que no está rechazada', r.status === 400);
+  r = await admin.patch(`/api/admin/entradas/${c(497)}`, { action: 'deshacer_rechazo' });
+  check('…ni una que nunca se vendió', r.status === 400);
+  await admin.patch(`/api/admin/entradas/${c(61)}`, { action: 'rechazar', reason: 'Otra vez sin querer' });
+  await admin.patch('/api/admin/mesas', { id: 'A4', blocked: true });
+  r = await admin.patch(`/api/admin/entradas/${c(61)}`, { action: 'deshacer_rechazo' });
+  check('Si su mesa ya no tiene puesto, vuelve igual y dice cuál tenía', r.status === 200 && r.json.entrada.status === 'por_verificar' && !r.json.entrada.tableId && r.json.mesa === null && r.json.mesaAntes === 'A4', JSON.stringify(r.json));
+  await admin.patch('/api/admin/mesas', { id: 'A4', blocked: false });
 
   // ---------------------------------------------------------------- puerta
   sec('Puerta');
@@ -510,6 +537,18 @@ function report(code, extra = {}) {
   check('…sin la orden y con el motivo para el comprador', r.json.entrada.status === 'sin_vender' && !r.json.entrada.saleId && /Pago Móvil/.test(r.json.entrada.rejectionReason));
   r = await anon.get(`/api/vendedores/ordenes?ids=${idV2}`);
   check('…y el teléfono del vendedor la ve rechazada, con el motivo', r.json.ventas[0].estado === 'rechazada' && /Pago Móvil/.test(r.json.ventas[0].rejectionReason));
+  r = await admin.patch(`/api/admin/ventas/${idV2}`, { action: 'deshacer_rechazo' });
+  check('Deshacer el rechazo de una venta: sus entradas vuelven a por verificar', r.status === 200 && r.json.recuperadas?.join() === '105', JSON.stringify(r.json));
+  r = await admin.get(`/api/admin/entradas/${c(105)}`);
+  check('…de nuevo en su venta y sin el motivo', r.json.entrada.status === 'por_verificar' && r.json.entrada.saleId === idV2 && !r.json.entrada.rejectionReason, JSON.stringify(r.json.entrada));
+  r = await anon.get(`/api/vendedores/ordenes?ids=${idV2}`);
+  check('…y el teléfono del vendedor la ve otra vez por verificar', r.json.ventas[0].estado === 'por_verificar' && !r.json.ventas[0].rejectionReason, JSON.stringify(r.json));
+  r = await admin.patch(`/api/admin/ventas/${idV2}`, { action: 'deshacer_rechazo' });
+  check('…deshacerlo dos veces → error', r.status === 400);
+  r = await admin.patch(`/api/admin/entradas/${c(246)}`, { action: 'rechazar', reason: 'Sin querer, desde Entradas' });
+  r = await admin.patch(`/api/admin/entradas/${c(246)}`, { action: 'deshacer_rechazo' });
+  check('Deshacer el rechazo de una entrada de un vendedor la devuelve a su venta', r.status === 200 && r.json.entrada.saleId === idV4 && r.json.entrada.status === 'por_verificar', JSON.stringify(r.json));
+  await admin.patch(`/api/admin/ventas/${idV2}`, { action: 'rechazar', reason: 'No llegó el Pago Móvil' });
   r = await admin.get(`/api/admin/ventas/${idV3}`);
   check('Administración puede ver el capture de una venta', r.json?.proofUrl === PROOF);
 

@@ -2,7 +2,7 @@ import 'server-only';
 import { isSafeProofUrl } from '@/lib/proof';
 import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { store } from './store';
-import { amountFor, aprobar, EntradaError, eventRules, extractCode, holderInfo, rechazar } from './service';
+import { amountFor, aprobar, deshacerRechazo, EntradaError, eventRules, extractCode, holderInfo, rechazar, sinNotaDeMesa } from './service';
 import { MAX_ENTRADAS_POR_VENTA, type Entrada, type HolderType, type MetodoPago, type Venta, type VentaEstado } from './types';
 
 // Órdenes de los vendedores: escanean una o varias entradas, ponen el método de pago y la
@@ -122,6 +122,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
         reportedBy: 'vendedor',
         reportedAt: soldAt,
         rejectionReason: null,
+        notes: sinNotaDeMesa(entrada.notes),
         saleId: id,
       }));
     // Si otro intento de esta misma venta la tomó al mismo tiempo, no es un problema.
@@ -237,6 +238,27 @@ export async function rechazarVenta(id: string, reason: string, by = 'Administra
   }
   await store().updateVenta(id, { verifiedAt: new Date().toISOString(), verifiedBy: by, rejectionReason: motivo });
   return { rechazadas: entradas.length - yaEntraron.length, yaEntraron };
+}
+
+// Una venta rechazada por error: sus entradas vuelven a «por verificar», con su mesa si sigue libre.
+// Solo las que siguen como las dejó el rechazo (sin vender y con la hora de esta venta).
+export async function deshacerRechazoVenta(id: string) {
+  const venta = await store().getVenta(id);
+  if (!venta) throw new EntradaError('Venta no encontrada.', 404);
+  const recuperadas: number[] = [];
+  const sinMesa: number[] = [];
+  // No se descartan los números con problemas: un código inventado puede traer el número de una
+  // entrada que sí se vendió en esta venta. La hora de la venta es la que dice cuáles son suyas.
+  for (const n of new Set(venta.numbers)) {
+    const e = await store().getEntradaByNumber(n);
+    if (!e || e.status !== 'sin_vender' || !e.rejectionReason || !e.reportedAt) continue;
+    if (Math.abs(Date.parse(e.reportedAt) - Date.parse(venta.soldAt)) >= 1000) continue;
+    const r = await deshacerRechazo(e.code);
+    recuperadas.push(n);
+    if (!r.entrada.tableId && r.mesaAntes) sinMesa.push(n);
+  }
+  if (recuperadas.length === 0) throw new EntradaError('Esta venta no tiene entradas rechazadas que se puedan recuperar.');
+  return { recuperadas, sinMesa };
 }
 
 export async function captureDeVenta(id: string) {

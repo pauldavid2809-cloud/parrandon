@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { Button, Notice, Spinner, TextInput } from '@/components/ui';
 import { api, fechaCorta, PageTitle } from '@/components/admin/api';
 import CaptureDialog from '@/components/admin/CaptureDialog';
+import AvisoDeshacer from '@/components/admin/AvisoDeshacer';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import { METODO_LABEL, type VentaEstado } from '@/lib/entradas/types';
 import type { VentaAdmin, ventasAdmin } from '@/lib/entradas/ventas';
@@ -38,6 +39,25 @@ export default function VentasAdmin() {
   }, []);
 
   useAutoLoad(load, 20_000);
+
+  // Aviso abajo: la venta recién rechazada (para deshacerlo si fue sin querer) o el resultado.
+  const [aviso, setAviso] = useState<{ texto: string; deshacer?: string } | null>(null);
+  const [deshaciendo, setDeshaciendo] = useState(false);
+  const deshacer = async (id: string) => {
+    setDeshaciendo(true);
+    try {
+      const r = await api<{ recuperadas: number[]; sinMesa: number[] }>(`/api/admin/ventas/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: { action: 'deshacer_rechazo' },
+      });
+      setAviso({ texto: textoDeshecho(r) });
+      await load();
+    } catch (err) {
+      setAviso({ texto: err instanceof Error ? err.message : 'No se pudo deshacer.' });
+    } finally {
+      setDeshaciendo(false);
+    }
+  };
 
   const cuenta = (f: Filtro) => (datos ? datos.ventas.filter((v) => f === 'todas' || v.estado === f).length : 0);
   const lista = datos ? datos.ventas.filter((v) => filtro === 'todas' || v.estado === filtro) : [];
@@ -130,18 +150,46 @@ export default function VentasAdmin() {
             ) : (
               <ul className="space-y-4">
                 {lista.map((v) => (
-                  <VentaCard key={v.id} venta={v} onDone={load} />
+                  <VentaCard key={v.id} venta={v} onDone={load} onDeshacer={() => deshacer(v.id)} onRechazada={(texto) => setAviso({ texto, deshacer: v.id })} />
                 ))}
               </ul>
             )}
           </section>
         </>
       )}
+      {aviso && (
+        <AvisoDeshacer
+          onDeshacer={aviso.deshacer ? () => deshacer(aviso.deshacer!) : undefined}
+          deshaciendo={deshaciendo}
+          onCerrar={() => setAviso(null)}
+        >
+          {aviso.texto}
+        </AvisoDeshacer>
+      )}
     </div>
   );
 }
 
-function VentaCard({ venta, onDone }: { venta: VentaAdmin; onDone: () => void }) {
+const lista = (ns: number[]) => ns.map((x) => formatNumber(x)).join(', ');
+
+function textoDeshecho(r: { recuperadas: number[]; sinMesa: number[] }) {
+  return (
+    `Volvieron a «por verificar»: ${lista(r.recuperadas)}.` +
+    (r.sinMesa.length ? ` Sin su mesa de antes (ya no tenía puesto): ${lista(r.sinMesa)}; asígnales otra en Entradas o la escogen al escanear su QR.` : '')
+  );
+}
+
+function VentaCard({
+  venta,
+  onDone,
+  onDeshacer,
+  onRechazada,
+}: {
+  venta: VentaAdmin;
+  onDone: () => void;
+  onDeshacer: () => void;
+  onRechazada: (texto: string) => void;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rechazando, setRechazando] = useState(false);
@@ -162,6 +210,10 @@ function VentaCard({ venta, onDone }: { venta: VentaAdmin; onDone: () => void })
     setError(null);
     try {
       await api(`/api/admin/ventas/${encodeURIComponent(venta.id)}`, { method: 'PATCH', body: { action, reason: motivo } });
+      if (action === 'rechazar') {
+        setRechazando(false);
+        onRechazada(`Rechazaste la venta ${lista(venta.entradas.map((e) => e.number))}.`);
+      }
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo completar.');
@@ -235,8 +287,13 @@ function VentaCard({ venta, onDone }: { venta: VentaAdmin; onDone: () => void })
         </Notice>
       )}
 
-      {(venta.estado === 'por_verificar' || venta.proofUrl) && (
+      {(venta.estado === 'por_verificar' || venta.estado === 'rechazada' || venta.proofUrl) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          {venta.estado === 'rechazada' && (
+            <Button variant="outline" onClick={onDeshacer}>
+              Deshacer rechazo
+            </Button>
+          )}
           {venta.estado === 'por_verificar' && !rechazando && (
             <>
               <Button variant="verde" loading={busy === 'aprobar'} onClick={() => act('aprobar')}>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ExternalLink, MessageCircle, X } from 'lucide-react';
 import { Button, Choice, Field, Notice, StatusPill, TextInput } from '@/components/ui';
 import MesaPicker from '@/components/mesas/MesaPicker';
-import { fechaCorta, patchEntrada } from '@/components/admin/api';
+import { deshacerRechazo, fechaCorta, patchEntrada } from '@/components/admin/api';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import PersonaFields, { PERSONA_VACIA, personaDe, type Persona } from '@/components/PersonaFields';
 import { erroresPersona, formatCedula } from '@/lib/persona';
@@ -26,10 +26,27 @@ export default function EntradaDetalle({
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  const deshacer = async () => {
+    setBusy('deshacer_rechazo');
+    setError(null);
+    try {
+      const r = await deshacerRechazo(entrada.code);
+      onChange(r.entrada);
+      setAviso(r.aviso);
+      setPanel(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo deshacer.');
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const act = async (action: string, extra: Record<string, unknown> = {}) => {
     setBusy(action);
     setError(null);
+    setAviso(null);
     try {
       const { entrada: updated } = await patchEntrada(entrada.code, { action, ...extra });
       onChange(updated);
@@ -42,6 +59,8 @@ export default function EntradaDetalle({
   };
 
   const ocupa = entrada.status === 'activa' || entrada.status === 'por_verificar';
+  // Rechazada y sin volver a venderse: se puede deshacer si fue un error.
+  const puedeDeshacer = entrada.status === 'sin_vender' && Boolean(entrada.rejectionReason) && Boolean(entrada.reportedAt);
   const intacta =
     entrada.status === 'sin_vender' &&
     !entrada.attendeeName &&
@@ -111,7 +130,13 @@ export default function EntradaDetalle({
 
       <div className="space-y-3 border-t border-line p-5">
         {error && <Notice tone="error">{error}</Notice>}
+        {aviso && <Notice tone="ok">{aviso}</Notice>}
         <div className="flex flex-wrap gap-2">
+          {puedeDeshacer && (
+            <Button size="sm" variant="outline" loading={busy === 'deshacer_rechazo'} onClick={deshacer}>
+              Deshacer rechazo
+            </Button>
+          )}
           {entrada.status === 'por_verificar' && (
             <>
               <Button size="sm" variant="verde" loading={busy === 'aprobar'} onClick={() => act('aprobar')}>

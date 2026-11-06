@@ -184,7 +184,8 @@ export function sincronizar(): Promise<void> {
 
 // Cómo van las ventas ya subidas (verificadas o rechazadas por administración).
 async function refrescarEstados() {
-  const pendientes = ventas.filter((v) => v.estado === 'subida' && v.servidor?.estado === 'por_verificar');
+  // Las rechazadas también: administración puede deshacer un rechazo hecho por error.
+  const pendientes = ventas.filter((v) => v.estado === 'subida' && v.servidor?.estado !== 'verificada');
   if (pendientes.length === 0) return;
   try {
     const res = await fetch(`/api/vendedores/ordenes?ids=${pendientes.map((v) => v.id).join(',')}`, { cache: 'no-store' });

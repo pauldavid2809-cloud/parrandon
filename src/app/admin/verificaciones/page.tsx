@@ -3,7 +3,7 @@
 import { useAutoLoad } from '@/lib/useAutoLoad';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Notice, Spinner, TextInput } from '@/components/ui';
-import { api, fechaCorta, PageTitle, patchEntrada } from '@/components/admin/api';
+import { api, deshacerRechazo, fechaCorta, PageTitle, patchEntrada } from '@/components/admin/api';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import { METODO_LABEL, type Entrada } from '@/lib/entradas/types';
 import { formatNumber } from '@/lib/site';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { formatCedula } from '@/lib/persona';
 import Link from 'next/link';
 import CaptureDialog from '@/components/admin/CaptureDialog';
+import AvisoDeshacer from '@/components/admin/AvisoDeshacer';
 
 const MOTIVOS = ['No aparece el pago en la cuenta.', 'El monto está incompleto.', 'La referencia no coincide.'];
 const POR: Record<string, string> = {
@@ -39,6 +40,25 @@ export default function Verificaciones() {
   }, []);
 
   useAutoLoad(load);
+
+  // La última que se rechazó, para poder deshacerlo si fue sin querer.
+  const [rechazada, setRechazada] = useState<Entrada | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [deshaciendo, setDeshaciendo] = useState(false);
+  const deshacer = async () => {
+    if (!rechazada) return;
+    setDeshaciendo(true);
+    try {
+      const r = await deshacerRechazo(rechazada.code);
+      setAviso(`N.º ${formatNumber(rechazada.number)}: ${r.aviso}`);
+      setRechazada(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo deshacer.');
+    } finally {
+      setDeshaciendo(false);
+    }
+  };
 
   // Las entradas de órdenes de vendedores se verifican por orden, en Ventas.
   const deOrdenes = (entradas || []).filter((e) => e.status === 'por_verificar' && e.saleId);
@@ -88,16 +108,31 @@ export default function Verificaciones() {
             : 'No hay pagos esperando verificación. Cuando alguien reporte un pago, aparece aquí.'}
         </p>
       )}
+      {rechazada && (
+        <AvisoDeshacer onDeshacer={deshacer} deshaciendo={deshaciendo} onCerrar={() => setRechazada(null)}>
+          Rechazaste la <strong>N.º {formatNumber(rechazada.number)}</strong>
+          {rechazada.attendeeName ? ` de ${rechazada.attendeeName}` : ''}.
+        </AvisoDeshacer>
+      )}
+      {aviso && !rechazada && <AvisoDeshacer onCerrar={() => setAviso(null)}>{aviso}</AvisoDeshacer>}
       <ul className="space-y-4">
         {lista.map((e) => (
-          <PagoCard key={e.code} entrada={e} onDone={load} />
+          <PagoCard
+            key={e.code}
+            entrada={e}
+            onDone={load}
+            onRechazada={(r) => {
+              setAviso(null);
+              setRechazada(r);
+            }}
+          />
         ))}
       </ul>
     </div>
   );
 }
 
-function PagoCard({ entrada, onDone }: { entrada: Entrada; onDone: () => void }) {
+function PagoCard({ entrada, onDone, onRechazada }: { entrada: Entrada; onDone: () => void; onRechazada: (e: Entrada) => void }) {
   const [proof, setProof] = useState<string | null>(entrada.paymentProofUrl === 'embedded' ? null : entrada.paymentProofUrl);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
@@ -117,6 +152,7 @@ function PagoCard({ entrada, onDone }: { entrada: Entrada; onDone: () => void })
     setError(null);
     try {
       await patchEntrada(entrada.code, { action, ...extra });
+      if (action === 'rechazar') onRechazada(entrada);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo completar.');

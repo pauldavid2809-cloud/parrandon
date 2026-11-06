@@ -18,6 +18,20 @@ export function patchEntrada(code: string, body: Record<string, unknown>) {
   return api<{ entrada: Entrada }>(`/api/admin/entradas/${encodeURIComponent(code)}`, { method: 'PATCH', body });
 }
 
+// Deshace un rechazo hecho por error y explica qué pasó con la mesa que tenía.
+export async function deshacerRechazo(code: string) {
+  const r = await api<{ entrada: Entrada; mesa: string | null; mesaAntes: string | null }>(
+    `/api/admin/entradas/${encodeURIComponent(code)}`,
+    { method: 'PATCH', body: { action: 'deshacer_rechazo' } }
+  );
+  const aviso = r.mesa
+    ? `Volvió a «por verificar», con su mesa ${r.mesa}.`
+    : r.mesaAntes
+      ? `Volvió a «por verificar». La mesa ${r.mesaAntes} ya no tenía puesto: asígnale otra, o la persona la escoge al escanear su QR.`
+      : 'Volvió a «por verificar», sin mesa: asígnale una, o la persona la escoge al escanear su QR.';
+  return { entrada: r.entrada, aviso };
+}
+
 export function fechaCorta(iso: string | null) {
   if (!iso) return '';
   return new Intl.DateTimeFormat('es-VE', {
