@@ -248,10 +248,10 @@ function PagoCard({ entrada, onDone, onRechazada }: { entrada: Entrada; onDone: 
         ) : (
           <div className="flex flex-wrap gap-2">
             <Button variant="verde" loading={busy === 'aprobar'} onClick={() => act('aprobar')}>
-              Pago recibido: activar
+              {entrada.paymentMethod === 'efectivo_usd' ? 'Efectivo recibido: activar' : 'Pago recibido: activar'}
             </Button>
             <Button variant="outline" onClick={() => setRejecting(true)} disabled={Boolean(entrada.checkedInAt)}>
-              No encuentro el pago
+              {entrada.paymentMethod === 'efectivo_usd' ? 'No llegó el efectivo' : 'No encuentro el pago'}
             </Button>
             {entrada.doorActivated && (
               <Button variant="quiet" loading={busy === 'revisada_puerta'} onClick={() => act('revisada_puerta')}>

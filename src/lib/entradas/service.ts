@@ -251,6 +251,8 @@ export interface ReporteInput {
   reference: string;
   proofUrl: string;
   tableId?: string | null;
+  // En efectivo: a quién le pagó (normalmente quien le vendió la entrada).
+  pagadoA?: string;
 }
 
 function clean(value: unknown, max = 120): string {
@@ -282,20 +284,26 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
   }
   const { config } = await eventRules();
   if (input.method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
-  const data = validarReporte(input, { requireProof: true, methods: ['zelle', 'pago_movil'] });
+  // Zelle y Pago Móvil llevan referencia y capture. En efectivo se le paga a quien vendió la
+  // entrada: queda por verificar hasta que administración reciba ese dinero.
+  const data = validarReporte(input, { requireProof: true, methods: ['zelle', 'pago_movil', 'efectivo_usd'] });
+  const efectivo = data.method === 'efectivo_usd';
+  const pagadoA = clean(input.pagadoA, 80);
+  if (efectivo && pagadoA.length < 2) throw new EntradaError('Escribe a quién le pagaste el efectivo.');
   const money = amountFor(data.method, config.ticketPriceUsd, config.currentRateBs);
+  const notas = sinNotaDeMesa(entrada.notes);
 
   const reportado = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'por_verificar',
     ...data.persona,
     paymentMethod: data.method,
-    paymentReference: data.reference,
-    paymentProofUrl: data.proofUrl,
+    paymentReference: efectivo ? null : data.reference,
+    paymentProofUrl: efectivo ? null : data.proofUrl,
     ...money,
     reportedBy: by,
     reportedAt: new Date().toISOString(),
     rejectionReason: null,
-    notes: sinNotaDeMesa(entrada.notes),
+    notes: efectivo ? `Pagó en efectivo a: ${pagadoA}.${notas ? ` ${notas}` : ''}`.slice(0, 500) : notas,
   });
   if (!reportado) throw new EntradaError('El pago de esta entrada ya fue reportado.', 409, 'ya_reportada');
 

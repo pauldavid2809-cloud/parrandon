@@ -174,7 +174,7 @@ export async function estadoVentas(ids: string[]) {
 export async function ventasAdmin() {
   const [ventas, entradas] = await Promise.all([
     store().listVentas(),
-    store().listCampos([...CAMPOS_VENTA, 'attendeeName', 'tableId']),
+    store().listCampos([...CAMPOS_VENTA, 'attendeeName', 'tableId', 'reportedBy', 'paymentMethod', 'amount', 'holderType', 'holderId', 'holderName']),
   ]);
   const porVendedor = new Map<
     string,
@@ -207,6 +207,24 @@ export async function ventasAdmin() {
       porVerificar: porVerificar.length,
     };
   });
+  // Quien escaneó su entrada y marcó que pagó en efectivo le pagó a quien tiene ese lote:
+  // ese efectivo también está por entregar.
+  for (const e of entradas) {
+    if (e.status !== 'por_verificar' || e.saleId || e.reportedBy !== 'comprador' || e.paymentMethod !== 'efectivo_usd') continue;
+    const key = `${e.holderType}:${e.holderId ?? ''}:`;
+    const r = porVendedor.get(key) ?? {
+      nombre: e.holderName || 'Sin lote',
+      lote: null,
+      ventas: 0,
+      entradas: 0,
+      efectivoPorEntregar: 0,
+      pagosPorVerificar: 0,
+      verificadas: 0,
+    };
+    r.entradas += 1;
+    r.efectivoPorEntregar += e.amount ?? 0;
+    porVendedor.set(key, r);
+  }
   return {
     ventas: lista,
     vendedores: [...porVendedor.values()].sort((a, b) => b.efectivoPorEntregar - a.efectivoPorEntregar || b.entradas - a.entradas),

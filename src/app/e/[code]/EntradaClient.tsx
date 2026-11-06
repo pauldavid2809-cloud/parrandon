@@ -224,9 +224,11 @@ function ReportarPago({
 }) {
   const { entrada, pago } = data;
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
-  // Con Pago Móvil pausado solo queda Zelle: ya viene marcado.
-  const [method, setMethod] = useState<'pago_movil' | 'zelle' | null>(pago.pagoMovilActivo ? null : 'zelle');
+  const [method, setMethod] = useState<'pago_movil' | 'zelle' | 'efectivo_usd' | null>(null);
   const [reference, setReference] = useState('');
+  // En efectivo no hay referencia ni capture: se anota a quién se le pagó.
+  const [pagadoA, setPagadoA] = useState('');
+  const efectivo = method === 'efectivo_usd';
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -235,8 +237,12 @@ function ReportarPago({
   const validate = () => {
     const e: Record<string, string> = { ...erroresPersona(persona, { cedula: true, phone: true }) };
     if (!method) e.method = 'Elige cómo pagaste.';
-    if (reference.trim().length < 4) e.reference = 'Escribe el número de referencia (al menos 4 dígitos).';
-    if (!proofUrl) e.proof = 'Sube el capture del pago.';
+    if (efectivo) {
+      if (pagadoA.trim().length < 2) e.pagadoA = 'Escribe a quién le pagaste el efectivo.';
+    } else {
+      if (reference.trim().length < 4) e.reference = 'Escribe el número de referencia (al menos 4 dígitos).';
+      if (!proofUrl) e.proof = 'Sube el capture del pago.';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -253,7 +259,7 @@ function ReportarPago({
       const res = await fetch(`/api/entradas/${encodeURIComponent(code)}/reportar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...persona, method, reference, proofUrl }),
+        body: JSON.stringify(efectivo ? { ...persona, method, pagadoA } : { ...persona, method, reference, proofUrl }),
       });
       const json = await res.json();
       if (!json.success) {
@@ -280,9 +286,8 @@ function ReportarPago({
         )}
         <p className="text-lg text-ink-2">
           Escribe tus datos y reporta tu pago de <strong className="text-ink">${pago.priceUsd}</strong>
-          {pago.pagoMovilActivo ? ` (${formatBs(montoBs(pago))} por Pago Móvil)` : ' por Zelle'}. Al enviarlo pasas a escoger tu
-          mesa.
-          {!pago.pagoMovilActivo && ' Si prefieres pagar en efectivo, págale a quien te vendió la entrada y que la registre.'}
+          {pago.pagoMovilActivo ? ` (${formatBs(montoBs(pago))} por Pago Móvil)` : ''}: por Zelle o en efectivo a quien te vendió la
+          entrada. Al enviarlo pasas a escoger tu mesa.
         </p>
       </div>
 
@@ -296,15 +301,36 @@ function ReportarPago({
             name="Método de pago"
             value={method}
             onChange={(v) => setMethod(v)}
-            className="grid-cols-2"
+            className={pago.pagoMovilActivo ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}
             options={[
               ...(pago.pagoMovilActivo ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: formatBs(montoBs(pago)) }] : []),
               { value: 'zelle' as const, label: 'Zelle', detail: `$${pago.priceUsd.toFixed(2)}` },
+              { value: 'efectivo_usd' as const, label: 'Efectivo', detail: `$${pago.priceUsd.toFixed(2)} a quien te la vendió` },
             ]}
           />
           {errors.method && <p className="mt-1.5 text-sm font-bold text-rojo">{errors.method}</p>}
         </div>
-        {method && (
+        {efectivo && (
+          <div className="mt-4 space-y-4">
+            <Notice tone="info">
+              Págale ${pago.priceUsd.toFixed(2)} en efectivo a quien te vendió la entrada. Tu entrada se activa cuando esa persona le
+              entregue el dinero a administración; tu mesa queda apartada mientras tanto.
+            </Notice>
+            <Field label="¿A quién le pagaste?" htmlFor="pagado-a" error={errors.pagadoA} hint="El nombre de quien te vendió la entrada.">
+              <TextInput
+                id="pagado-a"
+                value={pagadoA}
+                onChange={(e) => {
+                  setPagadoA(e.target.value);
+                  if (errors.pagadoA) setErrors((prev) => ({ ...prev, pagadoA: '' }));
+                }}
+                autoCapitalize="words"
+                data-error={Boolean(errors.pagadoA)}
+              />
+            </Field>
+          </div>
+        )}
+        {method && !efectivo && (
           <div className="mt-4 space-y-4">
             <PaymentDetails method={method} pago={pago} />
             <Field
@@ -452,7 +478,12 @@ function EscogerMesa({ data, code, onDone }: { data: Data; code: string; onDone:
   const aviso =
     entrada.status === 'activa'
       ? { title: 'Tu entrada está activa', body: 'Tu pago ya fue verificado. Solo falta escoger tu mesa.' }
-      : entrada.reportedBy === 'comprador'
+      : entrada.reportedBy === 'comprador' && entrada.paymentMethod === 'efectivo_usd'
+        ? {
+            title: 'Recibimos tus datos',
+            body: 'Tu entrada se activa cuando administración reciba el efectivo de quien te la vendió. Mientras tanto, escoge tu mesa: queda apartada a tu nombre.',
+          }
+        : entrada.reportedBy === 'comprador'
         ? {
             title: 'Recibimos tus datos y tu pago',
             body: 'La organización lo verifica en estos días. Mientras tanto, escoge tu mesa: queda apartada a tu nombre.',
@@ -556,11 +587,13 @@ function EntradaReportada({
           <p className="mt-1 text-ink-2">
             {punto(
               `${entrada.reportedBy === 'vendedor' ? 'Tu vendedor reportó' : 'Reportaste'} el pago${
-                entrada.reportedAt ? ` el ${fecha(entrada.reportedAt)}` : ''
-              }`
+                entrada.paymentMethod === 'efectivo_usd' ? ' en efectivo' : ''
+              }${entrada.reportedAt ? ` el ${fecha(entrada.reportedAt)}` : ''}`
             )}{' '}
-            La organización lo revisa en estos días; vuelve a escanear tu QR para ver si ya está activa. Tu mesa queda
-            apartada mientras tanto.
+            {entrada.paymentMethod === 'efectivo_usd' && entrada.reportedBy === 'comprador'
+              ? 'Se activa cuando administración reciba ese efectivo; vuelve a escanear tu QR para ver si ya está activa.'
+              : 'La organización lo revisa en estos días; vuelve a escanear tu QR para ver si ya está activa.'}{' '}
+            Tu mesa queda apartada mientras tanto.
           </p>
         </div>
       )}

@@ -238,7 +238,7 @@ function report(code, extra = {}) {
   r = await report(c(10), { phone: '123' });
   check('Teléfono inválido → 400', r.status === 400 && /teléfono/i.test(r.json.error));
   r = await report(c(10), { method: 'efectivo_usd' });
-  check('Efectivo no se acepta por la web → 400', r.status === 400);
+  check('Efectivo sin decir a quién se le pagó → 400', r.status === 400 && /a quién/i.test(r.json.error), r.json?.error);
   r = await report(c(10), { reference: '12' });
   check('Referencia corta → 400', r.status === 400);
   r = await report(c(10), { proofUrl: '' });
@@ -251,6 +251,14 @@ function report(code, extra = {}) {
   check('Reporte válido con mesa A1 → por verificar y mesa apartada', r.status === 200 && r.json.entrada.status === 'por_verificar' && r.json.entrada.tableId === 'A1', JSON.stringify(r.json));
   check('…quien tiene el QR ve su cédula a medias', r.json.entrada.attendeeCedula === 'V-••.•••.678', r.json.entrada.attendeeCedula);
   check('…nombre y apellido limpios y el nombre completo armado', r.json.entrada.attendeeFirstName === 'Ana María' && r.json.entrada.attendeeLastName === 'Pérez de León' && r.json.entrada.attendeeName === 'Ana María Pérez de León', JSON.stringify(r.json.entrada));
+  r = await report(c(62), { method: 'efectivo_usd', pagadoA: 'Juan, el seminarista', reference: '', proofUrl: '' });
+  check(
+    'El comprador reporta que pagó en efectivo (sin referencia ni capture) → por verificar',
+    r.status === 200 && r.json.entrada.status === 'por_verificar' && r.json.entrada.paymentMethod === 'efectivo_usd' && !r.json.entrada.paymentReference,
+    JSON.stringify(r.json)
+  );
+  r = await admin.get(`/api/admin/entradas/${c(62)}`);
+  check('…queda anotado a quién le pagó, sin referencia ni capture', /Pagó en efectivo a: Juan, el seminarista/.test(r.json.entrada.notes || '') && !r.json.entrada.paymentReference && !r.json.entrada.paymentProofUrl, JSON.stringify(r.json.entrada));
   r = await anon.get(`/api/entradas/${c(10)}`);
   check('La página pública de la entrada nunca trae la cédula completa', !JSON.stringify(r.json).includes('12345678') && !JSON.stringify(r.json).includes('12.345'));
   r = await admin.get(`/api/admin/entradas/${c(10)}`);
@@ -525,6 +533,8 @@ function report(code, extra = {}) {
   r = await admin.get('/api/admin/ventas');
   const fila = r.json?.vendedores?.find((v) => v.nombre === byNum(103).holderName);
   check('Rendición: el seminarista debe entregar $40 en efectivo y tiene 1 Pago Móvil por verificar', fila && fila.efectivoPorEntregar === 40 && fila.pagosPorVerificar === 1 && fila.entradas === 3, JSON.stringify(fila));
+  const lote62 = r.json.vendedores.find((v) => v.nombre === byNum(62).holderName);
+  check('…el efectivo que reportó un comprador suma en el lote de esa entrada', lote62 && lote62.efectivoPorEntregar === 20, JSON.stringify(lote62));
   check('…María Briceño aparece aparte, como vendedora del lote del Padre Jorge', r.json.vendedores.some((v) => v.nombre === 'María Briceño' && v.lote === 'Padre Jorge'));
   const deParroquia = r.json.vendedores.find((v) => v.lote?.startsWith('Parroquia Santa Bárbara'));
   check('…y el seminarista que vendió en la parroquia, con su nombre del directorio y $40 por entregar', deParroquia?.nombre === 'Ricardo José Morillo Medina' && deParroquia.efectivoPorEntregar === 40, JSON.stringify(deParroquia));
