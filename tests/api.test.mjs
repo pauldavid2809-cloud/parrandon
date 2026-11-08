@@ -569,7 +569,7 @@ function report(code, extra = {}) {
   r = await admin.get(`/api/admin/entradas/${c(262)}`);
   check('…y la entrada sola sí trae el capture', r.json.entrada.paymentProofUrl === PROOF);
   r = await anon.get('/api/cron/diario');
-  check('La tarea diaria responde (mantiene activa la base y mueve capture)', r.status === 200 && r.json.entradas === 500 && r.json.movidas?.fallidas === 0, JSON.stringify(r.json));
+  check('La tarea diaria responde (mantiene activa la base y mueve capture)', r.status === 200 && r.json.entradas === 500 && r.json.movidas?.fallidas === 0 && Array.isArray(r.json.movidas?.errores), JSON.stringify(r.json));
 
   // ---------------------------------------------------------------- fecha del evento
   sec('Cambio de mesa y fecha del evento');
