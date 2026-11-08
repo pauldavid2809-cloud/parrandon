@@ -12,7 +12,9 @@ import type { VentaAdmin, ventasAdmin } from '@/lib/entradas/ventas';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
-type Datos = Awaited<ReturnType<typeof ventasAdmin>>;
+type Base = Awaited<ReturnType<typeof ventasAdmin>>;
+// La ruta suma a la rendición el efectivo de las donaciones que registró cada vendedor.
+type Datos = Omit<Base, 'vendedores'> & { vendedores: (Base['vendedores'][number] & { donacionesPorEntregar?: number })[] };
 type Filtro = VentaEstado | 'todas';
 
 const MOTIVOS = ['No aparece el pago en la cuenta.', 'El monto está incompleto.', 'No entregó el efectivo.'];
@@ -86,6 +88,15 @@ export default function VentasAdmin() {
                 <p className="tabular mt-1 text-ink-2">
                   Efectivo por recibir en total: <strong className="text-ink">{usd(efectivoTotal)}</strong>
                 </p>
+                {datos.vendedores.some((v) => v.donacionesPorEntregar) && (
+                  <p className="mt-1 max-w-[65ch] text-sm text-ink-2">
+                    El efectivo de las donaciones se marca como recibido en{' '}
+                    <a href="/admin/donaciones" className="font-bold underline underline-offset-4">
+                      Donaciones
+                    </a>
+                    .
+                  </p>
+                )}
                 <div className="mt-4 overflow-x-auto rounded-2xl bg-card shadow-[var(--shadow-soft)]" tabIndex={0} aria-label="Rendición por vendedor">
                   <table className="tabular w-full min-w-[36rem] text-left">
                     <thead className="border-b border-line text-sm text-ink-3">
@@ -107,6 +118,9 @@ export default function VentasAdmin() {
                           <td className="px-4 py-3">{v.entradas}</td>
                           <td className={cn('px-4 py-3', v.efectivoPorEntregar > 0 && 'font-bold text-rojo-2')}>
                             {v.efectivoPorEntregar > 0 ? usd(v.efectivoPorEntregar) : '—'}
+                            {v.donacionesPorEntregar ? (
+                              <span className="block text-sm font-normal text-ink-2">incluye {usd(v.donacionesPorEntregar)} de donaciones</span>
+                            ) : null}
                           </td>
                           <td className="px-4 py-3">{v.pagosPorVerificar || '—'}</td>
                           <td className="px-4 py-3">{v.verificadas || '—'}</td>

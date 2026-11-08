@@ -563,6 +563,56 @@ function report(code, extra = {}) {
   await admin.patch(`/api/admin/ventas/${idV2}`, { action: 'rechazar', reason: 'No llegó el Pago Móvil' });
   r = await admin.get(`/api/admin/ventas/${idV3}`);
   check('Administración puede ver el capture de una venta', r.json?.proofUrl === PROOF);
+
+  sec('Donaciones de los vendedores');
+  const donar = (extra = {}) =>
+    anon.post('/api/vendedores/donaciones', {
+      id: 'don-' + Math.random().toString(36).slice(2, 12),
+      seller: { type: 'seminarista', id: semId },
+      method: 'efectivo_usd',
+      montoUsd: 10,
+      soldAt: new Date().toISOString(),
+      ...extra,
+    });
+  r = await donar({ montoUsd: 0.5 });
+  check('Donación de menos de $1 → 400', r.status === 400 && /monto/i.test(r.json.error), r.json?.error);
+  r = await donar({ montoUsd: 5000 });
+  check('Donación de más de $1000 → 400', r.status === 400);
+  r = await donar({ method: 'zelle', reference: 'Z1', proofUrl: PROOF });
+  check('Zelle sin referencia → 400', r.status === 400 && /referencia/i.test(r.json.error));
+  r = await donar({ method: 'zelle', reference: 'ZL7788' });
+  check('Zelle sin capture → 400', r.status === 400 && /capture/i.test(r.json.error));
+  r = await donar({ seller: { type: 'seminarista', id: 'f1-6' } });
+  check('Un seminarista que no está en el directorio no registra donaciones', r.status === 400);
+  r = await donar({ id: 'x' });
+  check('Donación sin identificador válido → 400', r.status === 400);
+  const idD1 = 'donacion-prueba-0001';
+  r = await donar({ id: idD1, montoUsd: 10 });
+  check('Donación anónima de $10 en efectivo → por verificar', r.status === 200 && r.json.venta.estado === 'por_verificar' && r.json.venta.entradas.length === 0, JSON.stringify(r.json));
+  r = await donar({ id: idD1, montoUsd: 10 });
+  check('Subir la misma donación otra vez (reintento sin señal) no la duplica', r.status === 200 && r.json.venta.id === idD1);
+  const idD2 = 'donacion-prueba-0002';
+  r = await donar({ id: idD2, method: 'zelle', reference: 'ZL7788', proofUrl: PROOF, montoUsd: 20, donorName: 'Carmen Ruiz', donorPhone: '0414-1112233' });
+  check('Donación por Zelle con referencia, capture y nombre', r.status === 200 && r.json.venta.estado === 'por_verificar', JSON.stringify(r.json));
+  r = await admin.get('/api/orders');
+  const d1 = r.json.orders.filter((o) => o.id === 'DON-' + idD1.toUpperCase());
+  const d2 = r.json.orders.find((o) => o.id === 'DON-' + idD2.toUpperCase());
+  check('En Donaciones queda una sola, anónima, en efectivo y registrada por el vendedor', d1.length === 1 && d1[0].buyerName === 'Anónimo' && d1[0].isDonation && d1[0].paymentMethod === 'cash' && d1[0].convertedUsd === 10 && d1[0].sellerName === byNum(103).holderName, JSON.stringify(d1));
+  check('…y la de Zelle con el nombre de quien donó', d2?.buyerName === 'Carmen Ruiz' && d2.paymentReference === 'ZL7788' && d2.status === 'pending');
+  r = await admin.get('/api/admin/ventas');
+  let filaD = r.json.vendedores.find((v) => v.nombre === byNum(103).holderName);
+  check('La rendición suma al seminarista el efectivo de la donación (no la de Zelle)', filaD?.efectivoPorEntregar === 10 && filaD.donacionesPorEntregar === 10, JSON.stringify(filaD));
+  r = await anon.get(`/api/vendedores/ordenes?ids=${idD1},${idD2}`);
+  check('El teléfono consulta cómo van sus donaciones', r.json.ventas.length === 2 && r.json.ventas.every((v) => v.estado === 'por_verificar'), JSON.stringify(r.json));
+  r = await admin.post(`/api/orders/DON-${idD1.toUpperCase()}/status`, { status: 'approved', verifiedBy: 'Administración' });
+  check('Administración marca el efectivo de la donación como recibido', r.status === 200 && r.json.order.status === 'approved');
+  r = await admin.post(`/api/orders/DON-${idD2.toUpperCase()}/status`, { status: 'rejected', verifiedBy: 'Administración', rejectionReason: 'No se encontró el Zelle.' });
+  r = await anon.get(`/api/vendedores/ordenes?ids=${idD1},${idD2}`);
+  const vistas = Object.fromEntries(r.json.ventas.map((v) => [v.id, v]));
+  check('…y el teléfono la ve recibida; la rechazada, con el motivo', vistas[idD1]?.estado === 'verificada' && vistas[idD2]?.estado === 'rechazada' && /Zelle/.test(vistas[idD2].rejectionReason), JSON.stringify(r.json));
+  r = await admin.get('/api/admin/ventas');
+  filaD = r.json.vendedores.find((v) => v.nombre === byNum(103).holderName);
+  check('…y ya no queda efectivo de donaciones por entregar', !filaD?.donacionesPorEntregar && filaD?.efectivoPorEntregar === 0, JSON.stringify(filaD));
   r = await admin.get('/api/admin/entradas');
   const e262 = r.json.entradas.find((e) => e.number === 262);
   check('La lista de entradas no trae la foto embebida (solo la marca)', e262?.paymentProofUrl === 'embedded', String(e262?.paymentProofUrl).slice(0, 40));

@@ -2,7 +2,7 @@
 
 import { useAutoLoad } from '@/lib/useAutoLoad';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
-import { CheckCircle2, CloudOff, Download, ScanLine, Trash2 } from 'lucide-react';
+import { CheckCircle2, CloudOff, Download, HeartHandshake, ScanLine, Trash2 } from 'lucide-react';
 import { Button, Choice, Field, Notice, Spinner, StatusPill, TextInput } from '@/components/ui';
 import type { PagoInfo } from '@/components/pago/PaymentDetails';
 import {
@@ -24,6 +24,7 @@ import type { EventConfig } from '@/types';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 import NuevaVenta, { type LoteItem } from './NuevaVenta';
+import NuevaDonacion from './NuevaDonacion';
 
 type Seller = VendedorLocal;
 
@@ -323,7 +324,7 @@ function pagoDe(config: EventConfig): PagoInfo {
 function Panel({ seller, onExit }: { seller: Seller; onExit: () => void }) {
   const [lote, setLote] = useState<LoteItem[] | null>(() => leerGuardado<LoteItem[]>(loteKey(seller)));
   const [pago, setPago] = useState<PagoInfo | null>(() => leerGuardado<PagoInfo>(PAGO_KEY));
-  const [vista, setVista] = useState<'inicio' | 'vender' | VentaLocal>('inicio');
+  const [vista, setVista] = useState<'inicio' | 'vender' | 'donar' | VentaLocal>('inicio');
   const ventas = useVentasLocales().filter((v) => v.seller.type === seller.type && v.seller.id === seller.id);
 
   const load = useCallback(async () => {
@@ -372,12 +373,25 @@ function Panel({ seller, onExit }: { seller: Seller; onExit: () => void }) {
       />
     );
   }
+  if (vista === 'donar') {
+    return (
+      <NuevaDonacion
+        seller={seller}
+        pago={pago}
+        onCancel={() => setVista('inicio')}
+        onSaved={(v) => {
+          setVista(v);
+          window.scrollTo({ top: 0, behavior: 'instant' });
+        }}
+      />
+    );
+  }
   if (typeof vista === 'object') {
     return (
       <VentaGuardada
         venta={ventas.find((v) => v.id === vista.id) ?? vista}
         onOtra={() => {
-          setVista('vender');
+          setVista(vista.donacion ? 'donar' : 'vender');
           window.scrollTo({ top: 0, behavior: 'instant' });
         }}
         onListo={() => {
@@ -412,10 +426,16 @@ function Panel({ seller, onExit }: { seller: Seller; onExit: () => void }) {
 
       <EstadoConexion ventas={ventas} />
 
-      <Button size="lg" onClick={() => setVista('vender')} className="w-full sm:w-auto">
-        <ScanLine className="h-5 w-5" aria-hidden />
-        Nueva venta
-      </Button>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Button size="lg" onClick={() => setVista('vender')} className="w-full sm:w-auto">
+          <ScanLine className="h-5 w-5" aria-hidden />
+          Nueva venta
+        </Button>
+        <Button size="lg" variant="outline" onClick={() => setVista('donar')} className="w-full sm:w-auto">
+          <HeartHandshake className="h-5 w-5" aria-hidden />
+          Registrar donación
+        </Button>
+      </div>
 
       <TusVentas ventas={ventas} />
 
@@ -565,11 +585,17 @@ function estadoDe(v: VentaLocal): { tone: 'oro' | 'verde' | 'rojo' | 'gris'; tex
   return { tone: 'oro', text: v.method === 'efectivo_usd' ? 'Subida · efectivo por entregar' : 'Subida · pago por verificar' };
 }
 
+function montoDe(v: VentaLocal) {
+  if (v.donacion) return v.donacion.montoUsd;
+  return (v.servidor ? v.servidor.entradas.length : v.entradas.length) * v.priceUsd;
+}
+
 function TusVentas({ ventas }: { ventas: VentaLocal[] }) {
   if (ventas.length === 0) return null;
+  // El efectivo de las entradas y el de las donaciones se entregan juntos.
   const efectivo = ventas
     .filter((v) => v.method === 'efectivo_usd' && v.estado !== 'no_se_pudo' && v.servidor?.estado !== 'verificada' && v.servidor?.estado !== 'rechazada')
-    .reduce((s, v) => s + (v.servidor ? v.servidor.entradas.length : v.entradas.length) * v.priceUsd, 0);
+    .reduce((s, v) => s + montoDe(v), 0);
   return (
     <section aria-labelledby="tus-ventas">
       <h2 id="tus-ventas" className="font-display text-2xl">
@@ -583,11 +609,14 @@ function TusVentas({ ventas }: { ventas: VentaLocal[] }) {
           return (
             <li key={v.id} className="space-y-1 px-4 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <p className="tabular font-display text-xl">{numeros.map((n) => formatNumber(n)).join(' · ') || '—'}</p>
+                <p className="tabular font-display text-xl">
+                  {v.donacion ? `Donación · $${v.donacion.montoUsd.toFixed(2)}` : numeros.map((n) => formatNumber(n)).join(' · ') || '—'}
+                </p>
                 <Chip tone={st.tone}>{st.text}</Chip>
               </div>
               <p className="tabular text-sm text-ink-2">
-                {METODO[v.method]} · ${(numeros.length * v.priceUsd).toFixed(2)}
+                {METODO[v.method]}
+                {v.donacion ? '' : ` · $${(numeros.length * v.priceUsd).toFixed(2)}`}
                 {v.reference ? ` · Ref. ${v.reference}` : ''} · {hora(v.soldAt)}
                 {v.buyerName ? ` · ${v.buyerName}` : ''}
               </p>
@@ -625,15 +654,18 @@ function TusVentas({ ventas }: { ventas: VentaLocal[] }) {
 function VentaGuardada({ venta, onOtra, onListo }: { venta: VentaLocal; onOtra: () => void; onListo: () => void }) {
   const enLinea = useEnLinea();
   const n = venta.entradas.length;
+  const donacion = venta.donacion;
   const subida = venta.estado === 'subida';
   const problemas = venta.servidor?.problemas ?? [];
   return (
     <div className="space-y-6">
       <div className={cn('rounded-2xl p-6', problemas.length || venta.estado === 'no_se_pudo' ? 'bg-oro-soft' : 'bg-verde text-paper')}>
         <CheckCircle2 className={cn('h-9 w-9', problemas.length || venta.estado === 'no_se_pudo' ? 'text-oro-ink' : 'text-oro')} aria-hidden />
-        <p className="mt-2 font-display text-3xl">Venta guardada</p>
+        <p className="mt-2 font-display text-3xl">{donacion ? 'Donación guardada' : 'Venta guardada'}</p>
         <p className={cn('tabular mt-1', problemas.length || venta.estado === 'no_se_pudo' ? 'text-ink-2' : 'text-paper/85')}>
-          {venta.entradas.map((e) => formatNumber(e.number)).join(' · ')} · {METODO[venta.method]} · ${(n * venta.priceUsd).toFixed(2)}
+          {donacion
+            ? `${METODO[venta.method]} · $${donacion.montoUsd.toFixed(2)}${venta.buyerName ? ` · ${venta.buyerName}` : ''}`
+            : `${venta.entradas.map((e) => formatNumber(e.number)).join(' · ')} · ${METODO[venta.method]} · $${(n * venta.priceUsd).toFixed(2)}`}
         </p>
         <p className={cn('mt-3 font-bold', problemas.length || venta.estado === 'no_se_pudo' ? 'text-ink' : 'text-paper')} aria-live="polite">
           {venta.estado === 'no_se_pudo'
@@ -654,11 +686,16 @@ function VentaGuardada({ venta, onOtra, onListo }: { venta: VentaLocal; onOtra: 
         ))}
       </div>
       <p className="text-lg text-ink-2">
-        Dile a cada persona que escanee el QR de su entrada para poner su nombre y su cédula y escoger su mesa.
+        {donacion
+          ? venta.method === 'efectivo_usd'
+            ? 'Ese efectivo lo entregas a administración junto con el de las entradas.'
+            : 'Administración la verifica con la referencia.'
+          : 'Dile a cada persona que escanee el QR de su entrada para poner su nombre y su cédula y escoger su mesa.'}
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button size="lg" onClick={onOtra}>
-          <ScanLine className="h-5 w-5" aria-hidden /> Nueva venta
+          {donacion ? <HeartHandshake className="h-5 w-5" aria-hidden /> : <ScanLine className="h-5 w-5" aria-hidden />}
+          {donacion ? 'Otra donación' : 'Nueva venta'}
         </Button>
         <Button size="lg" variant="outline" onClick={onListo}>
           Listo

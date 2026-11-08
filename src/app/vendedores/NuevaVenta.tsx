@@ -25,7 +25,7 @@ function hora(iso: string) {
   return new Date(iso).toLocaleTimeString('es-VE', { hour: 'numeric', minute: '2-digit' });
 }
 
-function leerImagen(blob: Blob): Promise<string> {
+export function leerImagen(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));

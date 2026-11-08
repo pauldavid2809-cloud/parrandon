@@ -33,6 +33,9 @@ export interface VentaLocal {
   // traen y se suben igual, para no perder ventas que ya se entregaron.
   capturaObligatoria?: boolean;
   buyerName: string;
+  buyerPhone?: string;
+  // Donación (sin entradas): el monto en dólares. Si no está, es una venta de entradas.
+  donacion?: { montoUsd: number };
   soldAt: string;
   priceUsd: number;
   rateBs: number | null;
@@ -147,24 +150,40 @@ export function sincronizar(): Promise<void> {
     for (const v of ventas.filter((x) => x.estado === 'por_subir')) {
       let res: Response;
       try {
-        res = await fetch('/api/vendedores/ordenes', {
+        const seller = { type: v.seller.type, id: v.seller.id, vendedor: v.seller.vendedor, vendedorId: v.seller.vendedorId };
+        res = await fetch(v.donacion ? '/api/vendedores/donaciones' : '/api/vendedores/ordenes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: v.id,
-            seller: { type: v.seller.type, id: v.seller.id, vendedor: v.seller.vendedor, vendedorId: v.seller.vendedorId },
-            codes: v.entradas.map((e) => e.code),
-            method: v.method,
-            reference: v.reference,
-            proofUrl: v.proofUrl,
-            capturaObligatoria: v.capturaObligatoria === true,
-            buyerName: v.buyerName,
-            soldAt: v.soldAt,
-            rateBs: v.rateBs,
-          }),
+          body: JSON.stringify(
+            v.donacion
+              ? {
+                  id: v.id,
+                  seller,
+                  method: v.method,
+                  montoUsd: v.donacion.montoUsd,
+                  reference: v.reference,
+                  proofUrl: v.proofUrl,
+                  donorName: v.buyerName,
+                  donorPhone: v.buyerPhone,
+                  soldAt: v.soldAt,
+                  rateBs: v.rateBs,
+                }
+              : {
+                  id: v.id,
+                  seller,
+                  codes: v.entradas.map((e) => e.code),
+                  method: v.method,
+                  reference: v.reference,
+                  proofUrl: v.proofUrl,
+                  capturaObligatoria: v.capturaObligatoria === true,
+                  buyerName: v.buyerName,
+                  soldAt: v.soldAt,
+                  rateBs: v.rateBs,
+                }
+          ),
         });
       } catch {
-        ultimoError = 'Sin conexión. Las ventas siguen guardadas en el teléfono.';
+        ultimoError = 'Sin conexión. Las ventas y donaciones siguen guardadas en el teléfono.';
         break; // sin red: se reintenta después
       }
       const json = await res.json().catch(() => null);

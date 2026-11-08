@@ -68,9 +68,15 @@ function ensureDataDir() {
   }
 }
 
+// Supabase no tiene columna «es donación»: se reconoce por la cantidad 0, la nota de /donar o el id DON-.
+function esDonacion(row: { id?: unknown; quantity?: unknown; notes?: unknown }) {
+  return Number(row.quantity) === 0 || String(row.notes ?? '').startsWith('[DONACIÓN') || String(row.id ?? '').startsWith('DON-');
+}
+
 // Filas de Supabase sin tipar: cada campo se copia tal cual al modelo.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapDbRowToOrder(row: any): Order {
+  const donacion = esDonacion(row);
   return {
     id: row.id,
     createdAt: row.created_at || new Date().toISOString(),
@@ -78,7 +84,9 @@ function mapDbRowToOrder(row: any): Order {
     buyerEmail: row.buyer_email || '',
     buyerPhone: row.buyer_phone,
     buyerDocId: row.buyer_doc_id || '',
-    quantity: Number(row.quantity) || 1,
+    quantity: row.quantity == null ? 1 : Number(row.quantity),
+    isDonation: donacion,
+    donationAmount: donacion ? Number(row.converted_usd) || 0 : undefined,
     seats: row.seats || [],
     attendees: row.attendees || [],
     paymentMethod: row.payment_method as PaymentMethod,
@@ -108,7 +116,7 @@ function mapOrderToDbRow(order: Order): Record<string, unknown> {
     buyer_email: order.buyerEmail || '',
     buyer_phone: order.buyerPhone || '',
     buyer_doc_id: order.buyerDocId || '',
-    quantity: Number(order.quantity) || 1,
+    quantity: order.quantity == null ? 1 : Number(order.quantity),
     seats: Array.isArray(order.seats) ? order.seats : [],
     attendees: Array.isArray(order.attendees) ? order.attendees : [],
     payment_method: order.paymentMethod || 'cash',
@@ -997,4 +1005,54 @@ export async function getEventStats(): Promise<EventStats> {
       mealsServedCount
     }
   };
+}
+
+// ---------- donaciones que registran los vendedores (id DON-…) ----------
+
+// La guarda con el id que puso el teléfono (así un reintento no la duplica). Si Supabase falla,
+// lanza el error: el teléfono la deja guardada y vuelve a intentar.
+export async function guardarDonacionVendedor(order: Order): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('orders').insert(mapOrderToDbRow(order));
+    if (error) throw new Error(`Guardando la donación: ${error.message}`);
+    return;
+  }
+  const db = await readDb();
+  db.orders.unshift(order);
+  writeDb(db);
+}
+
+export async function getDonacionesPorId(ids: string[]): Promise<Order[]> {
+  if (ids.length === 0) return [];
+  const buscados = new Set(ids.map((i) => i.toUpperCase()));
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('orders').select('*').in('id', [...buscados]);
+    if (error) throw new Error(`Leyendo donaciones: ${error.message}`);
+    return (data || []).map(mapDbRowToOrder);
+  }
+  return (await readDb()).orders.filter((o) => buscados.has(o.id.toUpperCase()));
+}
+
+export type DonacionResumen = Pick<Order, 'id' | 'status' | 'paymentMethod' | 'convertedUsd' | 'sellerName' | 'parishName'>;
+
+// Sin la foto del capture: solo lo que hace falta para la rendición de cada vendedor.
+export async function listDonacionesVendedores(): Promise<DonacionResumen[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id,status,payment_method,converted_usd,seller_name,parish_name')
+      .like('id', 'DON-%');
+    if (error) throw new Error(`Leyendo donaciones: ${error.message}`);
+    return (data || []).map((r) => ({
+      id: r.id,
+      status: r.status,
+      paymentMethod: r.payment_method,
+      convertedUsd: Number(r.converted_usd) || 0,
+      sellerName: r.seller_name ?? undefined,
+      parishName: r.parish_name ?? undefined,
+    }));
+  }
+  return (await readDb()).orders
+    .filter((o) => o.id.startsWith('DON-'))
+    .map((o) => ({ id: o.id, status: o.status, paymentMethod: o.paymentMethod, convertedUsd: o.convertedUsd, sellerName: o.sellerName, parishName: o.parishName }));
 }

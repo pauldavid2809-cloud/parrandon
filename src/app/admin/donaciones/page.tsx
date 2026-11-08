@@ -8,6 +8,9 @@ import type { Order } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 const ESTADO: Record<Order['status'], string> = { pending: 'Por verificar', approved: 'Verificada', rejected: 'Rechazada' };
+const METODO: Record<string, string> = { cash: 'Efectivo', zelle: 'Zelle', pago_movil: 'Pago Móvil', binance: 'Binance', paypal: 'PayPal' };
+// Las que registran los vendedores desde su app llevan el id DON-…
+const deVendedor = (o: Order) => o.id.startsWith('DON-');
 
 export default function DonacionesAdmin() {
   const [orders, setOrders] = useState<Order[] | null>(null);
@@ -44,8 +47,8 @@ export default function DonacionesAdmin() {
     <div className="max-w-5xl">
       <PageTitle title="Donaciones" />
       <p className="-mt-5 mb-6 max-w-[62ch] text-ink-2">
-        Donaciones hechas desde la página (sin entrada). Aquí también aparecen las órdenes anteriores al sistema de
-        entradas de papel.
+        Donaciones hechas desde la página o registradas por los vendedores en su app (sin entrada). Aquí también aparecen
+        las órdenes anteriores al sistema de entradas de papel.
       </p>
       {error && <Notice tone="error" className="mb-4">{error}</Notice>}
       {!orders && !error && <Spinner />}
@@ -59,7 +62,9 @@ export default function DonacionesAdmin() {
                   {o.buyerName} <span className="font-normal text-ink-3">· {o.isDonation ? 'Donación' : 'Orden anterior'} {o.id}</span>
                 </p>
                 <p className="tabular text-sm text-ink-2">
-                  {fechaCorta(o.createdAt)} · {o.paymentMethod} · ref. {o.paymentReference}
+                  {fechaCorta(o.createdAt)} · {METODO[o.paymentMethod] ?? o.paymentMethod}
+                  {o.paymentMethod !== 'cash' && ` · ref. ${o.paymentReference}`}
+                  {deVendedor(o) && ` · la registró ${o.sellerName ?? 'un vendedor'}${o.parishName ? ` (lote de ${o.parishName})` : ''}`}
                   {o.paymentProofUrl && (
                     <>
                       {' · '}
@@ -75,7 +80,7 @@ export default function DonacionesAdmin() {
               {o.status === 'pending' && (
                 <div className="flex gap-2">
                   <Button size="sm" variant="verde" loading={busy === o.id + 'approved'} onClick={() => setStatus(o.id, 'approved')}>
-                    Verificar
+                    {o.paymentMethod === 'cash' ? 'Efectivo recibido' : 'Verificar'}
                   </Button>
                   <Button size="sm" variant="quiet" loading={busy === o.id + 'rejected'} onClick={() => setStatus(o.id, 'rejected')}>
                     Rechazar

@@ -10,7 +10,7 @@ import { MAX_ENTRADAS_POR_VENTA, type Entrada, type HolderType, type MetodoPago,
 // suben (a veces horas después, cuando hay internet). Cada persona completa sus datos después
 // escaneando su propia entrada.
 
-const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
+export const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 const VENDEDORES: HolderType[] = ['seminarista', 'padre_jorge', 'parroquia'];
 const METODOS: MetodoPago[] = ['efectivo_usd', 'pago_movil', 'zelle'];
 
@@ -19,7 +19,7 @@ function clean(value: unknown, max = 120): string {
 }
 
 // Las ventas guardan la hora del teléfono; si viene rara (reloj mal puesto), se usa la del servidor.
-function horaVenta(raw: unknown, ahora: Date) {
+export function horaVenta(raw: unknown, ahora: Date) {
   const t = Date.parse(String(raw ?? ''));
   const maxAtraso = 90 * 24 * 3600 * 1000;
   if (Number.isNaN(t) || t > ahora.getTime() + 5 * 60 * 1000 || t < ahora.getTime() - maxAtraso) return ahora.toISOString();
@@ -51,6 +51,19 @@ export function vistaVendedor(v: Venta, entradas: DeVenta[]) {
 
 export type VistaVendedor = ReturnType<typeof vistaVendedor>;
 
+// Quién registra: el dueño del lote y, si no es él, quien vende (de una parroquia o del Padre Jorge).
+export async function quienVende(raw: unknown) {
+  const seller = (raw ?? {}) as Record<string, unknown>;
+  const sellerType = seller.type as HolderType;
+  if (!VENDEDORES.includes(sellerType)) throw new EntradaError('Indica quién vende.');
+  const holder = await holderInfo(sellerType, clean(seller.id, 80) || null);
+  // Quien vende las entradas de una parroquia suele ser un seminarista: su nombre sale del directorio.
+  const vendedorId = clean(seller.vendedorId, 40);
+  const vendedor = vendedorId ? (await holderInfo('seminarista', vendedorId)).name : clean(seller.vendedor, 80) || null;
+  if (sellerType !== 'seminarista' && !vendedor) throw new EntradaError('Escribe el nombre de quien vende.');
+  return { sellerType, holder, vendedor };
+}
+
 export async function registrarVenta(input: Record<string, unknown>) {
   const id = clean(input.id, 64);
   if (!ID_RE.test(id)) throw new EntradaError('La venta no tiene identificador. Actualiza la app de vendedores.');
@@ -59,14 +72,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
   const existente = await store().getVenta(id);
   if (existente) return vistaVendedor(existente, await store().listCampos(CAMPOS_VENTA, { saleId: id }));
 
-  const seller = (input.seller ?? {}) as Record<string, unknown>;
-  const sellerType = seller.type as HolderType;
-  if (!VENDEDORES.includes(sellerType)) throw new EntradaError('Indica quién vende.');
-  const holder = await holderInfo(sellerType, clean(seller.id, 80) || null);
-  // Quien vende las entradas de una parroquia suele ser un seminarista: su nombre sale del directorio.
-  const vendedorId = clean(seller.vendedorId, 40);
-  const vendedor = vendedorId ? (await holderInfo('seminarista', vendedorId)).name : clean(seller.vendedor, 80) || null;
-  if (sellerType !== 'seminarista' && !vendedor) throw new EntradaError('Escribe el nombre de quien vende.');
+  const { sellerType, holder, vendedor } = await quienVende(input.seller);
 
   const method = input.method as MetodoPago;
   if (!METODOS.includes(method)) throw new EntradaError('Elige cómo pagaron.');
