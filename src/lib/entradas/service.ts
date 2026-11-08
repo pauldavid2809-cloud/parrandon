@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { DEFAULT_CONFIG, getEventConfig } from '@/lib/db';
 import { fetchLiveRate } from '@/lib/rates';
 import { isSafeProofUrl } from '@/lib/proof';
+import { guardarCapture } from '@/lib/capturas';
 import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { erroresPersona, limpiarNombre, normalizarCedula, ocultarCedula, type PersonaInput, type ReglasPersona } from '@/lib/persona';
 import { SEMINARISTAS_DIRECTORY } from '@/lib/seminaristas';
@@ -298,7 +299,7 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
     ...data.persona,
     paymentMethod: data.method,
     paymentReference: efectivo ? null : data.reference,
-    paymentProofUrl: efectivo ? null : data.proofUrl,
+    paymentProofUrl: efectivo ? null : await guardarCapture(data.proofUrl || null, `entrada-${entrada.number}`),
     ...money,
     reportedBy: by,
     reportedAt: new Date().toISOString(),
@@ -550,7 +551,7 @@ export async function ventaTaquilla(
     ...persona,
     paymentMethod: method,
     paymentReference: reference || null,
-    paymentProofUrl: proofUrl || null,
+    paymentProofUrl: await guardarCapture(proofUrl || null, `taquilla-${entrada.number}`),
     ...amountFor(method, config.ticketPriceUsd, config.currentRateBs),
     reportedBy: 'taquilla',
     reportedAt: now,

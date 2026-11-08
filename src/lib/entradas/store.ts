@@ -62,7 +62,15 @@ interface Store {
   saveVenta(v: Venta): Promise<void>;
   updateVenta(id: string, patch: Partial<Venta>): Promise<void>;
   listVentas(ids?: string[]): Promise<Venta[]>;
+  // Capture que siguen guardados como imagen dentro de la fila (para moverlos al almacenamiento).
+  capturasEmbebidas(tipo: 'venta' | 'entrada', max: number): Promise<{ clave: string; url: string }[]>;
+  // Pone el enlace del capture ya subido. En una venta, también en sus entradas (tenían la misma foto).
+  reemplazarCaptura(tipo: 'venta' | 'entrada', clave: string, url: string): Promise<void>;
 }
+
+// Las listas no traen las fotos embebidas (pesan cientos de KB cada una): ponen «embedded» y
+// quien necesita la imagen la pide por su lado (getEntrada / getVenta).
+const marcarEmbebida = (url: string | null) => (url?.startsWith('data:') ? 'embedded' : url);
 
 // ---------- mapeo snake_case <-> camelCase ----------
 
@@ -207,16 +215,24 @@ function supabaseStore(): Store {
   const fail = (what: string, error: { message: string } | null) => {
     if (error) throw new Error(`${what}: ${error.message}`);
   };
-  const leer = async (columnas: string, filtro: FiltroEntradas = {}) => {
+  const leer = async (columnas: string, filtro: FiltroEntradas = {}, foto?: 'enlace' | 'embebida') => {
     let q = db.from('entradas').select(columnas);
     for (const [key, value] of Object.entries(filtro) as [keyof FiltroEntradas, string | null | undefined][]) {
       if (value === undefined) continue;
       q = value === null ? q.is(COLS[key], null) : q.eq(COLS[key], value);
     }
+    if (foto === 'enlace') q = q.not('payment_proof_url', 'is', null).not('payment_proof_url', 'like', 'data:%');
+    if (foto === 'embebida') q = q.like('payment_proof_url', 'data:%');
     const { data, error } = await q.order('number').limit(2000);
     fail('Leyendo entradas', error);
     return (data || []) as unknown as Record<string, unknown>[];
   };
+  const SIN_FOTO = Object.values(COLS)
+    .filter((c) => c !== 'payment_proof_url')
+    .join(',');
+  const VENTA_SIN_FOTO = Object.values(VENTA_COLS)
+    .filter((c) => c !== 'proof_url')
+    .join(',');
 
   return {
     async schemaAlDia() {
@@ -227,7 +243,16 @@ function supabaseStore(): Store {
       return !entradas.error && !ventas.error;
     },
     async listEntradas(filtro) {
-      return (await leer('*', filtro)).map(fromRow);
+      // La foto se pide aparte: solo el enlace, o una marca si sigue embebida.
+      const [rows, enlaces, embebidas] = await Promise.all([
+        leer(SIN_FOTO, filtro),
+        leer('code,payment_proof_url', filtro, 'enlace'),
+        leer('code', filtro, 'embebida'),
+      ]);
+      const foto = new Map<string, string>();
+      for (const r of enlaces) foto.set(String(r.code), String(r.payment_proof_url));
+      for (const r of embebidas) foto.set(String(r.code), 'embedded');
+      return rows.map((r) => ({ ...fromRow(r), paymentProofUrl: foto.get(String(r.code)) ?? null }));
     },
     async listCampos(campos, filtro) {
       const rows = await leer(campos.map((k) => COLS[k]).join(','), filtro);
@@ -362,11 +387,45 @@ function supabaseStore(): Store {
       fail('Guardando venta', error);
     },
     async listVentas(ids) {
-      let q = db.from('ventas').select('*');
-      if (ids) q = q.in('id', ids);
-      const { data, error } = await q.order('received_at', { ascending: false }).limit(2000);
-      fail('Leyendo ventas', error);
-      return (data || []).map(ventaFromRow);
+      const consulta = (columnas: string) => {
+        const q = db.from('ventas').select(columnas);
+        return ids ? q.in('id', ids) : q;
+      };
+      const [lista, enlaces, embebidas] = await Promise.all([
+        consulta(VENTA_SIN_FOTO).order('received_at', { ascending: false }).limit(2000),
+        consulta('id,proof_url').not('proof_url', 'is', null).not('proof_url', 'like', 'data:%').limit(2000),
+        consulta('id').like('proof_url', 'data:%').limit(2000),
+      ]);
+      fail('Leyendo ventas', lista.error || enlaces.error || embebidas.error);
+      const foto = new Map<string, string>();
+      for (const r of (enlaces.data || []) as unknown as Record<string, unknown>[]) foto.set(String(r.id), String(r.proof_url));
+      for (const r of (embebidas.data || []) as unknown as Record<string, unknown>[]) foto.set(String(r.id), 'embedded');
+      return ((lista.data || []) as unknown as Record<string, unknown>[]).map((r) => ({
+        ...ventaFromRow(r),
+        proofUrl: foto.get(String(r.id)) ?? null,
+      }));
+    },
+    async capturasEmbebidas(tipo, max) {
+      const { data, error } =
+        tipo === 'venta'
+          ? await db.from('ventas').select('id,proof_url').like('proof_url', 'data:%').limit(max)
+          : await db.from('entradas').select('code,payment_proof_url').like('payment_proof_url', 'data:%').limit(max);
+      fail('Leyendo capture', error);
+      return ((data || []) as unknown as Record<string, unknown>[]).map((r) => ({
+        clave: String(tipo === 'venta' ? r.id : r.code),
+        url: String(tipo === 'venta' ? r.proof_url : r.payment_proof_url),
+      }));
+    },
+    async reemplazarCaptura(tipo, clave, url) {
+      if (tipo === 'venta') {
+        const venta = await db.from('ventas').update({ proof_url: url }).eq('id', clave);
+        fail('Guardando capture', venta.error);
+        const suyas = await db.from('entradas').update({ payment_proof_url: url }).eq('sale_id', clave).like('payment_proof_url', 'data:%');
+        fail('Guardando capture', suyas.error);
+      } else {
+        const { error } = await db.from('entradas').update({ payment_proof_url: url }).eq('code', clave);
+        fail('Guardando capture', error);
+      }
     },
   };
 }
@@ -423,7 +482,7 @@ function localStore(): Store {
       return true;
     },
     async listEntradas(filtro) {
-      return localEntradas(filtro);
+      return localEntradas(filtro).map((e) => ({ ...e, paymentProofUrl: marcarEmbebida(e.paymentProofUrl) }));
     },
     async listCampos(campos, filtro) {
       return localEntradas(filtro).map((e) => elegir(e, campos));
@@ -531,8 +590,13 @@ function localStore(): Store {
     async listVentas(ids) {
       return (readLocal().ventas || [])
         .filter((v) => !ids || ids.includes(v.id))
-        .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+        .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))
+        .map((v) => ({ ...v, proofUrl: marcarEmbebida(v.proofUrl) }));
     },
+    async capturasEmbebidas() {
+      return []; // en local no hay almacenamiento de archivos
+    },
+    async reemplazarCaptura() {},
   };
 }
 

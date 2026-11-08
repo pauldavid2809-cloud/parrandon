@@ -563,6 +563,13 @@ function report(code, extra = {}) {
   await admin.patch(`/api/admin/ventas/${idV2}`, { action: 'rechazar', reason: 'No llegó el Pago Móvil' });
   r = await admin.get(`/api/admin/ventas/${idV3}`);
   check('Administración puede ver el capture de una venta', r.json?.proofUrl === PROOF);
+  r = await admin.get('/api/admin/entradas');
+  const e262 = r.json.entradas.find((e) => e.number === 262);
+  check('La lista de entradas no trae la foto embebida (solo la marca)', e262?.paymentProofUrl === 'embedded', String(e262?.paymentProofUrl).slice(0, 40));
+  r = await admin.get(`/api/admin/entradas/${c(262)}`);
+  check('…y la entrada sola sí trae el capture', r.json.entrada.paymentProofUrl === PROOF);
+  r = await anon.get('/api/cron/diario');
+  check('La tarea diaria responde (mantiene activa la base y mueve capture)', r.status === 200 && r.json.entradas === 500 && r.json.movidas?.fallidas === 0, JSON.stringify(r.json));
 
   // ---------------------------------------------------------------- fecha del evento
   sec('Cambio de mesa y fecha del evento');

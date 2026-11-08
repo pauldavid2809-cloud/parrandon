@@ -1,5 +1,6 @@
 import 'server-only';
 import { isSafeProofUrl } from '@/lib/proof';
+import { guardarCapture } from '@/lib/capturas';
 import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { store } from './store';
 import { amountFor, aprobar, deshacerRechazo, EntradaError, eventRules, extractCode, holderInfo, rechazar, sinNotaDeMesa } from './service';
@@ -98,6 +99,9 @@ export async function registrarVenta(input: Record<string, unknown>) {
       ? tasaTelefono
       : config.currentRateBs;
   const dinero = amountFor(method, config.ticketPriceUsd, tasa);
+  // La foto llega embebida desde el teléfono (así funciona sin internet): se sube al
+  // almacenamiento y en la base queda solo el enlace.
+  const capture = await guardarCapture(proofUrl, `venta-${id}`);
 
   const ahora = new Date();
   const soldAt = horaVenta(input.soldAt, ahora);
@@ -122,7 +126,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
         status: 'por_verificar',
         paymentMethod: method,
         paymentReference: reference || null,
-        paymentProofUrl: proofUrl,
+        paymentProofUrl: capture,
         ...dinero,
         reportedBy: 'vendedor',
         reportedAt: soldAt,
@@ -144,7 +148,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
     vendedor,
     method,
     reference: reference || null,
-    proofUrl,
+    proofUrl: capture,
     buyerName: clean(input.buyerName, 120) || null,
     buyerPhone: clean(input.buyerPhone, 30) || null,
     priceUsd: config.ticketPriceUsd,
