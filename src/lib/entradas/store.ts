@@ -48,7 +48,8 @@ interface Store {
   // Actualiza solo si la entrada sigue en el estado esperado (evita dobles ventas o dobles ingresos).
   updateEntradaIf(code: string, cond: Condicion, patch: Partial<Entrada>): Promise<Entrada | null>;
   updateEntradas(codes: string[], patch: Partial<Entrada>): Promise<number>;
-  updateRange(from: number, to: number, patch: Partial<Entrada>): Promise<number>;
+  // Con «estado», solo las del rango que están en ese estado (p. ej. solo las sin vender).
+  updateRange(from: number, to: number, patch: Partial<Entrada>, estado?: Entrada['status']): Promise<number>;
   insertEntradas(rows: Entrada[]): Promise<void>;
   claimTable(code: string, tableId: string, force: boolean): Promise<ClaimResult>;
   listMesas(): Promise<Mesa[]>;
@@ -310,13 +311,14 @@ function supabaseStore(): Store {
       fail('Guardando entradas', error);
       return data?.length || 0;
     },
-    async updateRange(from, to, patch) {
-      const { data, error } = await db
+    async updateRange(from, to, patch, estado) {
+      let q = db
         .from('entradas')
         .update({ ...toRow(patch), updated_at: new Date().toISOString() })
         .gte('number', from)
-        .lte('number', to)
-        .select('code');
+        .lte('number', to);
+      if (estado) q = q.eq('status', estado);
+      const { data, error } = await q.select('code');
       fail('Asignando lote', error);
       return data?.length || 0;
     },
@@ -516,8 +518,8 @@ function localStore(): Store {
       const set = new Set(codes);
       return patchAll((e) => set.has(e.code), patch);
     },
-    async updateRange(from, to, patch) {
-      return patchAll((e) => e.number >= from && e.number <= to, patch);
+    async updateRange(from, to, patch, estado) {
+      return patchAll((e) => e.number >= from && e.number <= to && (!estado || e.status === estado), patch);
     },
     async insertEntradas(rows) {
       const data = readLocal();

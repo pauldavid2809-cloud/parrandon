@@ -670,7 +670,14 @@ export async function asignarLote(from: number, to: number, type: HolderType, id
     throw new EntradaError('Revisa el rango: desde y hasta deben ser números y "desde" no puede ser mayor.');
   }
   const holder = await holderInfo(type, id);
-  return store().updateRange(from, to, { holderType: type, holderId: holder.id, holderName: holder.name });
+  // Solo se reparten las que siguen sin vender: las vendidas (y las anuladas) se quedan con
+  // quien las tenía, que es quien las vendió o las perdió.
+  const omitidas = (await store().listCampos(['number', 'status']))
+    .filter((e) => e.number >= from && e.number <= to && e.status !== 'sin_vender')
+    .map((e) => e.number)
+    .sort((x, y) => x - y);
+  const count = await store().updateRange(from, to, { holderType: type, holderId: holder.id, holderName: holder.name }, 'sin_vender');
+  return { count, omitidas };
 }
 
 // Quita de las parroquias (de una, o de todas) las entradas que no se han vendido: quedan «sin

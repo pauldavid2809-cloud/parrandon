@@ -140,7 +140,9 @@ function AsignarLote({
   const b = Number(to);
   const valid = Number.isInteger(a) && Number.isInteger(b) && a >= 1 && b >= a;
   const enRango = valid ? entradas.filter((e) => e.number >= a && e.number <= b) : [];
-  const conPago = enRango.filter((e) => e.status !== 'sin_vender').length;
+  // Solo se reparten las que siguen sin vender; las vendidas se quedan con quien las vendió.
+  const libres = enRango.filter((e) => e.status === 'sin_vender').length;
+  const vendidas = enRango.length - libres;
   const needsId = type === 'seminarista' || type === 'parroquia';
   const deSeminaristas = entradas.filter((e) => e.holderType === 'seminarista').map((e) => e.number);
 
@@ -148,8 +150,16 @@ function AsignarLote({
     setBusy(true);
     setMsg(null);
     try {
-      const { count } = await api<{ count: number }>('/api/admin/lotes', { method: 'POST', body: { from: a, to: b, type, id } });
-      setMsg({ tone: 'ok', text: `Listo: ${count} entradas asignadas.` });
+      const { count, omitidas } = await api<{ count: number; omitidas: number[] }>('/api/admin/lotes', {
+        method: 'POST',
+        body: { from: a, to: b, type, id },
+      });
+      setMsg({
+        tone: 'ok',
+        text:
+          `Listo: ${count} ${count === 1 ? 'entrada asignada' : 'entradas asignadas'}.` +
+          (omitidas.length ? ` No se movieron las ya vendidas: ${formatRangos(omitidas)}.` : ''),
+      });
       setFrom('');
       setTo('');
       onDone();
@@ -213,12 +223,15 @@ function AsignarLote({
       )}
       {valid && (
         <p className="tabular mt-4 text-ink-2">
-          Se asignarán {enRango.length} entradas (#{formatNumber(a)}–#{formatNumber(b)})
-          {conPago > 0 ? `. Ojo: ${conPago} ya tienen pago reportado; cambiará quién aparece como responsable.` : '.'}
+          {libres > 0
+            ? `Se asignarán ${libres} ${libres === 1 ? 'entrada sin vender' : 'entradas sin vender'} (#${formatNumber(a)}–#${formatNumber(b)}).`
+            : `Del #${formatNumber(a)} al #${formatNumber(b)} no queda ninguna sin vender.`}
+          {vendidas > 0 &&
+            ` ${vendidas === 1 ? 'La que ya se vendió se queda' : `Las ${vendidas} que ya se vendieron se quedan`} con quien la${vendidas === 1 ? '' : 's'} vendió.`}
         </p>
       )}
       {msg && <Notice tone={msg.tone} className="mt-4">{msg.text}</Notice>}
-      <Button className="mt-4" onClick={submit} loading={busy} disabled={!valid || enRango.length === 0 || (needsId && !id)}>
+      <Button className="mt-4" onClick={submit} loading={busy} disabled={!valid || libres === 0 || (needsId && !id)}>
         Asignar lote
       </Button>
     </section>

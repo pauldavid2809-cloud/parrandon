@@ -438,6 +438,20 @@ function report(code, extra = {}) {
   check('Asignar #235–#260 a la parroquia', r.json?.count === 26);
   r = await admin.post('/api/admin/lotes', { from: 261, to: 280, type: 'padre_jorge' });
   check('Asignar #261–#280 al Padre Jorge', r.json?.count === 20);
+  r = await admin.post('/api/admin/lotes', { from: 481, to: 486, type: 'padre_jorge' });
+  check(
+    'Un lote con entradas ya vendidas solo mueve las sin vender y dice cuáles dejó',
+    r.json?.count === 4 && JSON.stringify(r.json.omitidas) === '[481,482]',
+    JSON.stringify(r.json)
+  );
+  r = await admin.get('/api/admin/entradas');
+  {
+    const de = (n) => r.json.entradas.find((e) => e.number === n);
+    check('…las vendidas se quedan con la taquilla que las vendió', de(481).holderType === 'taquilla' && de(482).holderType === 'taquilla' && de(481).attendeeName === 'Carmen Soto', JSON.stringify(de(481)));
+    check('…y las demás pasan al Padre Jorge', [483, 484, 485, 486].every((n) => de(n).holderType === 'padre_jorge'));
+  }
+  r = await admin.post('/api/admin/lotes', { from: 481, to: 486, type: 'taquilla' });
+  check('…y vuelven a la taquilla', r.json?.count === 4);
   r = await admin.post('/api/admin/lotes', { from: 300, to: 290, type: 'padre_jorge' });
   check('Rango al revés → 400', r.status === 400);
   r = await admin.post('/api/admin/lotes', { from: 1, to: 2, type: 'parroquia', id: 'no-existe' });
