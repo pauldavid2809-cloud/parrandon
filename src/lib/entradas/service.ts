@@ -673,6 +673,17 @@ export async function asignarLote(from: number, to: number, type: HolderType, id
   return store().updateRange(from, to, { holderType: type, holderId: holder.id, holderName: holder.name });
 }
 
+// Quita de las parroquias (de una, o de todas) las entradas que no se han vendido: quedan «sin
+// asignar» para repartirlas de nuevo. Las vendidas (por verificar o activas) se quedan en su
+// parroquia, igual que las anuladas, para saber de dónde salieron.
+export async function liberarLotesParroquia(parroquiaId: string | null) {
+  const entradas = await store().listCampos(['code', 'status'], parroquiaId ? { holderType: 'parroquia', holderId: parroquiaId } : { holderType: 'parroquia' });
+  const libres = entradas.filter((e) => e.status === 'sin_vender').map((e) => e.code);
+  const quedan = entradas.length - libres.length;
+  const liberadas = libres.length ? await store().updateEntradas(libres, { holderType: 'sin_asignar', holderId: null, holderName: null }) : 0;
+  return { liberadas, quedan };
+}
+
 export async function loteDe(type: HolderType, id: string) {
   const entradas = await store().listCampos(['number', 'status', 'tableId', 'attendeeName', 'checkedInAt'], {
     holderType: type,

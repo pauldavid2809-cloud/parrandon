@@ -707,6 +707,23 @@ function report(code, extra = {}) {
   check('Resumen consistente (vendidas = por verificar + activas)', R.vendidas === R.porVerificar + R.activas && R.generadas === 500, JSON.stringify({ v: R.vendidas, p: R.porVerificar, a: R.activas }));
   check('Resumen: mesas llenas cuadran con el croquis', R.mesas.mesasLlenas >= 1);
 
+  sec('Quitar a las parroquias las entradas no vendidas');
+  r = await anon.post('/api/admin/lotes/liberar', { parroquiaId: parr.id });
+  check('Solo administración puede quitarlas', r.status === 401);
+  r = await admin.get('/api/admin/entradas');
+  const deParr = r.json.entradas.filter((e) => e.holderType === 'parroquia' && e.holderId === parr.id);
+  const vendidasParr = deParr.filter((e) => e.status !== 'sin_vender');
+  check('(preparación) la parroquia tiene entradas vendidas y sin vender', vendidasParr.length > 0 && deParr.length > vendidasParr.length, `${vendidasParr.length}/${deParr.length}`);
+  r = await admin.post('/api/admin/lotes/liberar', { parroquiaId: parr.id });
+  check('Quitar las no vendidas de la parroquia', r.json?.liberadas === deParr.length - vendidasParr.length && r.json.quedan === vendidasParr.length, JSON.stringify(r.json));
+  r = await admin.get('/api/admin/entradas');
+  const siguen = r.json.entradas.filter((e) => e.holderType === 'parroquia' && e.holderId === parr.id);
+  const e240 = r.json.entradas.find((e) => e.number === 240);
+  check('…las vendidas se quedan en la parroquia', siguen.length === vendidasParr.length && siguen.every((e) => e.status !== 'sin_vender'));
+  check('…y las demás quedan sin asignar, sin nombre de lote', e240.holderType === 'sin_asignar' && !e240.holderId && !e240.holderName, JSON.stringify(e240));
+  r = await admin.post('/api/admin/lotes/liberar', {});
+  check('Sin parroquia, quita de todas (ya no queda ninguna sin vender)', r.json?.liberadas === 0, JSON.stringify(r.json));
+
   // ---------------------------------------------------------------- salida
   r = await puerta.post('/api/auth/logout');
   r = await puerta.get('/api/puerta/resumen');

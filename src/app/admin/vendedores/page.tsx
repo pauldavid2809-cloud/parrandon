@@ -113,7 +113,7 @@ export default function VendedoresAdmin() {
         </div>
       </section>
 
-      <Parroquias parroquias={parroquias} onChange={setParroquias} />
+      <Parroquias parroquias={parroquias} entradas={entradas || []} onChange={setParroquias} onLiberadas={load} />
     </div>
   );
 }
@@ -225,11 +225,69 @@ function AsignarLote({
   );
 }
 
-function Parroquias({ parroquias, onChange }: { parroquias: Parroquia[]; onChange: (p: Parroquia[]) => void }) {
+function Parroquias({
+  parroquias,
+  entradas,
+  onChange,
+  onLiberadas,
+}: {
+  parroquias: Parroquia[];
+  entradas: Entrada[];
+  onChange: (p: Parroquia[]) => void;
+  onLiberadas: () => Promise<void>;
+}) {
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [liberando, setLiberando] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  // Cuántas entradas tiene cada parroquia y cuántas ya se vendieron (las vendidas no se quitan).
+  const cuenta = useMemo(() => {
+    const m = new Map<string, { total: number; vendidas: number; libres: number }>();
+    for (const e of entradas) {
+      if (e.holderType !== 'parroquia' || !e.holderId) continue;
+      const c = m.get(e.holderId) || { total: 0, vendidas: 0, libres: 0 };
+      c.total++;
+      if (e.status === 'activa' || e.status === 'por_verificar') c.vendidas++;
+      if (e.status === 'sin_vender') c.libres++;
+      m.set(e.holderId, c);
+    }
+    return m;
+  }, [entradas]);
+  const libresTotal = [...cuenta.values()].reduce((s, c) => s + c.libres, 0);
+
+  const liberar = async (p: Parroquia | null) => {
+    const libres = p ? (cuenta.get(p.id)?.libres ?? 0) : libresTotal;
+    const donde = p ? p.name : 'todas las parroquias';
+    if (
+      !confirm(
+        `¿Quitar ${libres} ${libres === 1 ? 'entrada sin vender' : 'entradas sin vender'} de ${donde}?\n\n` +
+          'Quedan «sin asignar» para repartirlas de nuevo. Las vendidas se quedan en su parroquia.\n' +
+          'Si algún vendedor tiene ventas sin subir (vendió sin señal), que las suba antes.'
+      )
+    )
+      return;
+    setLiberando(p?.id ?? 'todas');
+    setError(null);
+    setAviso(null);
+    try {
+      const r = await api<{ liberadas: number; quedan: number }>('/api/admin/lotes/liberar', {
+        method: 'POST',
+        body: { parroquiaId: p?.id ?? null },
+      });
+      await onLiberadas();
+      setAviso(
+        `Se quitaron ${r.liberadas} ${r.liberadas === 1 ? 'entrada' : 'entradas'} de ${donde}.` +
+          (r.quedan ? ` ${r.quedan === 1 ? 'Queda 1 vendida' : `Quedan ${r.quedan} vendidas o anuladas`} en su parroquia.` : '')
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron quitar.');
+    } finally {
+      setLiberando(null);
+    }
+  };
 
   const add = async () => {
     setBusy(true);
@@ -268,18 +326,52 @@ function Parroquias({ parroquias, onChange }: { parroquias: Parroquia[]; onChang
         Parroquias
       </h2>
       <p className="mt-1 text-ink-2">Las parroquias que reciben entradas. Aparecen en el portal de vendedores.</p>
+      {libresTotal > 0 && (
+        <Button
+          variant="outline"
+          className="mt-4"
+          loading={liberando === 'todas'}
+          disabled={Boolean(liberando)}
+          onClick={() => liberar(null)}
+        >
+          Quitar a todas las parroquias las no vendidas ({libresTotal})
+        </Button>
+      )}
+      {aviso && (
+        <Notice tone="ok" className="mt-4">
+          {aviso}
+        </Notice>
+      )}
       <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-soft)]">
+        <ul className="divide-y divide-line self-start overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-soft)]">
           {parroquias.length === 0 && <li className="p-5 text-ink-2">Todavía no hay parroquias.</li>}
           {parroquias.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-3 px-5 py-3">
-              <div>
+            <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <div className="min-w-0">
                 <p className="font-bold">{p.name}</p>
                 {p.contact && <p className="text-sm text-ink-3">{p.contact}</p>}
+                <p className="tabular text-sm text-ink-2">
+                  {cuenta.get(p.id)
+                    ? `${cuenta.get(p.id)!.total} entradas · ${cuenta.get(p.id)!.vendidas} vendidas`
+                    : 'Sin entradas asignadas'}
+                </p>
               </div>
-              <button type="button" onClick={() => remove(p)} aria-label={`Eliminar ${p.name}`} className="rounded-lg p-2 text-ink-3 hover:bg-paper-2 hover:text-rojo">
-                <Trash2 className="h-5 w-5" aria-hidden />
-              </button>
+              <div className="flex items-center gap-1">
+                {(cuenta.get(p.id)?.libres ?? 0) > 0 && (
+                  <Button
+                    size="sm"
+                    variant="quiet"
+                    loading={liberando === p.id}
+                    disabled={Boolean(liberando)}
+                    onClick={() => liberar(p)}
+                  >
+                    Quitar las no vendidas ({cuenta.get(p.id)!.libres})
+                  </Button>
+                )}
+                <button type="button" onClick={() => remove(p)} aria-label={`Eliminar ${p.name}`} className="rounded-lg p-2 text-ink-3 hover:bg-paper-2 hover:text-rojo">
+                  <Trash2 className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
             </li>
           ))}
         </ul>
