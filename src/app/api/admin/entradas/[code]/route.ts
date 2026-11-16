@@ -4,6 +4,7 @@ import {
   aprobar,
   datosPersona,
   deshacerRechazo,
+  efectivoDe,
   EntradaError,
   eventRules,
   rechazar,
@@ -56,7 +57,7 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
     case 'marcar_pagada': {
       if (entrada.status !== 'sin_vender') throw new EntradaError('Esta entrada ya tiene un pago reportado.');
       const method = body.method as MetodoPago;
-      if (!['zelle', 'pago_movil', 'efectivo_usd'].includes(method)) throw new EntradaError('Elige el método de pago.');
+      if (!['zelle', 'pago_movil', 'efectivo_usd', 'mixto'].includes(method)) throw new EntradaError('Elige el método de pago.');
       // Administración puede activar sin cédula (pagos recibidos en persona); si la escribe, se valida.
       const persona = datosPersona(body, { cedula: false, phone: false });
       const { config } = await eventRules();
@@ -67,6 +68,7 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
         paymentMethod: method,
         paymentReference: text(body.reference, 60),
         amount: ves ? Math.round(config.ticketPriceUsd * config.currentRateBs * 100) / 100 : config.ticketPriceUsd,
+        cashAmount: efectivoDe(method, body.efectivoUsd, config.ticketPriceUsd),
         currency: ves ? 'VES' : 'USD',
         rateApplied: ves ? config.currentRateBs : null,
         reportedBy: 'admin',

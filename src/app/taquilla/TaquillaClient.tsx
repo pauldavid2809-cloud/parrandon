@@ -13,6 +13,8 @@ import { Button, Choice, Field, Notice, TextInput } from '@/components/ui';
 import { logout } from '@/components/staff/StaffGate';
 import type { StaffView } from '@/lib/entradas/staff-view';
 import type { MetodoPago } from '@/lib/entradas/types';
+import { detalleMixto, errorMixto, leerMonto } from '@/lib/entradas/pago';
+import EfectivoMixto from '@/components/pago/EfectivoMixto';
 import { formatNumber } from '@/lib/site';
 
 interface Resumen {
@@ -22,6 +24,7 @@ interface Resumen {
     tableId: string | null;
     method: MetodoPago | null;
     amount: number | null;
+    cashAmount: number | null;
     currency: 'USD' | 'VES' | null;
     at: string | null;
   }[];
@@ -37,7 +40,7 @@ interface Found {
   pagoMovil: boolean; // Pago Móvil activo en Configuración
 }
 
-const METODO: Record<MetodoPago, string> = { pago_movil: 'Pago Móvil', zelle: 'Zelle', efectivo_usd: 'Efectivo $' };
+const METODO: Record<MetodoPago, string> = { pago_movil: 'Pago Móvil', zelle: 'Zelle', efectivo_usd: 'Efectivo $', mixto: 'Zelle + efectivo' };
 
 function money(amount: number | null, currency: string | null) {
   if (amount == null) return '';
@@ -196,7 +199,8 @@ export default function TaquillaClient() {
                     <div className="min-w-0">
                       <p className="truncate font-bold">{v.name}</p>
                       <p className="tabular text-sm text-ink-3">
-                        N.º {formatNumber(v.number)} · {v.method ? METODO[v.method] : ''} {money(v.amount, v.currency)}
+                        N.º {formatNumber(v.number)} ·{' '}
+                        {v.method === 'mixto' ? detalleMixto(v.amount ?? 0, v.cashAmount) : `${v.method ? METODO[v.method] : ''} ${money(v.amount, v.currency)}`}
                       </p>
                     </div>
                     <span className="font-display text-xl text-rojo">{v.tableId}</span>
@@ -216,6 +220,7 @@ function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => 
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
   const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<MetodoPago | null>(null);
+  const [efectivo, setEfectivo] = useState('');
   const [reference, setReference] = useState('');
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [tableId, setTableId] = useState<string | null>(null);
@@ -248,12 +253,17 @@ function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => 
       document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    const errorEfectivo = method === 'mixto' ? errorMixto(priceUsd, leerMonto(efectivo)) : null;
+    if (errorEfectivo) {
+      setError(errorEfectivo);
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/taquilla/vender', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: entrada.code, ...persona, method, reference, proofUrl, tableId, enterNow }),
+        body: JSON.stringify({ code: entrada.code, ...persona, method, efectivoUsd: efectivo, reference, proofUrl, tableId, enterNow }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
@@ -285,14 +295,16 @@ function VentaForm({ found, onCancel, onDone }: { found: Found; onCancel: () => 
           name="Método de pago"
           value={method}
           onChange={setMethod}
-          className={pagoMovil ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}
+          className={pagoMovil ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}
           options={[
             { value: 'efectivo_usd' as const, label: 'Efectivo $', detail: `$${priceUsd.toFixed(2)}` },
             ...(pagoMovil ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: formatBs(bs) }] : []),
             { value: 'zelle' as const, label: 'Zelle', detail: `$${priceUsd.toFixed(2)}` },
+            { value: 'mixto' as const, label: 'Zelle + efectivo', detail: 'Una parte de cada uno' },
           ]}
         />
       </Field>
+      {method === 'mixto' && <EfectivoMixto id="t-efectivo" totalUsd={priceUsd} value={efectivo} onChange={setEfectivo} />}
       {method && method !== 'efectivo_usd' && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Referencia" htmlFor="t-ref" hint="Confírmala en el teléfono de cobro antes de seguir.">

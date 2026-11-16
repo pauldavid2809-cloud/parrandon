@@ -8,6 +8,8 @@ import PaymentDetails, { formatBs, type PagoInfo } from '@/components/pago/Payme
 import { shrink } from '@/components/pago/ProofUpload';
 import { guardarVenta, nuevoId, useVentasLocales, type VendedorLocal, type VentaLocal } from '@/lib/vender/cola';
 import { MAX_ENTRADAS_POR_VENTA, type EntradaStatus, type MetodoPago } from '@/lib/entradas/types';
+import { dinero, errorMixto, leerMonto, llevaReferencia } from '@/lib/entradas/pago';
+import EfectivoMixto from '@/components/pago/EfectivoMixto';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +56,7 @@ export default function NuevaVenta({
   const [aviso, setAviso] = useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(null);
   const [manual, setManual] = useState('');
   const [method, setMethod] = useState<MetodoPago | null>(null);
+  const [efectivo, setEfectivo] = useState('');
   const [reference, setReference] = useState('');
   const [proof, setProof] = useState<string | null>(null);
   const [buyerName, setBuyerName] = useState('');
@@ -108,6 +111,9 @@ export default function NuevaVenta({
   const precio = pago?.priceUsd ?? 20;
   const totalUsd = n * precio;
   const totalBs = pago ? Math.round(totalUsd * pago.rateBs * 100) / 100 : null;
+  // Zelle + efectivo: lo que no se pagó en efectivo va por Zelle.
+  const efectivoUsd = leerMonto(efectivo);
+  const zelleUsd = n > 0 && efectivoUsd > 0 && efectivoUsd < totalUsd ? Math.round((totalUsd - efectivoUsd) * 100) / 100 : null;
 
   const elegirFoto = async (file: File | undefined) => {
     if (!file) return;
@@ -124,8 +130,12 @@ export default function NuevaVenta({
     const e: Record<string, string> = {};
     if (n === 0) e.entradas = 'Escanea al menos una entrada.';
     if (!method) e.method = 'Elige cómo pagaron.';
-    if (method && method !== 'efectivo_usd' && reference.trim().length < 4) e.reference = 'Escribe la referencia (al menos 4 dígitos).';
-    if (method && method !== 'efectivo_usd' && !proof) e.proof = 'Agrega la foto del capture del pago.';
+    if (method === 'mixto' && n > 0) {
+      const error = errorMixto(totalUsd, efectivoUsd);
+      if (error) e.efectivo = error;
+    }
+    if (llevaReferencia(method) && reference.trim().length < 4) e.reference = 'Escribe la referencia (al menos 4 dígitos).';
+    if (llevaReferencia(method) && !proof) e.proof = 'Agrega la foto del capture del pago.';
     setErrors(e);
     if (Object.keys(e).length) return;
     setSaving(true);
@@ -134,6 +144,7 @@ export default function NuevaVenta({
       seller,
       entradas,
       method: method!,
+      cashUsd: method === 'mixto' ? efectivoUsd : null,
       reference: reference.trim(),
       proofUrl: method === 'efectivo_usd' ? null : proof,
       capturaObligatoria: true,
@@ -229,20 +240,35 @@ export default function NuevaVenta({
             name="Método de pago"
             value={method}
             onChange={setMethod}
-            className={cn('grid-cols-1', pago?.pagoMovilActivo ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}
+            className={cn('grid-cols-1', pago?.pagoMovilActivo ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}
             options={[
               { value: 'efectivo_usd', label: 'Efectivo $', detail: n ? `$${totalUsd.toFixed(2)}` : `$${precio.toFixed(2)} c/u` },
               ...(pago?.pagoMovilActivo
                 ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: totalBs != null && n ? formatBs(totalBs) : 'en bolívares' }]
                 : []),
               { value: 'zelle', label: 'Zelle', detail: n ? `$${totalUsd.toFixed(2)}` : `$${precio.toFixed(2)} c/u` },
+              { value: 'mixto', label: 'Zelle + efectivo', detail: 'Una parte de cada uno' },
             ]}
           />
           {errors.method && <p className="mt-1.5 text-sm font-bold text-rojo">{errors.method}</p>}
         </div>
+        {method === 'mixto' && (
+          <EfectivoMixto
+            id="nv-efectivo"
+            label="¿Cuánto pagaron en efectivo?"
+            totalUsd={totalUsd}
+            value={efectivo}
+            error={errors.efectivo}
+            onChange={(v) => {
+              setEfectivo(v);
+              setErrors((x) => ({ ...x, efectivo: '' }));
+            }}
+          />
+        )}
         {method && method !== 'efectivo_usd' && (
           <>
-            {pago && n > 0 && <PaymentDetails method={method} pago={{ ...pago, priceUsd: totalUsd }} />}
+            {pago && n > 0 && method !== 'mixto' && <PaymentDetails method={method} pago={{ ...pago, priceUsd: totalUsd }} />}
+            {pago && method === 'mixto' && zelleUsd != null && <PaymentDetails method="zelle" pago={{ ...pago, priceUsd: zelleUsd }} />}
             <Field label="Número de referencia" htmlFor="nv-ref" error={errors.reference}>
               <TextInput
                 id="nv-ref"
@@ -281,6 +307,11 @@ export default function NuevaVenta({
         )}
         {method === 'efectivo_usd' && n > 0 && (
           <Notice tone="info">Cobra ${totalUsd.toFixed(2)}. Ese efectivo lo entregas a administración.</Notice>
+        )}
+        {method === 'mixto' && zelleUsd != null && (
+          <Notice tone="info">
+            Cobra {dinero(efectivoUsd)} en efectivo y {dinero(zelleUsd)} por Zelle. El efectivo lo entregas a administración.
+          </Notice>
         )}
       </section>
 

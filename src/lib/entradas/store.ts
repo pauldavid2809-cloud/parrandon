@@ -92,6 +92,7 @@ const COLS: Record<keyof Entrada, string> = {
   paymentReference: 'payment_reference',
   paymentProofUrl: 'payment_proof_url',
   amount: 'amount',
+  cashAmount: 'cash_amount',
   currency: 'currency',
   rateApplied: 'rate_applied',
   reportedBy: 'reported_by',
@@ -121,6 +122,7 @@ const VENTA_COLS: Record<keyof Venta, string> = {
   buyerName: 'buyer_name',
   buyerPhone: 'buyer_phone',
   priceUsd: 'price_usd',
+  cashUsd: 'cash_usd',
   rateApplied: 'rate_applied',
   numbers: 'numbers',
   problemas: 'problemas',
@@ -145,6 +147,7 @@ function ventaFromRow(row: Record<string, unknown>): Venta {
   for (const [key, col] of Object.entries(VENTA_COLS)) v[key] = row[col] ?? null;
   const venta = v as unknown as Venta;
   venta.priceUsd = Number(row.price_usd);
+  venta.cashUsd = row.cash_usd == null ? null : Number(row.cash_usd);
   venta.rateApplied = row.rate_applied == null ? null : Number(row.rate_applied);
   venta.numbers = Array.isArray(row.numbers) ? (row.numbers as number[]).map(Number) : [];
   venta.problemas = Array.isArray(row.problemas) ? (row.problemas as Venta['problemas']) : [];
@@ -168,6 +171,7 @@ function fromRow(row: Record<string, unknown>): Entrada {
   const entrada = e as unknown as Entrada;
   entrada.number = Number(row.number);
   entrada.amount = row.amount == null ? null : Number(row.amount);
+  entrada.cashAmount = row.cash_amount == null ? null : Number(row.cash_amount);
   entrada.rateApplied = row.rate_applied == null ? null : Number(row.rate_applied);
   entrada.doorActivated = Boolean(row.door_activated);
   return entrada;

@@ -8,6 +8,7 @@ import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { erroresPersona, limpiarNombre, normalizarCedula, ocultarCedula, type PersonaInput, type ReglasPersona } from '@/lib/persona';
 import { SEMINARISTAS_DIRECTORY } from '@/lib/seminaristas';
 import { store } from './store';
+import { dinero, errorMixto, leerMonto, llevaEfectivo, partesDelPago } from './pago';
 import {
   ClaimResult,
   CAPACIDAD_MESA,
@@ -76,6 +77,15 @@ export async function eventRules() {
   };
 }
 
+// La parte en efectivo de un pago mixto (null si no es mixto). El resto del total va por Zelle.
+export function efectivoDe(method: MetodoPago, raw: unknown, totalUsd: number): number | null {
+  if (method !== 'mixto') return null;
+  const efectivo = leerMonto(raw);
+  const error = errorMixto(totalUsd, efectivo);
+  if (error) throw new EntradaError(error);
+  return efectivo;
+}
+
 export function amountFor(method: MetodoPago, priceUsd: number, rate: number) {
   if (method === 'pago_movil') {
     return { amount: Math.round(priceUsd * rate * 100) / 100, currency: 'VES' as const, rateApplied: rate };
@@ -107,6 +117,9 @@ export function ticketView(e: Entrada) {
     tableId: e.tableId,
     paymentMethod: e.paymentMethod,
     paymentReference: e.paymentReference,
+    // En Zelle + efectivo, para mostrarle cuánto fue de cada forma.
+    amount: e.paymentMethod === 'mixto' ? e.amount : null,
+    cashAmount: e.paymentMethod === 'mixto' ? e.cashAmount : null,
     reportedBy: e.reportedBy,
     reportedAt: e.reportedAt,
     verifiedAt: e.verifiedAt,
@@ -193,6 +206,7 @@ export async function generarEntradas(total = TOTAL_ENTRADAS): Promise<number> {
       paymentReference: null,
       paymentProofUrl: null,
       amount: null,
+      cashAmount: null,
       currency: null,
       rateApplied: null,
       reportedBy: null,
@@ -254,6 +268,8 @@ export interface ReporteInput {
   tableId?: string | null;
   // En efectivo: a quién le pagó (normalmente quien le vendió la entrada).
   pagadoA?: string;
+  // Zelle + efectivo: cuánto pagó en efectivo (en dólares).
+  efectivoUsd?: string | number;
 }
 
 function clean(value: unknown, max = 120): string {
@@ -287,12 +303,15 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
   if (input.method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
   // Zelle y Pago Móvil llevan referencia y capture. En efectivo se le paga a quien vendió la
   // entrada: queda por verificar hasta que administración reciba ese dinero.
-  const data = validarReporte(input, { requireProof: true, methods: ['zelle', 'pago_movil', 'efectivo_usd'] });
+  // Zelle + efectivo: la parte de Zelle lleva referencia y capture, y el efectivo, a quién se pagó.
+  const data = validarReporte(input, { requireProof: true, methods: ['zelle', 'pago_movil', 'efectivo_usd', 'mixto'] });
   const efectivo = data.method === 'efectivo_usd';
   const pagadoA = clean(input.pagadoA, 80);
-  if (efectivo && pagadoA.length < 2) throw new EntradaError('Escribe a quién le pagaste el efectivo.');
+  if (llevaEfectivo(data.method) && pagadoA.length < 2) throw new EntradaError('Escribe a quién le pagaste el efectivo.');
   const money = amountFor(data.method, config.ticketPriceUsd, config.currentRateBs);
+  const cashAmount = efectivoDe(data.method, input.efectivoUsd, money.amount);
   const notas = sinNotaDeMesa(entrada.notes);
+  const notaEfectivo = cashAmount != null ? `Pagó ${dinero(cashAmount)} en efectivo a: ${pagadoA}.` : `Pagó en efectivo a: ${pagadoA}.`;
 
   const reportado = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'por_verificar',
@@ -301,10 +320,11 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
     paymentReference: efectivo ? null : data.reference,
     paymentProofUrl: efectivo ? null : await guardarCapture(data.proofUrl || null, `entrada-${entrada.number}`),
     ...money,
+    cashAmount,
     reportedBy: by,
     reportedAt: new Date().toISOString(),
     rejectionReason: null,
-    notes: efectivo ? `Pagó en efectivo a: ${pagadoA}.${notas ? ` ${notas}` : ''}`.slice(0, 500) : notas,
+    notes: llevaEfectivo(data.method) ? `${notaEfectivo}${notas ? ` ${notas}` : ''}`.slice(0, 500) : notas,
   });
   if (!reportado) throw new EntradaError('El pago de esta entrada ya fue reportado.', 409, 'ya_reportada');
 
@@ -411,6 +431,7 @@ const ESTADO_INICIAL: Partial<Entrada> = {
   paymentReference: null,
   paymentProofUrl: null,
   amount: null,
+  cashAmount: null,
   currency: null,
   rateApplied: null,
   reportedBy: null,
@@ -487,6 +508,7 @@ export interface ActivacionPuertaInput {
   phone?: string;
   method: MetodoPago;
   reference?: string;
+  efectivoUsd?: string | number;
   tableId: string;
   soldBy?: string;
 }
@@ -499,18 +521,21 @@ export async function activarEnPuerta(code: string, input: Partial<ActivacionPue
   const persona = datosPersona(input, { cedula: true, phone: false });
   if (!input.tableId) throw new EntradaError('Elige la mesa donde se va a sentar.');
   const method = input.method as MetodoPago;
-  if (!['zelle', 'pago_movil', 'efectivo_usd'].includes(method)) throw new EntradaError('Elige el método de pago.');
+  if (!['zelle', 'pago_movil', 'efectivo_usd', 'mixto'].includes(method)) throw new EntradaError('Elige el método de pago.');
 
   const { config } = await eventRules();
   if (method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
   const soldBy = clean(input.soldBy, 120);
   if (entrada.status === 'sin_vender') {
+    const money = amountFor(method, config.ticketPriceUsd, config.currentRateBs);
+    const cashAmount = efectivoDe(method, input.efectivoUsd, money.amount);
     await store().updateEntradaIf(code, { status: 'sin_vender' }, {
       status: 'por_verificar',
       ...persona,
       paymentMethod: method,
       paymentReference: clean(input.reference, 60) || null,
-      ...amountFor(method, config.ticketPriceUsd, config.currentRateBs),
+      ...money,
+      cashAmount,
       reportedBy: 'puerta',
       reportedAt: new Date().toISOString(),
       doorActivated: true,
@@ -536,7 +561,7 @@ export async function ventaTaquilla(
   }
   const persona = datosPersona(input, { cedula: true, phone: false });
   const method = input.method as MetodoPago;
-  if (!['zelle', 'pago_movil', 'efectivo_usd'].includes(method)) throw new EntradaError('Elige el método de pago.');
+  if (!['zelle', 'pago_movil', 'efectivo_usd', 'mixto'].includes(method)) throw new EntradaError('Elige el método de pago.');
   const reference = clean(input.reference, 60);
   if (method !== 'efectivo_usd' && reference.length < 4) throw new EntradaError('Escribe la referencia del pago.');
   if (!input.tableId) throw new EntradaError('Elige la mesa.');
@@ -545,6 +570,8 @@ export async function ventaTaquilla(
 
   const { config } = await eventRules();
   if (method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);
+  const money = amountFor(method, config.ticketPriceUsd, config.currentRateBs);
+  const cashAmount = efectivoDe(method, input.efectivoUsd, money.amount);
   const now = new Date().toISOString();
   const vendida = await store().updateEntradaIf(code, { status: 'sin_vender' }, {
     status: 'activa',
@@ -552,7 +579,8 @@ export async function ventaTaquilla(
     paymentMethod: method,
     paymentReference: reference || null,
     paymentProofUrl: await guardarCapture(proofUrl || null, `taquilla-${entrada.number}`),
-    ...amountFor(method, config.ticketPriceUsd, config.currentRateBs),
+    ...money,
+    cashAmount,
     reportedBy: 'taquilla',
     reportedAt: now,
     verifiedAt: now,
@@ -572,6 +600,7 @@ export async function ventaTaquilla(
       paymentReference: null,
       paymentProofUrl: null,
       amount: null,
+      cashAmount: null,
       currency: null,
       rateApplied: null,
       reportedBy: null,
@@ -716,6 +745,7 @@ export async function resumenAdmin() {
     'holderName',
     'paymentMethod',
     'amount',
+    'cashAmount',
     'doorActivated',
     'checkedInAt',
     'mealServedAt',
@@ -725,8 +755,9 @@ export async function resumenAdmin() {
   const count = (pred: (e: Fila) => boolean) => entradas.filter(pred).length;
   const vendidas = entradas.filter((e) => OCUPA_PUESTO.includes(e.status));
   const activas = entradas.filter((e) => e.status === 'activa');
-  const sum = (list: Fila[], method: MetodoPago) =>
-    list.filter((e) => e.paymentMethod === method).reduce((s, e) => s + (e.amount || 0), 0);
+  // Un pago mixto suma su parte de Zelle a Zelle y su parte en efectivo a efectivo.
+  const sum = (list: Fila[], parte: 'efectivo' | 'zelle' | 'pagoMovilBs') =>
+    Math.round(list.reduce((s, e) => s + partesDelPago(e)[parte], 0) * 100) / 100;
 
   const holders = new Map<string, { type: HolderType; id: string | null; name: string; total: number; vendidas: number; activas: number }>();
   for (const e of entradas) {
@@ -760,8 +791,8 @@ export async function resumenAdmin() {
     recaudado: {
       // Solo pagos verificados (activas).
       zelleUsd: sum(activas, 'zelle'),
-      pagoMovilVes: sum(activas, 'pago_movil'),
-      efectivoUsd: sum(activas, 'efectivo_usd'),
+      pagoMovilVes: sum(activas, 'pagoMovilBs'),
+      efectivoUsd: sum(activas, 'efectivo'),
     },
     porResponsable: Array.from(holders.values()).sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name)),
   };
@@ -776,6 +807,7 @@ export async function resumenTaquilla() {
     'tableId',
     'paymentMethod',
     'amount',
+    'cashAmount',
     'currency',
     'reportedBy',
     'reportedAt',
@@ -783,7 +815,8 @@ export async function resumenTaquilla() {
   const ventas = entradas
     .filter((e) => e.reportedBy === 'taquilla')
     .sort((a, b) => ((b.reportedAt || '') > (a.reportedAt || '') ? 1 : -1));
-  const total = (m: MetodoPago) => ventas.filter((e) => e.paymentMethod === m).reduce((s, e) => s + (e.amount || 0), 0);
+  const total = (parte: 'efectivo' | 'zelle' | 'pagoMovilBs') =>
+    Math.round(ventas.reduce((s, e) => s + partesDelPago(e)[parte], 0) * 100) / 100;
   return {
     ventas: ventas.slice(0, 40).map((e) => ({
       number: e.number,
@@ -791,11 +824,12 @@ export async function resumenTaquilla() {
       tableId: e.tableId,
       method: e.paymentMethod,
       amount: e.amount,
+      cashAmount: e.cashAmount,
       currency: e.currency,
       at: e.reportedAt,
     })),
     cantidad: ventas.length,
-    totales: { zelle: total('zelle'), pago_movil: total('pago_movil'), efectivo_usd: total('efectivo_usd') },
+    totales: { zelle: total('zelle'), pago_movil: total('pagoMovilBs'), efectivo_usd: total('efectivo') },
     disponiblesTaquilla: entradas.filter((e) => e.holderType === 'taquilla' && e.status === 'sin_vender').length,
   };
 }

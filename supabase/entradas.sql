@@ -175,6 +175,11 @@ CREATE TABLE IF NOT EXISTS public.ventas (
 
 CREATE INDEX IF NOT EXISTS idx_ventas_received ON public.ventas(received_at DESC);
 
+-- Pago mixto (Zelle + efectivo): la parte que se pagó en efectivo, en dólares. El resto fue
+-- por Zelle. En la venta es el efectivo de toda la orden; en cada entrada, su parte.
+ALTER TABLE public.entradas ADD COLUMN IF NOT EXISTS cash_amount NUMERIC;
+ALTER TABLE public.ventas ADD COLUMN IF NOT EXISTS cash_usd NUMERIC;
+
 CREATE INDEX IF NOT EXISTS idx_entradas_table ON public.entradas(table_id);
 CREATE INDEX IF NOT EXISTS idx_entradas_status ON public.entradas(status);
 CREATE INDEX IF NOT EXISTS idx_entradas_holder ON public.entradas(holder_type, holder_id);

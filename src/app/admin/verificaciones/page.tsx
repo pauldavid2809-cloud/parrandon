@@ -6,6 +6,7 @@ import { Button, Notice, Spinner, TextInput } from '@/components/ui';
 import { api, deshacerRechazo, fechaCorta, PageTitle, patchEntrada } from '@/components/admin/api';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import { METODO_LABEL, type Entrada } from '@/lib/entradas/types';
+import { detalleMixto } from '@/lib/entradas/pago';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 import { formatCedula } from '@/lib/persona';
@@ -161,7 +162,13 @@ function PagoCard({ entrada, onDone, onRechazada }: { entrada: Entrada; onDone: 
   };
 
   const monto =
-    entrada.amount == null ? '—' : entrada.currency === 'VES' ? formatBs(entrada.amount) : `$${entrada.amount.toFixed(2)}`;
+    entrada.amount == null
+      ? '—'
+      : entrada.paymentMethod === 'mixto'
+        ? detalleMixto(entrada.amount, entrada.cashAmount)
+        : entrada.currency === 'VES'
+          ? formatBs(entrada.amount)
+          : `$${entrada.amount.toFixed(2)}`;
 
   return (
     <li className="overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-soft)]">
@@ -248,7 +255,11 @@ function PagoCard({ entrada, onDone, onRechazada }: { entrada: Entrada; onDone: 
         ) : (
           <div className="flex flex-wrap gap-2">
             <Button variant="verde" loading={busy === 'aprobar'} onClick={() => act('aprobar')}>
-              {entrada.paymentMethod === 'efectivo_usd' ? 'Efectivo recibido: activar' : 'Pago recibido: activar'}
+              {entrada.paymentMethod === 'efectivo_usd'
+                ? 'Efectivo recibido: activar'
+                : entrada.paymentMethod === 'mixto'
+                  ? 'Zelle y efectivo recibidos: activar'
+                  : 'Pago recibido: activar'}
             </Button>
             <Button variant="outline" onClick={() => setRejecting(true)} disabled={Boolean(entrada.checkedInAt)}>
               {entrada.paymentMethod === 'efectivo_usd' ? 'No llegó el efectivo' : 'No encuentro el pago'}

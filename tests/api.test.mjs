@@ -635,6 +635,122 @@ function report(code, extra = {}) {
   r = await anon.get('/api/cron/diario');
   check('La tarea diaria responde (mantiene activa la base y mueve capture)', r.status === 200 && r.json.entradas === 500 && r.json.movidas?.fallidas === 0 && Array.isArray(r.json.movidas?.errores), JSON.stringify(r.json));
 
+  // ---------------------------------------------------------------- pago mixto
+  sec('Pago mixto (Zelle + efectivo)');
+  r = await anon.get('/api/config');
+  const precio = r.json.config.ticketPriceUsd;
+  const cent = (n) => Math.round(n * 100);
+  r = await admin.get('/api/admin/resumen');
+  const recaudadoAntes = r.json.resumen.recaudado;
+  r = await admin.get('/api/admin/ventas');
+  const efectivoDe = (lista, n) => lista.find((v) => v.nombre === byNum(n).holderName)?.efectivoPorEntregar ?? 0;
+  const debeSemAntes = efectivoDe(r.json.vendedores, 103);
+  const debe133Antes = efectivoDe(r.json.vendedores, 133);
+  const ordenMixta = (extra = {}) =>
+    anon.post('/api/vendedores/ordenes', {
+      id: 'mixta-' + Math.random().toString(36).slice(2, 12),
+      seller: { type: 'seminarista', id: semId },
+      codes: [c(130), c(131), c(132)],
+      method: 'mixto',
+      reference: 'ZLMX01',
+      proofUrl: PROOF,
+      capturaObligatoria: true,
+      soldAt: new Date().toISOString(),
+      ...extra,
+    });
+  r = await ordenMixta();
+  check('Venta Zelle + efectivo sin decir cuánto fue en efectivo → 400', r.status === 400 && /efectivo/i.test(r.json.error), r.json?.error);
+  r = await ordenMixta({ cashUsd: 3 * precio });
+  check('…todo en efectivo no es mixto: tiene que quedar algo por Zelle → 400', r.status === 400, r.json?.error);
+  r = await ordenMixta({ cashUsd: 0.5 });
+  check('…menos de $1 en efectivo → 400', r.status === 400, r.json?.error);
+  r = await ordenMixta({ cashUsd: precio, reference: '' });
+  check('…la parte de Zelle lleva referencia → 400', r.status === 400 && /referencia/i.test(r.json.error), r.json?.error);
+  r = await ordenMixta({ cashUsd: precio, proofUrl: null });
+  check('…y capture → 400', r.status === 400 && /capture/i.test(r.json.error), r.json?.error);
+  r = await admin.get(`/api/admin/entradas/${c(130)}`);
+  check('…ninguno de esos intentos vendió la entrada', r.json.entrada.status === 'sin_vender');
+  const idMixta = 'venta-mixta-0001';
+  r = await ordenMixta({ id: idMixta, cashUsd: precio });
+  check('Venta de 3 entradas: una parte en efectivo y el resto por Zelle', r.status === 200 && r.json.venta.entradas.join() === '130,131,132', JSON.stringify(r.json));
+  r = await admin.get('/api/admin/entradas');
+  const mixtas = r.json.entradas.filter((e) => [130, 131, 132].includes(e.number));
+  check(
+    '…cada entrada queda «mixto» por verificar, con su parte del efectivo',
+    mixtas.every((e) => e.paymentMethod === 'mixto' && e.status === 'por_verificar' && e.amount === precio && e.cashAmount > 0 && e.cashAmount < precio),
+    JSON.stringify(mixtas.map((e) => [e.number, e.paymentMethod, e.amount, e.cashAmount]))
+  );
+  check('…y las partes suman exacto el efectivo de la venta', mixtas.reduce((t, e) => t + cent(e.cashAmount), 0) === cent(precio), JSON.stringify(mixtas.map((e) => e.cashAmount)));
+  r = await admin.get('/api/admin/ventas');
+  const ventaMixta = r.json.ventas.find((v) => v.id === idMixta);
+  check('En Ventas aparece como mixta con su efectivo', ventaMixta?.method === 'mixto' && ventaMixta.cashUsd === precio, JSON.stringify(ventaMixta && { m: ventaMixta.method, c: ventaMixta.cashUsd }));
+  check(
+    '…y en la rendición el seminarista debe solo la parte en efectivo',
+    cent(efectivoDe(r.json.vendedores, 103) - debeSemAntes) === cent(precio),
+    `${debeSemAntes} → ${efectivoDe(r.json.vendedores, 103)}`
+  );
+
+  r = await report(c(133), { method: 'mixto', efectivoUsd: '10', reference: 'ZL7777' });
+  check('El comprador reporta Zelle + efectivo: hay que decir a quién le pagó el efectivo', r.status === 400 && /a quién/i.test(r.json.error), r.json?.error);
+  r = await report(c(133), { method: 'mixto', efectivoUsd: String(precio), pagadoA: 'Juan', reference: 'ZL7777' });
+  check('…y no puede ser todo en efectivo', r.status === 400, r.json?.error);
+  r = await report(c(133), { method: 'mixto', efectivoUsd: '10,50', pagadoA: 'Juan Pérez', reference: 'ZL7777' });
+  check(
+    '…con el monto, a quién, la referencia y el capture: queda por verificar',
+    r.status === 200 && r.json.entrada.status === 'por_verificar' && r.json.entrada.paymentMethod === 'mixto',
+    JSON.stringify(r.json)
+  );
+  r = await anon.get(`/api/entradas/${c(133)}`);
+  check('…su página le muestra cuánto fue de cada forma', r.json.entrada.amount === precio && r.json.entrada.cashAmount === 10.5, JSON.stringify(r.json.entrada));
+  r = await admin.get(`/api/admin/entradas/${c(133)}`);
+  check('…y administración ve a quién le pagó el efectivo', /Pagó \$10\.50 en efectivo a: Juan Pérez/.test(r.json.entrada.notes || ''), r.json.entrada.notes);
+  r = await admin.get('/api/admin/ventas');
+  check('…ese efectivo suma en el lote de la entrada', cent(efectivoDe(r.json.vendedores, 133) - debe133Antes) === 1050, `${debe133Antes} → ${efectivoDe(r.json.vendedores, 133)}`);
+
+  r = await taquilla.get('/api/taquilla/resumen');
+  const cajaAntes = r.json.totales;
+  const ventaTaq = (extra = {}) =>
+    taquilla.post('/api/taquilla/vender', { code: c(495), firstName: 'Luis', lastName: 'Mixto', cedula: 'V-13131313', method: 'mixto', reference: 'ZL4900', tableId: 'D3', ...extra });
+  r = await ventaTaq();
+  check('Taquilla: Zelle + efectivo sin el monto en efectivo → 400', r.status === 400 && /efectivo/i.test(r.json.error), r.json?.error);
+  r = await ventaTaq({ efectivoUsd: '5' });
+  check('…con el monto: vendida y activa', r.status === 200 && r.json.entrada.status === 'activa', JSON.stringify(r.json));
+  r = await taquilla.get('/api/taquilla/resumen');
+  check(
+    '…la caja suma $5 al efectivo y el resto a Zelle',
+    cent(r.json.totales.efectivo_usd - cajaAntes.efectivo_usd) === 500 && cent(r.json.totales.zelle - cajaAntes.zelle) === cent(precio - 5),
+    JSON.stringify({ antes: cajaAntes, despues: r.json.totales })
+  );
+
+  r = await puerta.post('/api/puerta/activar', { code: c(135), firstName: 'Rosa', lastName: 'Mixta', cedula: 'V-13535353', method: 'mixto', efectivoUsd: '15', tableId: 'D4' });
+  check('Puerta: activa con Zelle + efectivo', r.status === 200, JSON.stringify(r.json));
+  r = await admin.get(`/api/admin/entradas/${c(135)}`);
+  check('…queda por verificar con su parte en efectivo', r.json.entrada.status === 'por_verificar' && r.json.entrada.paymentMethod === 'mixto' && r.json.entrada.cashAmount === 15, JSON.stringify(r.json.entrada));
+
+  const pagada136 = { action: 'marcar_pagada', firstName: 'Elena', lastName: 'Mixta', method: 'mixto', reference: 'ZL1360' };
+  r = await admin.patch(`/api/admin/entradas/${c(136)}`, pagada136);
+  check('Administración: marcar pagada con Zelle + efectivo pide el monto', r.status === 400 && /efectivo/i.test(r.json.error), r.json?.error);
+  r = await admin.patch(`/api/admin/entradas/${c(136)}`, { ...pagada136, efectivoUsd: '12.5' });
+  check('…con el monto queda activa', r.json?.entrada?.status === 'activa' && r.json.entrada.cashAmount === 12.5, JSON.stringify(r.json));
+
+  r = await admin.patch(`/api/admin/ventas/${idMixta}`, { action: 'aprobar' });
+  check('«Zelle verificado y efectivo recibido» activa las 3 entradas', r.json?.aprobadas === 3, JSON.stringify(r.json));
+  r = await admin.get('/api/admin/ventas');
+  check('…y el seminarista ya no debe ese efectivo', cent(efectivoDe(r.json.vendedores, 103)) === cent(debeSemAntes), String(efectivoDe(r.json.vendedores, 103)));
+  r = await admin.get('/api/admin/resumen');
+  const rec = r.json.resumen.recaudado;
+  check(
+    'Lo recaudado separa el efectivo y el Zelle de los pagos mixtos',
+    cent(rec.efectivoUsd - recaudadoAntes.efectivoUsd) === cent(5 + 12.5 + precio) &&
+      cent(rec.zelleUsd - recaudadoAntes.zelleUsd) === cent(precio - 5 + (precio - 12.5) + 2 * precio),
+    JSON.stringify({ antes: recaudadoAntes, despues: rec })
+  );
+  r = await admin.patch(`/api/admin/entradas/${c(136)}`, { action: 'reiniciar' });
+  r = await admin.get(`/api/admin/entradas/${c(136)}`);
+  check('Reiniciar la entrada borra también la parte en efectivo', r.json.entrada.status === 'sin_vender' && r.json.entrada.cashAmount == null && !r.json.entrada.paymentMethod, JSON.stringify(r.json.entrada));
+  r = await anon.post('/api/vendedores/donaciones', { id: 'don-mixta-0001', seller: { type: 'seminarista', id: semId }, method: 'mixto', montoUsd: 10, reference: 'ZL0001', proofUrl: PROOF });
+  check('Las donaciones siguen siendo de una sola forma (sin Zelle + efectivo)', r.status === 400, r.json?.error);
+
   // ---------------------------------------------------------------- fecha del evento
   sec('Cambio de mesa y fecha del evento');
   const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date());

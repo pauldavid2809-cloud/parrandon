@@ -13,8 +13,10 @@ import type { MetodoPago } from './types';
 // donaciones (orders) con el id DON-…, por verificar hasta que administración reciba el
 // efectivo o encuentre el pago.
 
-const METODOS: MetodoPago[] = ['efectivo_usd', 'zelle', 'pago_movil'];
-const COMO_ORDEN: Record<MetodoPago, PaymentMethod> = { efectivo_usd: 'cash', zelle: 'zelle', pago_movil: 'pago_movil' };
+// Las donaciones se reciben de una sola forma (sin Zelle + efectivo).
+type MetodoDonacion = Exclude<MetodoPago, 'mixto'>;
+const METODOS: MetodoDonacion[] = ['efectivo_usd', 'zelle', 'pago_movil'];
+const COMO_ORDEN: Record<MetodoDonacion, PaymentMethod> = { efectivo_usd: 'cash', zelle: 'zelle', pago_movil: 'pago_movil' };
 const MAX_USD = 1000;
 
 const idOrden = (id: string) => `DON-${id}`.toUpperCase();
@@ -44,7 +46,7 @@ export async function registrarDonacion(input: Record<string, unknown>) {
 
   const { holder, vendedor } = await quienVende(input.seller);
 
-  const method = input.method as MetodoPago;
+  const method = input.method as MetodoDonacion;
   if (!METODOS.includes(method)) throw new EntradaError('Elige cómo donaron.');
   const { config } = await eventRules();
   if (method === 'pago_movil' && !aceptaPagoMovil(config)) throw new EntradaError(PAGO_MOVIL_PAUSADO);

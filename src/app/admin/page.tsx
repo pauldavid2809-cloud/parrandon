@@ -237,9 +237,9 @@ function Puesta({ estado, onGenerar, generating }: { estado: Estado; onGenerar: 
       )}
       {!estado.storeError && !estado.schemaAlDia && (
         <Notice tone="error" title="Falta actualizar la base de datos">
-          Esta versión guarda nombre, apellido y cédula por separado. En Supabase abre SQL Editor, pega otra vez el
-          archivo <code>supabase/entradas.sql</code> y dale Run (no borra nada). Mientras tanto nadie puede registrar
-          su pago.
+          Esta versión guarda datos nuevos (por ejemplo, los pagos de Zelle + efectivo). En Supabase abre SQL Editor,
+          pega otra vez el archivo <code>supabase/entradas.sql</code> y dale Run (no borra nada). Mientras tanto nadie
+          puede registrar su pago.
         </Notice>
       )}
       {!estado.storeError && estado.generadas === 0 && (

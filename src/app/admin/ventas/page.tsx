@@ -8,6 +8,7 @@ import CaptureDialog from '@/components/admin/CaptureDialog';
 import AvisoDeshacer from '@/components/admin/AvisoDeshacer';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import { METODO_LABEL, type VentaEstado } from '@/lib/entradas/types';
+import { detalleMixto } from '@/lib/entradas/pago';
 import type { VentaAdmin, ventasAdmin } from '@/lib/entradas/ventas';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
@@ -212,10 +213,13 @@ function VentaCard({
 
   const n = venta.entradas.length;
   const efectivo = venta.method === 'efectivo_usd';
+  // Zelle + efectivo: lo que dijo el vendedor al cobrar (el total de las entradas que escaneó).
   const monto =
-    venta.method === 'pago_movil' && venta.rateApplied
-      ? formatBs(Math.round(venta.priceUsd * venta.rateApplied * 100) / 100 * Math.max(n, 1))
-      : usd(venta.priceUsd * Math.max(n, 1));
+    venta.method === 'mixto'
+      ? detalleMixto(venta.priceUsd * Math.max(venta.numbers.length, 1), venta.cashUsd)
+      : venta.method === 'pago_movil' && venta.rateApplied
+        ? formatBs(Math.round(venta.priceUsd * venta.rateApplied * 100) / 100 * Math.max(n, 1))
+        : usd(venta.priceUsd * Math.max(n, 1));
   // Si se vendió sin señal, se sabe cuánto tardó en llegar.
   const tarde = Date.parse(venta.receivedAt) - Date.parse(venta.soldAt) > 10 * 60 * 1000;
 
@@ -260,7 +264,7 @@ function VentaCard({
         {venta.vendedor && <span className="font-normal text-ink-2"> · lote de {venta.sellerName}</span>}
       </p>
       <p className="tabular text-ink-2">
-        {METODO_LABEL[venta.method]} · {monto}
+        {venta.method === 'mixto' ? monto : `${METODO_LABEL[venta.method]} · ${monto}`}
         {venta.reference ? ` · Ref. ${venta.reference}` : ''}
         {venta.buyerName ? ` · ${venta.buyerName}` : ''}
       </p>
@@ -311,7 +315,11 @@ function VentaCard({
           {venta.estado === 'por_verificar' && !rechazando && (
             <>
               <Button variant="verde" loading={busy === 'aprobar'} onClick={() => act('aprobar')}>
-                {efectivo ? `Efectivo recibido (${usd(venta.priceUsd * venta.porVerificar)})` : 'Pago verificado'}
+                {efectivo
+                  ? `Efectivo recibido (${usd(venta.priceUsd * venta.porVerificar)})`
+                  : venta.method === 'mixto'
+                    ? 'Zelle verificado y efectivo recibido'
+                    : 'Pago verificado'}
               </Button>
               <Button variant="outline" onClick={() => setRechazando(true)}>
                 Rechazar

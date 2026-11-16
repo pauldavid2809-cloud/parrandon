@@ -5,7 +5,8 @@ export type EntradaStatus = 'sin_vender' | 'por_verificar' | 'activa' | 'anulada
 
 export type HolderType = 'seminarista' | 'padre_jorge' | 'parroquia' | 'taquilla' | 'sin_asignar';
 
-export type MetodoPago = 'zelle' | 'pago_movil' | 'efectivo_usd';
+// «mixto»: una parte en efectivo y el resto por Zelle (ver pago.ts).
+export type MetodoPago = 'zelle' | 'pago_movil' | 'efectivo_usd' | 'mixto';
 
 export type ReportadoPor = 'comprador' | 'vendedor' | 'puerta' | 'taquilla' | 'admin';
 
@@ -30,6 +31,8 @@ export interface Entrada {
   paymentReference: string | null;
   paymentProofUrl: string | null;
   amount: number | null;
+  // En un pago mixto, la parte que se pagó en efectivo (en dólares); el resto fue por Zelle.
+  cashAmount: number | null;
   currency: 'USD' | 'VES' | null;
   rateApplied: number | null;
   reportedBy: ReportadoPor | null;
@@ -61,6 +64,8 @@ export interface Venta {
   buyerName: string | null;
   buyerPhone: string | null;
   priceUsd: number;
+  // En un pago mixto, el efectivo de toda la venta (en dólares); el resto fue por Zelle.
+  cashUsd: number | null;
   rateApplied: number | null;
   numbers: number[]; // entradas escaneadas en la orden
   problemas: { number: number | null; motivo: string }[]; // las que no se pudieron vender
@@ -132,6 +137,7 @@ export const METODO_LABEL: Record<MetodoPago, string> = {
   zelle: 'Zelle',
   pago_movil: 'Pago Móvil',
   efectivo_usd: 'Efectivo $',
+  mixto: 'Zelle + efectivo',
 };
 
 export const SECTORES = ['A', 'B', 'C', 'D', 'E'] as const;

@@ -11,6 +11,9 @@ import ProofUpload from '@/components/pago/ProofUpload';
 import PersonaFields, { PERSONA_VACIA, type Persona } from '@/components/PersonaFields';
 import { erroresPersona } from '@/lib/persona';
 import type { TicketView } from '@/lib/entradas/service';
+import type { MetodoPago } from '@/lib/entradas/types';
+import { detalleMixto, errorMixto, leerMonto } from '@/lib/entradas/pago';
+import EfectivoMixto from '@/components/pago/EfectivoMixto';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
@@ -224,11 +227,16 @@ function ReportarPago({
 }) {
   const { entrada, pago } = data;
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
-  const [method, setMethod] = useState<'pago_movil' | 'zelle' | 'efectivo_usd' | null>(null);
+  const [method, setMethod] = useState<MetodoPago | null>(null);
   const [reference, setReference] = useState('');
   // En efectivo no hay referencia ni capture: se anota a quién se le pagó.
   const [pagadoA, setPagadoA] = useState('');
   const efectivo = method === 'efectivo_usd';
+  // Zelle + efectivo: una parte a quien vendió la entrada y el resto por Zelle (con referencia y capture).
+  const mixto = method === 'mixto';
+  const [parteEfectivo, setParteEfectivo] = useState('');
+  const efectivoUsd = leerMonto(parteEfectivo);
+  const zelleUsd = mixto && efectivoUsd > 0 && efectivoUsd < pago.priceUsd ? Math.round((pago.priceUsd - efectivoUsd) * 100) / 100 : null;
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -237,9 +245,14 @@ function ReportarPago({
   const validate = () => {
     const e: Record<string, string> = { ...erroresPersona(persona, { cedula: true, phone: true }) };
     if (!method) e.method = 'Elige cómo pagaste.';
-    if (efectivo) {
+    if (mixto) {
+      const error = errorMixto(pago.priceUsd, efectivoUsd);
+      if (error) e.parteEfectivo = error;
+    }
+    if (efectivo || mixto) {
       if (pagadoA.trim().length < 2) e.pagadoA = 'Escribe a quién le pagaste el efectivo.';
-    } else {
+    }
+    if (method && !efectivo) {
       if (reference.trim().length < 4) e.reference = 'Escribe el número de referencia (al menos 4 dígitos).';
       if (!proofUrl) e.proof = 'Sube el capture del pago.';
     }
@@ -259,7 +272,13 @@ function ReportarPago({
       const res = await fetch(`/api/entradas/${encodeURIComponent(code)}/reportar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(efectivo ? { ...persona, method, pagadoA } : { ...persona, method, reference, proofUrl }),
+        body: JSON.stringify(
+          efectivo
+            ? { ...persona, method, pagadoA }
+            : mixto
+              ? { ...persona, method, efectivoUsd, pagadoA, reference, proofUrl }
+              : { ...persona, method, reference, proofUrl }
+        ),
       });
       const json = await res.json();
       if (!json.success) {
@@ -286,8 +305,8 @@ function ReportarPago({
         )}
         <p className="text-lg text-ink-2">
           Escribe tus datos y reporta tu pago de <strong className="text-ink">${pago.priceUsd}</strong>
-          {pago.pagoMovilActivo ? ` (${formatBs(montoBs(pago))} por Pago Móvil)` : ''}: por Zelle o en efectivo a quien te vendió la
-          entrada. Al enviarlo pasas a escoger tu mesa.
+          {pago.pagoMovilActivo ? ` (${formatBs(montoBs(pago))} por Pago Móvil)` : ''}: por Zelle, en efectivo a quien te vendió la
+          entrada, o una parte de cada uno. Al enviarlo pasas a escoger tu mesa.
         </p>
       </div>
 
@@ -301,11 +320,12 @@ function ReportarPago({
             name="Método de pago"
             value={method}
             onChange={(v) => setMethod(v)}
-            className={pago.pagoMovilActivo ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}
+            className={pago.pagoMovilActivo ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'}
             options={[
               ...(pago.pagoMovilActivo ? [{ value: 'pago_movil' as const, label: 'Pago Móvil', detail: formatBs(montoBs(pago)) }] : []),
               { value: 'zelle' as const, label: 'Zelle', detail: `$${pago.priceUsd.toFixed(2)}` },
               { value: 'efectivo_usd' as const, label: 'Efectivo', detail: `$${pago.priceUsd.toFixed(2)} a quien te la vendió` },
+              { value: 'mixto' as const, label: 'Zelle + efectivo', detail: 'Una parte de cada uno' },
             ]}
           />
           {errors.method && <p className="mt-1.5 text-sm font-bold text-rojo">{errors.method}</p>}
@@ -330,14 +350,49 @@ function ReportarPago({
             </Field>
           </div>
         )}
+        {mixto && (
+          <div className="mt-4 space-y-4">
+            <Notice tone="info">
+              Paga una parte en efectivo a quien te vendió la entrada y el resto por Zelle. Tu entrada se activa cuando administración
+              verifique el Zelle y reciba el efectivo; tu mesa queda apartada mientras tanto.
+            </Notice>
+            <EfectivoMixto
+              id="parte-efectivo"
+              label="¿Cuánto pagaste en efectivo?"
+              totalUsd={pago.priceUsd}
+              value={parteEfectivo}
+              error={errors.parteEfectivo}
+              onChange={(v) => {
+                setParteEfectivo(v);
+                if (errors.parteEfectivo) setErrors((prev) => ({ ...prev, parteEfectivo: '' }));
+              }}
+            />
+            <Field label="¿A quién le pagaste el efectivo?" htmlFor="pagado-a-mixto" error={errors.pagadoA} hint="El nombre de quien te vendió la entrada.">
+              <TextInput
+                id="pagado-a-mixto"
+                value={pagadoA}
+                onChange={(e) => {
+                  setPagadoA(e.target.value);
+                  if (errors.pagadoA) setErrors((prev) => ({ ...prev, pagadoA: '' }));
+                }}
+                autoCapitalize="words"
+                data-error={Boolean(errors.pagadoA)}
+              />
+            </Field>
+          </div>
+        )}
         {method && !efectivo && (
           <div className="mt-4 space-y-4">
-            <PaymentDetails method={method} pago={pago} />
+            {mixto ? (
+              zelleUsd != null && <PaymentDetails method="zelle" pago={{ ...pago, priceUsd: zelleUsd }} />
+            ) : (
+              <PaymentDetails method={method} pago={pago} />
+            )}
             <Field
               label="Número de referencia"
               htmlFor="referencia"
               error={errors.reference}
-              hint={method === 'zelle' ? 'El número de confirmación que te dio Zelle.' : 'Los últimos dígitos de la referencia.'}
+              hint={method === 'pago_movil' ? 'Los últimos dígitos de la referencia.' : 'El número de confirmación que te dio Zelle.'}
             >
               <TextInput
                 id="referencia"
@@ -483,6 +538,11 @@ function EscogerMesa({ data, code, onDone }: { data: Data; code: string; onDone:
             title: 'Recibimos tus datos',
             body: 'Tu entrada se activa cuando administración reciba el efectivo de quien te la vendió. Mientras tanto, escoge tu mesa: queda apartada a tu nombre.',
           }
+        : entrada.reportedBy === 'comprador' && entrada.paymentMethod === 'mixto'
+        ? {
+            title: 'Recibimos tus datos y tu pago',
+            body: 'Tu entrada se activa cuando administración verifique el Zelle y reciba el efectivo de quien te la vendió. Mientras tanto, escoge tu mesa: queda apartada a tu nombre.',
+          }
         : entrada.reportedBy === 'comprador'
         ? {
             title: 'Recibimos tus datos y tu pago',
@@ -587,10 +647,10 @@ function EntradaReportada({
           <p className="mt-1 text-ink-2">
             {punto(
               `${entrada.reportedBy === 'vendedor' ? 'Tu vendedor reportó' : 'Reportaste'} el pago${
-                entrada.paymentMethod === 'efectivo_usd' ? ' en efectivo' : ''
+                entrada.paymentMethod === 'efectivo_usd' ? ' en efectivo' : entrada.paymentMethod === 'mixto' ? ' por Zelle y en efectivo' : ''
               }${entrada.reportedAt ? ` el ${fecha(entrada.reportedAt)}` : ''}`
             )}{' '}
-            {entrada.paymentMethod === 'efectivo_usd' && entrada.reportedBy === 'comprador'
+            {(entrada.paymentMethod === 'efectivo_usd' || entrada.paymentMethod === 'mixto') && entrada.reportedBy === 'comprador'
               ? 'Se activa cuando administración reciba ese efectivo; vuelve a escanear tu QR para ver si ya está activa.'
               : 'La organización lo revisa en estos días; vuelve a escanear tu QR para ver si ya está activa.'}{' '}
             Tu mesa queda apartada mientras tanto.
@@ -608,7 +668,15 @@ function EntradaReportada({
           <div className="col-span-2 sm:col-span-1">
             <dt className="text-sm text-ink-3">Pago</dt>
             <dd className="text-lg font-bold">
-              {entrada.paymentMethod === 'zelle' ? 'Zelle' : entrada.paymentMethod === 'pago_movil' ? 'Pago Móvil' : 'Efectivo'}
+              {entrada.paymentMethod === 'mixto'
+                ? entrada.amount != null
+                  ? detalleMixto(entrada.amount, entrada.cashAmount)
+                  : 'Zelle + efectivo'
+                : entrada.paymentMethod === 'zelle'
+                  ? 'Zelle'
+                  : entrada.paymentMethod === 'pago_movil'
+                    ? 'Pago Móvil'
+                    : 'Efectivo'}
               {entrada.paymentReference ? ` · Ref. ${entrada.paymentReference}` : ''}
             </dd>
           </div>

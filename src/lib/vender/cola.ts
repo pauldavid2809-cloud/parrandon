@@ -27,6 +27,8 @@ export interface VentaLocal {
   seller: VendedorLocal;
   entradas: { code: string; number: number }[];
   method: MetodoPago;
+  // Zelle + efectivo: cuánto de la venta se cobró en efectivo (en dólares).
+  cashUsd?: number | null;
   reference: string;
   proofUrl: string | null; // imagen embebida; se borra del teléfono al subir
   // Hecha con la app que ya pide el capture en Zelle y Pago Móvil. Las guardadas antes no lo
@@ -173,6 +175,7 @@ export function sincronizar(): Promise<void> {
                   seller,
                   codes: v.entradas.map((e) => e.code),
                   method: v.method,
+                  cashUsd: v.cashUsd ?? null,
                   reference: v.reference,
                   proofUrl: v.proofUrl,
                   capturaObligatoria: v.capturaObligatoria === true,

@@ -9,6 +9,8 @@ import { formatBs } from '@/components/pago/PaymentDetails';
 import PersonaFields, { PERSONA_VACIA, personaDe, type Persona } from '@/components/PersonaFields';
 import { erroresPersona, formatCedula } from '@/lib/persona';
 import { HOLDER_LABEL, METODO_LABEL, type Entrada, type MetodoPago } from '@/lib/entradas/types';
+import { detalleMixto } from '@/lib/entradas/pago';
+import EfectivoMixto from '@/components/pago/EfectivoMixto';
 import { formatNumber, ticketUrl } from '@/lib/site';
 import { cleanPhoneForWhatsApp } from '@/lib/utils';
 
@@ -70,7 +72,13 @@ export default function EntradaDetalle({
     !entrada.rejectionReason;
   const link = ticketUrl(entrada.code);
   const monto =
-    entrada.amount == null ? null : entrada.currency === 'VES' ? formatBs(entrada.amount) : `$${entrada.amount.toFixed(2)}`;
+    entrada.amount == null
+      ? null
+      : entrada.paymentMethod === 'mixto'
+        ? detalleMixto(entrada.amount, entrada.cashAmount)
+        : entrada.currency === 'VES'
+          ? formatBs(entrada.amount)
+          : `$${entrada.amount.toFixed(2)}`;
 
   return (
     <div className="rounded-2xl bg-card shadow-[var(--shadow-ticket)]">
@@ -357,11 +365,12 @@ function MarcarPagada({
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
   const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<MetodoPago | null>(null);
+  const [efectivo, setEfectivo] = useState('');
   const [reference, setReference] = useState('');
   const activar = () => {
     const faltan = erroresPersona(persona, { cedula: false, phone: false });
     setErrors(faltan);
-    if (Object.keys(faltan).length === 0) onSubmit({ ...persona, method: method!, reference });
+    if (Object.keys(faltan).length === 0) onSubmit({ ...persona, method: method!, efectivoUsd: efectivo, reference });
   };
   return (
     <div className="space-y-3 rounded-xl bg-paper-2 p-4">
@@ -371,13 +380,15 @@ function MarcarPagada({
         name="Método"
         value={method}
         onChange={setMethod}
-        className="grid-cols-3"
+        className="grid-cols-2"
         options={[
           { value: 'pago_movil', label: 'Pago Móvil' },
           { value: 'zelle', label: 'Zelle' },
           { value: 'efectivo_usd', label: 'Efectivo $' },
+          { value: 'mixto', label: 'Zelle + efectivo' },
         ]}
       />
+      {method === 'mixto' && <EfectivoMixto id="mp-efectivo" totalUsd={0} value={efectivo} onChange={setEfectivo} />}
       <Field label="Referencia" htmlFor="mp-ref">
         <TextInput id="mp-ref" value={reference} onChange={(e) => setReference(e.target.value)} />
       </Field>

@@ -14,6 +14,7 @@ export const GET = route(async () => {
     .sort((a, b) => (b.checkedInAt! > a.checkedInAt! ? 1 : -1));
   return ok({
     pagoMovil: aceptaPagoMovil(config),
+    priceUsd: config.ticketPriceUsd,
     ingresaron: dentro.length,
     esperados: entradas.filter((e) => OCUPA_PUESTO.includes(e.status)).length,
     recientes: dentro.slice(0, 12).map((e) => ({

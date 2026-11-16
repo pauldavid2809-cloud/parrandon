@@ -11,6 +11,7 @@ import { Button, Choice, Field, Notice, TextInput } from '@/components/ui';
 import { logout } from '@/components/staff/StaffGate';
 import type { StaffView } from '@/lib/entradas/staff-view';
 import type { MetodoPago } from '@/lib/entradas/types';
+import EfectivoMixto from '@/components/pago/EfectivoMixto';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,7 @@ interface Result {
 }
 interface Resumen {
   pagoMovil: boolean;
+  priceUsd: number;
   ingresaron: number;
   esperados: number;
   recientes: { number: number; name: string | null; tableId: string | null; at: string; doorActivated: boolean }[];
@@ -180,7 +182,7 @@ export default function PuertaClient() {
           </div>
 
           {result && (
-            <ResultPanel result={result} busy={busy} error={error} onNext={clear} onAct={act} pagoMovil={resumen?.pagoMovil ?? false} />
+            <ResultPanel result={result} busy={busy} error={error} onNext={clear} onAct={act} pagoMovil={resumen?.pagoMovil ?? false} priceUsd={resumen?.priceUsd ?? 0} />
           )}
         </div>
 
@@ -214,6 +216,7 @@ function ResultPanel({
   onNext,
   onAct,
   pagoMovil,
+  priceUsd,
 }: {
   result: Result;
   busy: boolean;
@@ -221,6 +224,7 @@ function ResultPanel({
   onNext: () => void;
   onAct: (url: string, body: unknown) => void;
   pagoMovil: boolean;
+  priceUsd: number;
 }) {
   const e = result.entrada;
   const head = e ? `Entrada N.º ${formatNumber(e.number)}` : '';
@@ -318,7 +322,7 @@ function ResultPanel({
   }
 
   if (result.state === 'sin_activar' && e) {
-    return <ActivarAqui entrada={e} busy={busy} error={error} onAct={onAct} onCancel={onNext} pagoMovil={pagoMovil} />;
+    return <ActivarAqui entrada={e} busy={busy} error={error} onAct={onAct} onCancel={onNext} pagoMovil={pagoMovil} priceUsd={priceUsd} />;
   }
 
   return null;
@@ -367,6 +371,7 @@ function ActivarAqui({
   onAct,
   onCancel,
   pagoMovil,
+  priceUsd,
 }: {
   entrada: StaffView;
   busy: boolean;
@@ -374,10 +379,12 @@ function ActivarAqui({
   onAct: (url: string, body: unknown) => void;
   onCancel: () => void;
   pagoMovil: boolean;
+  priceUsd: number;
 }) {
   const [persona, setPersona] = useState<Persona>(PERSONA_VACIA);
   const [errors, setErrors] = useState<ReturnType<typeof erroresPersona>>({});
   const [method, setMethod] = useState<MetodoPago | null>(null);
+  const [efectivo, setEfectivo] = useState('');
   const [reference, setReference] = useState('');
   const [soldBy, setSoldBy] = useState(entrada.holderName || '');
   const [tableId, setTableId] = useState<string | null>(null);
@@ -390,7 +397,7 @@ function ActivarAqui({
       document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    onAct('/api/puerta/activar', { code: entrada.code, ...persona, method, reference, soldBy, tableId });
+    onAct('/api/puerta/activar', { code: entrada.code, ...persona, method, efectivoUsd: efectivo, reference, soldBy, tableId });
   };
   return (
     <div className="flash-in rounded-2xl bg-card p-5 text-ink sm:p-6">
@@ -418,14 +425,20 @@ function ActivarAqui({
           name="Método de pago"
           value={method}
           onChange={setMethod}
-          className={pagoMovil ? 'grid-cols-3' : 'grid-cols-2'}
+          className="grid-cols-2"
           options={[
             ...(pagoMovil ? [{ value: 'pago_movil' as const, label: 'Pago Móvil' }] : []),
             { value: 'zelle' as const, label: 'Zelle' },
             { value: 'efectivo_usd' as const, label: 'Efectivo $' },
+            { value: 'mixto' as const, label: 'Zelle + efectivo' },
           ]}
         />
       </Field>
+      {method === 'mixto' && (
+        <div className="mt-4">
+          <EfectivoMixto id="p-efectivo" totalUsd={priceUsd} value={efectivo} onChange={setEfectivo} />
+        </div>
+      )}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label="Referencia (si la tiene)" htmlFor="p-ref">
           <TextInput id="p-ref" value={reference} onChange={(e) => setReference(e.target.value)} />

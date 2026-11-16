@@ -4,6 +4,7 @@ import { guardarCapture } from '@/lib/capturas';
 import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { store } from './store';
 import { amountFor, aprobar, deshacerRechazo, EntradaError, eventRules, extractCode, holderInfo, rechazar, sinNotaDeMesa } from './service';
+import { errorMixto, leerMonto, llevaEfectivo, partesDelPago, repartirEfectivo } from './pago';
 import { MAX_ENTRADAS_POR_VENTA, type Entrada, type HolderType, type MetodoPago, type Venta, type VentaEstado } from './types';
 
 // Órdenes de los vendedores: escanean una o varias entradas, ponen el método de pago y la
@@ -12,7 +13,7 @@ import { MAX_ENTRADAS_POR_VENTA, type Entrada, type HolderType, type MetodoPago,
 
 export const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 const VENDEDORES: HolderType[] = ['seminarista', 'padre_jorge', 'parroquia'];
-const METODOS: MetodoPago[] = ['efectivo_usd', 'pago_movil', 'zelle'];
+const METODOS: MetodoPago[] = ['efectivo_usd', 'pago_movil', 'zelle', 'mixto'];
 
 function clean(value: unknown, max = 120): string {
   return String(value ?? '').trim().slice(0, max);
@@ -105,6 +106,14 @@ export async function registrarVenta(input: Record<string, unknown>) {
       ? tasaTelefono
       : config.currentRateBs;
   const dinero = amountFor(method, config.ticketPriceUsd, tasa);
+  // Zelle + efectivo: el efectivo es de toda la venta y se reparte entre sus entradas.
+  let cashUsd: number | null = null;
+  if (method === 'mixto') {
+    cashUsd = leerMonto(input.cashUsd);
+    const error = errorMixto(codes.length * config.ticketPriceUsd, cashUsd);
+    if (error) throw new EntradaError(error);
+  }
+  const efectivoPorEntrada = cashUsd != null ? repartirEfectivo(cashUsd, codes.length) : [];
   // La foto llega embebida desde el teléfono (así funciona sin internet): se sube al
   // almacenamiento y en la base queda solo el enlace.
   const capture = await guardarCapture(proofUrl, `venta-${id}`);
@@ -113,7 +122,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
   const soldAt = horaVenta(input.soldAt, ahora);
   const numbers: number[] = [];
   const problemas: Venta['problemas'] = [];
-  for (const code of codes) {
+  for (const [i, code] of codes.entries()) {
     const entrada = await store().getEntrada(code);
     const numero = entrada?.number ?? Number(code.slice(1, code.indexOf('-')));
     numbers.push(numero);
@@ -134,6 +143,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
         paymentReference: reference || null,
         paymentProofUrl: capture,
         ...dinero,
+        cashAmount: efectivoPorEntrada[i] ?? null,
         reportedBy: 'vendedor',
         reportedAt: soldAt,
         rejectionReason: null,
@@ -158,6 +168,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
     buyerName: clean(input.buyerName, 120) || null,
     buyerPhone: clean(input.buyerPhone, 30) || null,
     priceUsd: config.ticketPriceUsd,
+    cashUsd,
     rateApplied: dinero.rateApplied,
     numbers,
     problemas,
@@ -184,7 +195,18 @@ export async function estadoVentas(ids: string[]) {
 export async function ventasAdmin() {
   const [ventas, entradas] = await Promise.all([
     store().listVentas(),
-    store().listCampos([...CAMPOS_VENTA, 'attendeeName', 'tableId', 'reportedBy', 'paymentMethod', 'amount', 'holderType', 'holderId', 'holderName']),
+    store().listCampos([
+      ...CAMPOS_VENTA,
+      'attendeeName',
+      'tableId',
+      'reportedBy',
+      'paymentMethod',
+      'amount',
+      'cashAmount',
+      'holderType',
+      'holderId',
+      'holderName',
+    ]),
   ]);
   const porVendedor = new Map<
     string,
@@ -206,6 +228,8 @@ export async function ventasAdmin() {
     r.entradas += suyas.length;
     if (v.method === 'efectivo_usd') r.efectivoPorEntregar += porVerificar.length * v.priceUsd;
     else r.pagosPorVerificar += porVerificar.length;
+    // Zelle + efectivo: la parte de Zelle se verifica y el efectivo se entrega.
+    if (v.method === 'mixto') r.efectivoPorEntregar += porVerificar.reduce((s, e) => s + (e.cashAmount ?? 0), 0);
     r.verificadas += suyas.filter((e) => e.status === 'activa').length;
     porVendedor.set(key, r);
     return {
@@ -220,7 +244,7 @@ export async function ventasAdmin() {
   // Quien escaneó su entrada y marcó que pagó en efectivo le pagó a quien tiene ese lote:
   // ese efectivo también está por entregar.
   for (const e of entradas) {
-    if (e.status !== 'por_verificar' || e.saleId || e.reportedBy !== 'comprador' || e.paymentMethod !== 'efectivo_usd') continue;
+    if (e.status !== 'por_verificar' || e.saleId || e.reportedBy !== 'comprador' || !llevaEfectivo(e.paymentMethod)) continue;
     const key = `${e.holderType}:${e.holderId ?? ''}:`;
     const r = porVendedor.get(key) ?? {
       nombre: e.holderName || 'Sin lote',
@@ -232,12 +256,14 @@ export async function ventasAdmin() {
       verificadas: 0,
     };
     r.entradas += 1;
-    r.efectivoPorEntregar += e.amount ?? 0;
+    r.efectivoPorEntregar += partesDelPago(e).efectivo;
     porVendedor.set(key, r);
   }
   return {
     ventas: lista,
-    vendedores: [...porVendedor.values()].sort((a, b) => b.efectivoPorEntregar - a.efectivoPorEntregar || b.entradas - a.entradas),
+    vendedores: [...porVendedor.values()]
+      .map((r) => ({ ...r, efectivoPorEntregar: Math.round(r.efectivoPorEntregar * 100) / 100 }))
+      .sort((a, b) => b.efectivoPorEntregar - a.efectivoPorEntregar || b.entradas - a.entradas),
   };
 }
 

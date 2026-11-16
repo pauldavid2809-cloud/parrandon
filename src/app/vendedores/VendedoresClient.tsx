@@ -22,6 +22,7 @@ import {
 } from '@/lib/vender/cola';
 import type { EventConfig } from '@/types';
 import { formatNumber } from '@/lib/site';
+import { detalleMixto } from '@/lib/entradas/pago';
 import { cn } from '@/lib/utils';
 import NuevaVenta, { type LoteItem } from './NuevaVenta';
 import NuevaDonacion from './NuevaDonacion';
@@ -569,7 +570,12 @@ function Chip({ tone, children }: { tone: 'oro' | 'verde' | 'rojo' | 'gris'; chi
   );
 }
 
-const METODO: Record<VentaLocal['method'], string> = { efectivo_usd: 'Efectivo', pago_movil: 'Pago Móvil', zelle: 'Zelle' };
+const METODO: Record<VentaLocal['method'], string> = { efectivo_usd: 'Efectivo', pago_movil: 'Pago Móvil', zelle: 'Zelle', mixto: 'Zelle + efectivo' };
+
+// «Zelle · $50» o, en un pago mixto, «Zelle $30 + efectivo $20».
+function detallePago(v: VentaLocal, totalUsd: number) {
+  return v.method === 'mixto' ? detalleMixto(totalUsd, v.cashUsd) : `${METODO[v.method]} · $${totalUsd.toFixed(2)}`;
+}
 
 function hora(iso: string) {
   const d = new Date(iso);
@@ -590,12 +596,19 @@ function montoDe(v: VentaLocal) {
   return (v.servidor ? v.servidor.entradas.length : v.entradas.length) * v.priceUsd;
 }
 
+// El efectivo que el vendedor tiene en la mano por esta venta (en Zelle + efectivo, solo esa parte).
+function efectivoDe(v: VentaLocal) {
+  if (v.method === 'efectivo_usd') return montoDe(v);
+  if (v.method === 'mixto') return v.cashUsd ?? 0;
+  return 0;
+}
+
 function TusVentas({ ventas }: { ventas: VentaLocal[] }) {
   if (ventas.length === 0) return null;
   // El efectivo de las entradas y el de las donaciones se entregan juntos.
   const efectivo = ventas
-    .filter((v) => v.method === 'efectivo_usd' && v.estado !== 'no_se_pudo' && v.servidor?.estado !== 'verificada' && v.servidor?.estado !== 'rechazada')
-    .reduce((s, v) => s + montoDe(v), 0);
+    .filter((v) => v.estado !== 'no_se_pudo' && v.servidor?.estado !== 'verificada' && v.servidor?.estado !== 'rechazada')
+    .reduce((s, v) => s + efectivoDe(v), 0);
   return (
     <section aria-labelledby="tus-ventas">
       <h2 id="tus-ventas" className="font-display text-2xl">
@@ -615,8 +628,7 @@ function TusVentas({ ventas }: { ventas: VentaLocal[] }) {
                 <Chip tone={st.tone}>{st.text}</Chip>
               </div>
               <p className="tabular text-sm text-ink-2">
-                {METODO[v.method]}
-                {v.donacion ? '' : ` · $${(numeros.length * v.priceUsd).toFixed(2)}`}
+                {v.donacion ? METODO[v.method] : detallePago(v, numeros.length * v.priceUsd)}
                 {v.reference ? ` · Ref. ${v.reference}` : ''} · {hora(v.soldAt)}
                 {v.buyerName ? ` · ${v.buyerName}` : ''}
               </p>
@@ -665,7 +677,7 @@ function VentaGuardada({ venta, onOtra, onListo }: { venta: VentaLocal; onOtra: 
         <p className={cn('tabular mt-1', problemas.length || venta.estado === 'no_se_pudo' ? 'text-ink-2' : 'text-paper/85')}>
           {donacion
             ? `${METODO[venta.method]} · $${donacion.montoUsd.toFixed(2)}${venta.buyerName ? ` · ${venta.buyerName}` : ''}`
-            : `${venta.entradas.map((e) => formatNumber(e.number)).join(' · ')} · ${METODO[venta.method]} · $${(n * venta.priceUsd).toFixed(2)}`}
+            : `${venta.entradas.map((e) => formatNumber(e.number)).join(' · ')} · ${detallePago(venta, n * venta.priceUsd)}`}
         </p>
         <p className={cn('mt-3 font-bold', problemas.length || venta.estado === 'no_se_pudo' ? 'text-ink' : 'text-paper')} aria-live="polite">
           {venta.estado === 'no_se_pudo'
