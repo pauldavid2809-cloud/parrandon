@@ -2,11 +2,12 @@
 
 import { useAutoLoad } from '@/lib/useAutoLoad';
 import { useCallback, useEffect, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { Button, Notice, Spinner, TextInput } from '@/components/ui';
 import { api, deshacerRechazo, fechaCorta, PageTitle, patchEntrada } from '@/components/admin/api';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import { METODO_LABEL, type Entrada } from '@/lib/entradas/types';
-import { detalleMixto } from '@/lib/entradas/pago';
+import { detalleMixto, dinero } from '@/lib/entradas/pago';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
 import { formatCedula } from '@/lib/persona';
@@ -161,6 +162,7 @@ function PagoCard({ entrada, onDone, onRechazada }: { entrada: Entrada; onDone: 
     }
   };
 
+  const mixto = entrada.paymentMethod === 'mixto';
   const monto =
     entrada.amount == null
       ? '—'
@@ -210,6 +212,15 @@ function PagoCard({ entrada, onDone, onRechazada }: { entrada: Entrada; onDone: 
             </div>
           </dl>
           {entrada.notes && <p className="mt-3 text-sm text-ink-2">Nota: {entrada.notes}</p>}
+          {mixto && entrada.cashReceivedAt && (
+            <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 font-bold text-verde-2">
+              <CheckCircle2 className="h-5 w-5" aria-hidden />
+              Efectivo recibido ({dinero(entrada.cashAmount ?? 0)}) el {fechaCorta(entrada.cashReceivedAt)} · Falta verificar el Zelle.
+              <Button size="sm" variant="quiet" loading={busy === 'quitar_efectivo'} onClick={() => act('quitar_efectivo')}>
+                Deshacer
+              </Button>
+            </p>
+          )}
         </div>
         <div>
           {proof ? (
@@ -257,12 +268,23 @@ function PagoCard({ entrada, onDone, onRechazada }: { entrada: Entrada; onDone: 
             <Button variant="verde" loading={busy === 'aprobar'} onClick={() => act('aprobar')}>
               {entrada.paymentMethod === 'efectivo_usd'
                 ? 'Efectivo recibido: activar'
-                : entrada.paymentMethod === 'mixto'
-                  ? 'Zelle y efectivo recibidos: activar'
+                : mixto
+                  ? entrada.cashReceivedAt
+                    ? 'Zelle verificado: activar'
+                    : 'Zelle y efectivo recibidos: activar'
                   : 'Pago recibido: activar'}
             </Button>
+            {mixto && !entrada.cashReceivedAt && (
+              <Button variant="outline" loading={busy === 'recibir_efectivo'} onClick={() => act('recibir_efectivo')}>
+                Recibí el efectivo ({dinero(entrada.cashAmount ?? 0)})
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setRejecting(true)} disabled={Boolean(entrada.checkedInAt)}>
-              {entrada.paymentMethod === 'efectivo_usd' ? 'No llegó el efectivo' : 'No encuentro el pago'}
+              {entrada.paymentMethod === 'efectivo_usd'
+                ? 'No llegó el efectivo'
+                : mixto && entrada.cashReceivedAt
+                  ? 'No encuentro el Zelle'
+                  : 'No encuentro el pago'}
             </Button>
             {entrada.doorActivated && (
               <Button variant="quiet" loading={busy === 'revisada_puerta'} onClick={() => act('revisada_puerta')}>

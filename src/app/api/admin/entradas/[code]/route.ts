@@ -8,6 +8,7 @@ import {
   EntradaError,
   eventRules,
   rechazar,
+  recibirEfectivo,
   reiniciarEntrada,
   SIN_PERSONA,
   sinNotaDeMesa,
@@ -39,6 +40,12 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
     case 'aprobar':
       await aprobar(code, by);
       break;
+    case 'recibir_efectivo':
+      await recibirEfectivo(code, true);
+      break;
+    case 'quitar_efectivo':
+      await recibirEfectivo(code, false);
+      break;
     case 'rechazar':
       await rechazar(code, String(body.reason ?? ''), by);
       break;
@@ -69,6 +76,7 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
         paymentReference: text(body.reference, 60),
         amount: ves ? Math.round(config.ticketPriceUsd * config.currentRateBs * 100) / 100 : config.ticketPriceUsd,
         cashAmount: efectivoDe(method, body.efectivoUsd, config.ticketPriceUsd),
+        cashReceivedAt: null,
         currency: ves ? 'VES' : 'USD',
         rateApplied: ves ? config.currentRateBs : null,
         reportedBy: 'admin',

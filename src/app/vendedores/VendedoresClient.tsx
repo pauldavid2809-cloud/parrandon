@@ -588,6 +588,7 @@ function estadoDe(v: VentaLocal): { tone: 'oro' | 'verde' | 'rojo' | 'gris'; tex
   if (v.estado === 'no_se_pudo') return { tone: 'rojo', text: 'No se pudo subir' };
   if (v.servidor?.estado === 'verificada') return { tone: 'verde', text: v.method === 'efectivo_usd' ? 'Efectivo entregado' : 'Pago verificado' };
   if (v.servidor?.estado === 'rechazada') return { tone: 'rojo', text: 'Rechazada' };
+  if (v.servidor?.efectivoRecibido) return { tone: 'oro', text: 'Efectivo entregado · Zelle por verificar' };
   return { tone: 'oro', text: v.method === 'efectivo_usd' ? 'Subida · efectivo por entregar' : 'Subida · pago por verificar' };
 }
 
@@ -599,7 +600,7 @@ function montoDe(v: VentaLocal) {
 // El efectivo que el vendedor tiene en la mano por esta venta (en Zelle + efectivo, solo esa parte).
 function efectivoDe(v: VentaLocal) {
   if (v.method === 'efectivo_usd') return montoDe(v);
-  if (v.method === 'mixto') return v.cashUsd ?? 0;
+  if (v.method === 'mixto') return v.servidor?.efectivoRecibido ? 0 : (v.cashUsd ?? 0);
   return 0;
 }
 

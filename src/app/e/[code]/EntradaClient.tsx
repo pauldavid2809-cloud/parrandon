@@ -650,7 +650,9 @@ function EntradaReportada({
                 entrada.paymentMethod === 'efectivo_usd' ? ' en efectivo' : entrada.paymentMethod === 'mixto' ? ' por Zelle y en efectivo' : ''
               }${entrada.reportedAt ? ` el ${fecha(entrada.reportedAt)}` : ''}`
             )}{' '}
-            {(entrada.paymentMethod === 'efectivo_usd' || entrada.paymentMethod === 'mixto') && entrada.reportedBy === 'comprador'
+            {entrada.efectivoRecibido
+              ? 'Administración ya recibió el efectivo; falta verificar el Zelle. Vuelve a escanear tu QR para ver si ya está activa.'
+              : (entrada.paymentMethod === 'efectivo_usd' || entrada.paymentMethod === 'mixto') && entrada.reportedBy === 'comprador'
               ? 'Se activa cuando administración reciba ese efectivo; vuelve a escanear tu QR para ver si ya está activa.'
               : 'La organización lo revisa en estos días; vuelve a escanear tu QR para ver si ya está activa.'}{' '}
             Tu mesa queda apartada mientras tanto.

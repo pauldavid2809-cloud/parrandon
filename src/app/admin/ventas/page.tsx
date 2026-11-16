@@ -2,13 +2,14 @@
 
 import { useAutoLoad } from '@/lib/useAutoLoad';
 import { useCallback, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { Button, Notice, Spinner, TextInput } from '@/components/ui';
 import { api, fechaCorta, PageTitle } from '@/components/admin/api';
 import CaptureDialog from '@/components/admin/CaptureDialog';
 import AvisoDeshacer from '@/components/admin/AvisoDeshacer';
 import { formatBs } from '@/components/pago/PaymentDetails';
 import { METODO_LABEL, type VentaEstado } from '@/lib/entradas/types';
-import { detalleMixto } from '@/lib/entradas/pago';
+import { detalleMixto, dinero } from '@/lib/entradas/pago';
 import type { VentaAdmin, ventasAdmin } from '@/lib/entradas/ventas';
 import { formatNumber } from '@/lib/site';
 import { cn } from '@/lib/utils';
@@ -223,7 +224,7 @@ function VentaCard({
   // Si se vendió sin señal, se sabe cuánto tardó en llegar.
   const tarde = Date.parse(venta.receivedAt) - Date.parse(venta.soldAt) > 10 * 60 * 1000;
 
-  const act = async (action: 'aprobar' | 'rechazar') => {
+  const act = async (action: 'aprobar' | 'rechazar' | 'recibir_efectivo' | 'quitar_efectivo') => {
     setBusy(action);
     setError(null);
     try {
@@ -305,6 +306,16 @@ function VentaCard({
         </Notice>
       )}
 
+      {venta.estado === 'por_verificar' && venta.efectivoRecibido && (
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 font-bold text-verde-2">
+          <CheckCircle2 className="h-5 w-5" aria-hidden />
+          Efectivo recibido. Falta verificar el Zelle.
+          <Button size="sm" variant="quiet" loading={busy === 'quitar_efectivo'} onClick={() => act('quitar_efectivo')}>
+            Deshacer
+          </Button>
+        </p>
+      )}
+
       {(venta.estado === 'por_verificar' || venta.estado === 'rechazada' || venta.proofUrl || !efectivo) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {venta.estado === 'rechazada' && (
@@ -318,9 +329,16 @@ function VentaCard({
                 {efectivo
                   ? `Efectivo recibido (${usd(venta.priceUsd * venta.porVerificar)})`
                   : venta.method === 'mixto'
-                    ? 'Zelle verificado y efectivo recibido'
+                    ? venta.efectivoRecibido
+                      ? 'Zelle verificado: activar'
+                      : 'Zelle verificado y efectivo recibido'
                     : 'Pago verificado'}
               </Button>
+              {venta.method === 'mixto' && !venta.efectivoRecibido && venta.efectivoPendiente > 0 && (
+                <Button variant="outline" loading={busy === 'recibir_efectivo'} onClick={() => act('recibir_efectivo')}>
+                  Recibí el efectivo ({dinero(venta.efectivoPendiente)})
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setRechazando(true)}>
                 Rechazar
               </Button>

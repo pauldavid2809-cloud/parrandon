@@ -17,6 +17,8 @@ export interface VendedorLocal {
 export interface RespuestaVenta {
   id: string;
   estado: 'por_verificar' | 'verificada' | 'rechazada';
+  // Zelle + efectivo: administración ya recibió el efectivo (falta verificar el Zelle).
+  efectivoRecibido?: boolean;
   entradas: number[];
   problemas: { number: number | null; motivo: string }[];
   rejectionReason: string | null;

@@ -93,6 +93,7 @@ const COLS: Record<keyof Entrada, string> = {
   paymentProofUrl: 'payment_proof_url',
   amount: 'amount',
   cashAmount: 'cash_amount',
+  cashReceivedAt: 'cash_received_at',
   currency: 'currency',
   rateApplied: 'rate_applied',
   reportedBy: 'reported_by',

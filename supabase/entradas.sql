@@ -179,6 +179,8 @@ CREATE INDEX IF NOT EXISTS idx_ventas_received ON public.ventas(received_at DESC
 -- por Zelle. En la venta es el efectivo de toda la orden; en cada entrada, su parte.
 ALTER TABLE public.entradas ADD COLUMN IF NOT EXISTS cash_amount NUMERIC;
 ALTER TABLE public.ventas ADD COLUMN IF NOT EXISTS cash_usd NUMERIC;
+-- Cuándo administración recibió la parte en efectivo de un pago mixto (el Zelle se verifica aparte).
+ALTER TABLE public.entradas ADD COLUMN IF NOT EXISTS cash_received_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_entradas_table ON public.entradas(table_id);
 CREATE INDEX IF NOT EXISTS idx_entradas_status ON public.entradas(status);

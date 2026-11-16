@@ -120,6 +120,7 @@ export function ticketView(e: Entrada) {
     // En Zelle + efectivo, para mostrarle cuánto fue de cada forma.
     amount: e.paymentMethod === 'mixto' ? e.amount : null,
     cashAmount: e.paymentMethod === 'mixto' ? e.cashAmount : null,
+    efectivoRecibido: e.paymentMethod === 'mixto' && Boolean(e.cashReceivedAt),
     reportedBy: e.reportedBy,
     reportedAt: e.reportedAt,
     verifiedAt: e.verifiedAt,
@@ -207,6 +208,7 @@ export async function generarEntradas(total = TOTAL_ENTRADAS): Promise<number> {
       paymentProofUrl: null,
       amount: null,
       cashAmount: null,
+      cashReceivedAt: null,
       currency: null,
       rateApplied: null,
       reportedBy: null,
@@ -321,6 +323,7 @@ export async function reportarPago(code: string, input: Partial<ReporteInput>, b
     paymentProofUrl: efectivo ? null : await guardarCapture(data.proofUrl || null, `entrada-${entrada.number}`),
     ...money,
     cashAmount,
+    cashReceivedAt: null,
     reportedBy: by,
     reportedAt: new Date().toISOString(),
     rejectionReason: null,
@@ -372,6 +375,25 @@ export async function rechazar(code: string, reason: string, by = 'Administraci�
     doorActivated: false,
     notes: entrada.tableId ? `Tenía la mesa ${entrada.tableId} antes del rechazo. ${entrada.notes ?? ''}`.trim().slice(0, 500) : entrada.notes,
   });
+  if (!ok) throw new EntradaError('Esta entrada cambió mientras tanto. Recarga la lista.', 409);
+  return ok;
+}
+
+// ---------- pago mixto: el efectivo llega aparte (administración) ----------
+
+// Administración recibió (o se equivocó y desmarca) la parte en efectivo de un pago Zelle + efectivo.
+// La entrada sigue por verificar hasta que se confirme el Zelle; quien vendió ya no debe ese efectivo.
+export async function recibirEfectivo(code: string, recibido = true) {
+  const entrada = await store().getEntrada(code);
+  if (!entrada) throw new EntradaError('Entrada no encontrada.', 404);
+  if (entrada.paymentMethod !== 'mixto') throw new EntradaError('Esta entrada no se pagó con Zelle + efectivo.');
+  if (entrada.status !== 'por_verificar') throw new EntradaError('Esta entrada no está esperando verificación.');
+  if (recibido === Boolean(entrada.cashReceivedAt)) {
+    throw new EntradaError(
+      recibido ? 'El efectivo de esta entrada ya estaba recibido.' : 'El efectivo de esta entrada no estaba marcado como recibido.'
+    );
+  }
+  const ok = await store().updateEntradaIf(code, { status: 'por_verificar' }, { cashReceivedAt: recibido ? new Date().toISOString() : null });
   if (!ok) throw new EntradaError('Esta entrada cambió mientras tanto. Recarga la lista.', 409);
   return ok;
 }
@@ -432,6 +454,7 @@ const ESTADO_INICIAL: Partial<Entrada> = {
   paymentProofUrl: null,
   amount: null,
   cashAmount: null,
+  cashReceivedAt: null,
   currency: null,
   rateApplied: null,
   reportedBy: null,
@@ -536,6 +559,7 @@ export async function activarEnPuerta(code: string, input: Partial<ActivacionPue
       paymentReference: clean(input.reference, 60) || null,
       ...money,
       cashAmount,
+      cashReceivedAt: null,
       reportedBy: 'puerta',
       reportedAt: new Date().toISOString(),
       doorActivated: true,
@@ -581,6 +605,7 @@ export async function ventaTaquilla(
     paymentProofUrl: await guardarCapture(proofUrl || null, `taquilla-${entrada.number}`),
     ...money,
     cashAmount,
+    cashReceivedAt: null,
     reportedBy: 'taquilla',
     reportedAt: now,
     verifiedAt: now,
@@ -601,6 +626,7 @@ export async function ventaTaquilla(
       paymentProofUrl: null,
       amount: null,
       cashAmount: null,
+      cashReceivedAt: null,
       currency: null,
       rateApplied: null,
       reportedBy: null,
@@ -746,6 +772,7 @@ export async function resumenAdmin() {
     'paymentMethod',
     'amount',
     'cashAmount',
+    'cashReceivedAt',
     'doorActivated',
     'checkedInAt',
     'mealServedAt',
@@ -792,7 +819,15 @@ export async function resumenAdmin() {
       // Solo pagos verificados (activas).
       zelleUsd: sum(activas, 'zelle'),
       pagoMovilVes: sum(activas, 'pagoMovilBs'),
-      efectivoUsd: sum(activas, 'efectivo'),
+      // Más el efectivo de pagos mixtos que ya se recibió aunque el Zelle siga por verificar.
+      efectivoUsd:
+        Math.round(
+          (sum(activas, 'efectivo') +
+            entradas
+              .filter((e) => e.status === 'por_verificar' && e.paymentMethod === 'mixto' && e.cashReceivedAt)
+              .reduce((s, e) => s + (e.cashAmount ?? 0), 0)) *
+            100
+        ) / 100,
     },
     porResponsable: Array.from(holders.values()).sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name)),
   };

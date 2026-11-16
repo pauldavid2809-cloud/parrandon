@@ -733,6 +733,46 @@ function report(code, extra = {}) {
   r = await admin.patch(`/api/admin/entradas/${c(136)}`, { ...pagada136, efectivoUsd: '12.5' });
   check('…con el monto queda activa', r.json?.entrada?.status === 'activa' && r.json.entrada.cashAmount === 12.5, JSON.stringify(r.json));
 
+  // «Recibí el efectivo»: la parte en efectivo llega antes de verificar el Zelle.
+  r = await admin.patch(`/api/admin/ventas/${idMixta}`, { action: 'recibir_efectivo' });
+  check('Venta mixta: «Recibí el efectivo» marca las 3 entradas', r.json?.entradas === 3 && r.json.efectivo === precio, JSON.stringify(r.json));
+  r = await admin.get('/api/admin/entradas');
+  check(
+    '…siguen por verificar (falta el Zelle) pero con el efectivo recibido',
+    r.json.entradas.filter((e) => [130, 131, 132].includes(e.number)).every((e) => e.status === 'por_verificar' && e.cashReceivedAt)
+  );
+  r = await admin.get('/api/admin/ventas');
+  check('…el seminarista ya no debe ese efectivo', cent(efectivoDe(r.json.vendedores, 103)) === cent(debeSemAntes), String(efectivoDe(r.json.vendedores, 103)));
+  check('…y la venta dice que el efectivo ya llegó', r.json.ventas.find((v) => v.id === idMixta)?.efectivoRecibido === true && r.json.ventas.find((v) => v.id === idMixta).efectivoPendiente === 0);
+  r = await anon.get(`/api/vendedores/ordenes?ids=${idMixta}`);
+  check('…el teléfono del vendedor lo sabe', r.json.ventas[0].efectivoRecibido === true && r.json.ventas[0].estado === 'por_verificar', JSON.stringify(r.json.ventas[0]));
+  r = await admin.patch(`/api/admin/ventas/${idMixta}`, { action: 'recibir_efectivo' });
+  check('…marcarlo otra vez → 400', r.status === 400 && /ya estaba recibido/.test(r.json.error), r.json?.error);
+  r = await admin.patch(`/api/admin/ventas/${idMixta}`, { action: 'quitar_efectivo' });
+  check('Deshacer (se marcó por error): el seminarista vuelve a deberlo', r.json?.entradas === 3, JSON.stringify(r.json));
+  r = await admin.get('/api/admin/ventas');
+  check('…en la rendición', cent(efectivoDe(r.json.vendedores, 103) - debeSemAntes) === cent(precio), String(efectivoDe(r.json.vendedores, 103)));
+  r = await admin.patch(`/api/admin/ventas/${idMixta}`, { action: 'recibir_efectivo' });
+  r = await admin.patch(`/api/admin/ventas/${idV1}`, { action: 'recibir_efectivo' });
+  check('Una venta que no es mixta no tiene ese botón → 400', r.status === 400, r.json?.error);
+
+  r = await admin.get('/api/admin/resumen');
+  const efectivoAntes133 = r.json.resumen.recaudado.efectivoUsd;
+  r = await admin.patch(`/api/admin/entradas/${c(133)}`, { action: 'recibir_efectivo' });
+  check('Entrada mixta del comprador: «Recibí el efectivo»', r.json?.entrada?.status === 'por_verificar' && Boolean(r.json.entrada.cashReceivedAt), JSON.stringify(r.json));
+  r = await admin.get('/api/admin/ventas');
+  check('…ese efectivo ya no se le cobra al lote', cent(efectivoDe(r.json.vendedores, 133)) === cent(debe133Antes), String(efectivoDe(r.json.vendedores, 133)));
+  r = await admin.get('/api/admin/resumen');
+  check('…y cuenta como recaudado aunque el Zelle siga pendiente', cent(r.json.resumen.recaudado.efectivoUsd - efectivoAntes133) === 1050, `${efectivoAntes133} → ${r.json.resumen.recaudado.efectivoUsd}`);
+  r = await anon.get(`/api/entradas/${c(133)}`);
+  check('…la página del comprador dice que el efectivo llegó', r.json.entrada.efectivoRecibido === true && r.json.entrada.status === 'por_verificar');
+  r = await admin.patch(`/api/admin/entradas/${c(133)}`, { action: 'quitar_efectivo' });
+  check('…y se puede deshacer', r.json?.entrada && !r.json.entrada.cashReceivedAt, JSON.stringify(r.json));
+  r = await admin.patch(`/api/admin/entradas/${c(133)}`, { action: 'quitar_efectivo' });
+  check('…deshacer dos veces → 400', r.status === 400, r.json?.error);
+  r = await admin.patch(`/api/admin/entradas/${c(103)}`, { action: 'recibir_efectivo' });
+  check('Una entrada que no es mixta no tiene ese botón → 400', r.status === 400 && /Zelle \+ efectivo/.test(r.json.error), r.json?.error);
+
   r = await admin.patch(`/api/admin/ventas/${idMixta}`, { action: 'aprobar' });
   check('«Zelle verificado y efectivo recibido» activa las 3 entradas', r.json?.aprobadas === 3, JSON.stringify(r.json));
   r = await admin.get('/api/admin/ventas');

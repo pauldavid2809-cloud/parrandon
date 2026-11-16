@@ -3,7 +3,18 @@ import { isSafeProofUrl } from '@/lib/proof';
 import { guardarCapture } from '@/lib/capturas';
 import { aceptaPagoMovil, PAGO_MOVIL_PAUSADO } from '@/lib/metodos';
 import { store } from './store';
-import { amountFor, aprobar, deshacerRechazo, EntradaError, eventRules, extractCode, holderInfo, rechazar, sinNotaDeMesa } from './service';
+import {
+  amountFor,
+  aprobar,
+  deshacerRechazo,
+  EntradaError,
+  eventRules,
+  extractCode,
+  holderInfo,
+  rechazar,
+  recibirEfectivo,
+  sinNotaDeMesa,
+} from './service';
 import { errorMixto, leerMonto, llevaEfectivo, partesDelPago, repartirEfectivo } from './pago';
 import { MAX_ENTRADAS_POR_VENTA, type Entrada, type HolderType, type MetodoPago, type Venta, type VentaEstado } from './types';
 
@@ -28,8 +39,12 @@ export function horaVenta(raw: unknown, ahora: Date) {
 }
 
 // El estado sale de las entradas: si administración rechaza o mueve una, la orden lo refleja.
-type DeVenta = Pick<Entrada, 'saleId' | 'number' | 'status'>;
-const CAMPOS_VENTA = ['saleId', 'number', 'status'] as const;
+type DeVenta = Pick<Entrada, 'saleId' | 'number' | 'status' | 'cashReceivedAt'>;
+const CAMPOS_VENTA = ['saleId', 'number', 'status', 'cashReceivedAt'] as const;
+
+// Zelle + efectivo: administración ya recibió el efectivo de todo lo que sigue por verificar.
+const efectivoRecibido = (v: Venta, porVerificar: DeVenta[]) =>
+  v.method === 'mixto' && porVerificar.length > 0 && porVerificar.every((e) => e.cashReceivedAt);
 
 export function estadoVenta<E extends DeVenta>(v: Venta, entradas: E[]) {
   const suyas = entradas.filter((e) => e.saleId === v.id).sort((a, b) => a.number - b.number);
@@ -40,10 +55,11 @@ export function estadoVenta<E extends DeVenta>(v: Venta, entradas: E[]) {
 
 // Lo que ve el vendedor de su orden (sin códigos ni datos de nadie).
 export function vistaVendedor(v: Venta, entradas: DeVenta[]) {
-  const { estado, suyas } = estadoVenta(v, entradas);
+  const { estado, suyas, porVerificar } = estadoVenta(v, entradas);
   return {
     id: v.id,
     estado,
+    efectivoRecibido: efectivoRecibido(v, porVerificar),
     entradas: suyas.map((e) => e.number),
     problemas: v.problemas,
     rejectionReason: v.rejectionReason,
@@ -144,6 +160,7 @@ export async function registrarVenta(input: Record<string, unknown>) {
         paymentProofUrl: capture,
         ...dinero,
         cashAmount: efectivoPorEntrada[i] ?? null,
+        cashReceivedAt: null,
         reportedBy: 'vendedor',
         reportedAt: soldAt,
         rejectionReason: null,
@@ -203,6 +220,7 @@ export async function ventasAdmin() {
       'paymentMethod',
       'amount',
       'cashAmount',
+      'cashReceivedAt',
       'holderType',
       'holderId',
       'holderName',
@@ -229,7 +247,8 @@ export async function ventasAdmin() {
     if (v.method === 'efectivo_usd') r.efectivoPorEntregar += porVerificar.length * v.priceUsd;
     else r.pagosPorVerificar += porVerificar.length;
     // Zelle + efectivo: la parte de Zelle se verifica y el efectivo se entrega.
-    if (v.method === 'mixto') r.efectivoPorEntregar += porVerificar.reduce((s, e) => s + (e.cashAmount ?? 0), 0);
+    const efectivoPendiente = porVerificar.filter((e) => !e.cashReceivedAt).reduce((s, e) => s + (e.cashAmount ?? 0), 0);
+    if (v.method === 'mixto') r.efectivoPorEntregar += efectivoPendiente;
     r.verificadas += suyas.filter((e) => e.status === 'activa').length;
     porVendedor.set(key, r);
     return {
@@ -239,12 +258,14 @@ export async function ventasAdmin() {
       estado,
       entradas: suyas.map((e) => ({ number: e.number, status: e.status, conDatos: Boolean(e.attendeeName), tableId: e.tableId })),
       porVerificar: porVerificar.length,
+      efectivoPendiente: Math.round(efectivoPendiente * 100) / 100,
+      efectivoRecibido: efectivoRecibido(v, porVerificar),
     };
   });
   // Quien escaneó su entrada y marcó que pagó en efectivo le pagó a quien tiene ese lote:
   // ese efectivo también está por entregar.
   for (const e of entradas) {
-    if (e.status !== 'por_verificar' || e.saleId || e.reportedBy !== 'comprador' || !llevaEfectivo(e.paymentMethod)) continue;
+    if (e.status !== 'por_verificar' || e.saleId || e.reportedBy !== 'comprador' || !llevaEfectivo(e.paymentMethod) || e.cashReceivedAt) continue;
     const key = `${e.holderType}:${e.holderId ?? ''}:`;
     const r = porVendedor.get(key) ?? {
       nombre: e.holderName || 'Sin lote',
@@ -283,6 +304,19 @@ export async function aprobarVenta(id: string, by = 'Administración') {
   for (const e of entradas) await aprobar(e.code, by);
   await store().updateVenta(id, { verifiedAt: new Date().toISOString(), verifiedBy: by, rejectionReason: null });
   return entradas.length;
+}
+
+// Zelle + efectivo: el vendedor entregó (o no, si fue un error) el efectivo de la venta. Las entradas
+// siguen por verificar hasta que se confirme el Zelle.
+export async function recibirEfectivoVenta(id: string, recibido = true) {
+  const { venta, entradas } = await entradasDe(id);
+  if (venta.method !== 'mixto') throw new EntradaError('Esta venta no es de Zelle + efectivo.');
+  const cambian = entradas.filter((e) => Boolean(e.cashReceivedAt) !== recibido);
+  if (cambian.length === 0) {
+    throw new EntradaError(recibido ? 'El efectivo de esta venta ya estaba recibido.' : 'Esta venta no tiene efectivo marcado como recibido.');
+  }
+  for (const e of cambian) await recibirEfectivo(e.code, recibido);
+  return { entradas: cambian.length, efectivo: Math.round(cambian.reduce((s, e) => s + (e.cashAmount ?? 0), 0) * 100) / 100 };
 }
 
 // Pago no encontrado: las entradas vuelven a sin vender (salvo las que ya entraron al evento).

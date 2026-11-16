@@ -33,6 +33,8 @@ export interface Entrada {
   amount: number | null;
   // En un pago mixto, la parte que se pagó en efectivo (en dólares); el resto fue por Zelle.
   cashAmount: number | null;
+  // En un pago mixto, cuándo administración recibió esa parte en efectivo (el Zelle se verifica aparte).
+  cashReceivedAt: string | null;
   currency: 'USD' | 'VES' | null;
   rateApplied: number | null;
   reportedBy: ReportadoPor | null;

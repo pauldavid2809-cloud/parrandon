@@ -1,5 +1,5 @@
 import { route, ok, fail, readJson } from '@/lib/api';
-import { aprobarVenta, captureDeVenta, deshacerRechazoVenta, rechazarVenta } from '@/lib/entradas/ventas';
+import { aprobarVenta, captureDeVenta, deshacerRechazoVenta, rechazarVenta, recibirEfectivoVenta } from '@/lib/entradas/ventas';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -12,5 +12,7 @@ export const PATCH = route<Ctx>(async (req, { params }) => {
   if (body.action === 'aprobar') return ok({ aprobadas: await aprobarVenta(id) });
   if (body.action === 'rechazar') return ok(await rechazarVenta(id, String(body.reason ?? '')));
   if (body.action === 'deshacer_rechazo') return ok(await deshacerRechazoVenta(id));
+  if (body.action === 'recibir_efectivo') return ok(await recibirEfectivoVenta(id, true));
+  if (body.action === 'quitar_efectivo') return ok(await recibirEfectivoVenta(id, false));
   return fail('Acción desconocida.');
 }, ['admin']);
