@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardCheck, Gauge, HandCoins, LogOut, Receipt, Settings, Table2, Ticket, Users } from 'lucide-react';
+import { BookOpen, ClipboardCheck, Gauge, HandCoins, LogOut, Receipt, Settings, Table2, Ticket, Users } from 'lucide-react';
 import { logout } from '@/components/staff/StaffGate';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ const NAV = [
   { href: '/admin', label: 'Resumen', icon: Gauge },
   { href: '/admin/verificaciones', label: 'Verificar pagos', icon: ClipboardCheck },
   { href: '/admin/ventas', label: 'Ventas', icon: Receipt },
+  { href: '/admin/libro-ventas', label: 'Libro de ventas', icon: BookOpen },
   { href: '/admin/entradas', label: 'Entradas', icon: Ticket },
   { href: '/admin/mesas', label: 'Mesas', icon: Table2 },
   { href: '/admin/vendedores', label: 'Lotes y vendedores', icon: Users },

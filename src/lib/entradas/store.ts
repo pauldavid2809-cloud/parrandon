@@ -394,20 +394,41 @@ function supabaseStore(): Store {
       fail('Guardando venta', error);
     },
     async listVentas(ids) {
-      const consulta = (columnas: string) => {
-        const q = db.from('ventas').select(columnas);
-        return ids ? q.in('id', ids) : q;
+      if (ids?.length === 0) return [];
+
+      const leerVentas = async (columnas: string, foto?: 'enlace' | 'embebida') => {
+        const porId = new Map<string, Record<string, unknown>>();
+        const tamanoPagina = 500;
+
+        for (let inicio = 0; ; ) {
+          let q = db.from('ventas').select(columnas);
+          if (ids) q = q.in('id', ids);
+          if (foto === 'enlace') q = q.not('proof_url', 'is', null).not('proof_url', 'like', 'data:%');
+          if (foto === 'embebida') q = q.like('proof_url', 'data:%');
+          if (!foto) q = q.order('received_at', { ascending: false });
+
+          const { data, error, status } = await q.order('id').range(inicio, inicio + tamanoPagina - 1);
+          if (inicio > 0 && status === 416 && error?.code === 'PGRST103') break;
+          fail('Leyendo ventas', error);
+          if (!data?.length) break;
+
+          for (const fila of data as unknown as Record<string, unknown>[]) porId.set(String(fila.id), fila);
+          if (ids && data.length < tamanoPagina) break;
+          // El servidor puede entregar menos filas que las solicitadas en cada página.
+          inicio += data.length;
+        }
+
+        return [...porId.values()];
       };
       const [lista, enlaces, embebidas] = await Promise.all([
-        consulta(VENTA_SIN_FOTO).order('received_at', { ascending: false }).limit(2000),
-        consulta('id,proof_url').not('proof_url', 'is', null).not('proof_url', 'like', 'data:%').limit(2000),
-        consulta('id').like('proof_url', 'data:%').limit(2000),
+        leerVentas(VENTA_SIN_FOTO),
+        leerVentas('id,proof_url', 'enlace'),
+        leerVentas('id', 'embebida'),
       ]);
-      fail('Leyendo ventas', lista.error || enlaces.error || embebidas.error);
       const foto = new Map<string, string>();
-      for (const r of (enlaces.data || []) as unknown as Record<string, unknown>[]) foto.set(String(r.id), String(r.proof_url));
-      for (const r of (embebidas.data || []) as unknown as Record<string, unknown>[]) foto.set(String(r.id), 'embedded');
-      return ((lista.data || []) as unknown as Record<string, unknown>[]).map((r) => ({
+      for (const r of enlaces) foto.set(String(r.id), String(r.proof_url));
+      for (const r of embebidas) foto.set(String(r.id), 'embedded');
+      return lista.map((r) => ({
         ...ventaFromRow(r),
         proofUrl: foto.get(String(r.id)) ?? null,
       }));
