@@ -58,7 +58,7 @@ const ESTILOS_ESTADO: Record<EstadoLibro, string> = {
   sin_confirmar: 'bg-paper-2 text-ink-2',
 };
 
-type Modo = 'fin_de_semana' | 'dia';
+type Modo = 'general' | 'fin_de_semana' | 'dia';
 
 function diaCompleto(dia: string) {
   return diaLargo.format(new Date(`${dia}T12:00:00Z`));
@@ -100,7 +100,7 @@ export default function LibroVentas() {
   }, []);
   useAutoLoad(cargar);
 
-  const { porDia, ultimoDia, ultimoFinDeSemana } = useMemo(() => {
+  const { porDia, ordenados, primerDia, ultimoDia, ultimoFinDeSemana } = useMemo(() => {
     const porDia = new Map<string, RegistroLibro[]>();
     const ordenados = (registros ?? []).slice().sort((a, b) => Date.parse(a.fechaVenta) - Date.parse(b.fechaVenta));
     for (const registro of ordenados) {
@@ -114,19 +114,31 @@ export default function LibroVentas() {
       const sabado = sabadoDe(dia);
       return dia === sabado || dia === sumarDias(sabado, 1);
     });
-    return { porDia, ultimoDia: dias[0], ultimoFinDeSemana };
+    return { porDia, ordenados, primerDia: dias.at(-1), ultimoDia: dias[0], ultimoFinDeSemana };
   }, [registros]);
 
+  const general = modo === 'general';
   const finDeSemana = modo === 'fin_de_semana';
   const hoy = fechaCaracas(new Date());
-  const desde = finDeSemana ? sabadoDe(fecha || ultimoFinDeSemana || hoy) : fecha || ultimoDia || hoy;
-  const hasta = finDeSemana ? sumarDias(desde, 1) : desde;
+  let desde = fecha || ultimoDia || hoy;
+  let hasta = desde;
+  if (general) {
+    desde = primerDia || hoy;
+    hasta = ultimoDia || hoy;
+  } else if (finDeSemana) {
+    desde = sabadoDe(fecha || ultimoFinDeSemana || hoy);
+    hasta = sumarDias(desde, 1);
+  }
+
   const paso = finDeSemana ? 7 : 1;
   const anterior = sumarDias(desde, -paso);
   const siguiente = sumarDias(desde, paso);
-  const dias = desde === hasta ? [desde] : [desde, hasta];
-  const operaciones = dias.flatMap((dia) => porDia.get(dia) ?? []);
+  const dias = finDeSemana ? [desde, hasta] : [desde];
+  const operaciones = general ? ordenados : dias.flatMap((dia) => porDia.get(dia) ?? []);
   const resumen = resumenLibro(operaciones);
+  const fechaPeriodo = general || finDeSemana
+    ? rangoFechas.formatRange(new Date(desde + 'T12:00:00Z'), new Date(hasta + 'T12:00:00Z'))
+    : diaCompleto(desde);
 
   function navegar(fecha: string) {
     setFecha(fecha);
@@ -165,7 +177,13 @@ export default function LibroVentas() {
             <Button type="button" variant="quiet" loading={cargando} onClick={cargar} aria-label="Actualizar libro de ventas">
               {!cargando && <RefreshCw aria-hidden className="h-4 w-4" />} Actualizar
             </Button>
-            <Button type="button" variant="verde" loading={descargando} disabled={cargando} onClick={descargar}>
+            <Button
+              type="button"
+              variant="verde"
+              loading={descargando}
+              disabled={cargando || (general && operaciones.length === 0)}
+              onClick={descargar}
+            >
               {!descargando && <Download aria-hidden className="h-4 w-4" />} Descargar Excel
             </Button>
           </>
@@ -200,6 +218,7 @@ export default function LibroVentas() {
           <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 rounded-2xl bg-paper-2 p-4 sm:px-5">
             <div role="group" aria-label="Agrupar ventas" className="flex flex-wrap gap-1">
               {([
+                ['general', 'General'],
                 ['fin_de_semana', 'Por fin de semana'],
                 ['dia', 'Por día'],
               ] as const).map(([opcion, etiqueta]) => (
@@ -209,7 +228,7 @@ export default function LibroVentas() {
                   aria-pressed={modo === opcion}
                   onClick={() => seleccionarModo(opcion)}
                   className={cn(
-                    'min-h-11 rounded-lg px-3 font-bold transition-colors sm:px-4',
+                    'min-h-11 rounded-lg px-2 text-sm font-bold transition-colors sm:px-4 sm:text-base',
                     modo === opcion ? 'bg-verde text-paper' : 'text-ink-2 hover:bg-card hover:text-ink',
                   )}
                 >
@@ -218,44 +237,46 @@ export default function LibroVentas() {
               ))}
             </div>
 
-            <div className="grid w-full max-w-80 grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-12 px-0"
-                aria-label={finDeSemana ? 'Fin de semana anterior' : 'Día anterior'}
-                disabled={anterior < PRIMER_DIA}
-                onClick={() => navegar(anterior)}
-              >
-                <ChevronLeft aria-hidden className="h-5 w-5" />
-              </Button>
-              <Field label={finDeSemana ? 'Elegir fin de semana' : 'Elegir día'} htmlFor="libro-fecha" className="min-w-0">
-                <TextInput
-                  id="libro-fecha"
-                  type="date"
-                  min={PRIMER_DIA}
-                  max={ULTIMO_DIA}
-                  value={desde}
-                  className="min-w-0 px-2 sm:px-3"
-                  onChange={(event) => {
-                    if (event.target.validity.valid) {
-                      setFecha(event.target.value);
-                      setErrorDescarga(null);
-                    }
-                  }}
-                />
-              </Field>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-12 px-0"
-                aria-label={finDeSemana ? 'Fin de semana siguiente' : 'Día siguiente'}
-                disabled={siguiente > ULTIMO_DIA}
-                onClick={() => navegar(siguiente)}
-              >
-                <ChevronRight aria-hidden className="h-5 w-5" />
-              </Button>
-            </div>
+            {!general && (
+              <div className="grid w-full max-w-80 grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-12 px-0"
+                  aria-label={finDeSemana ? 'Fin de semana anterior' : 'Día anterior'}
+                  disabled={anterior < PRIMER_DIA}
+                  onClick={() => navegar(anterior)}
+                >
+                  <ChevronLeft aria-hidden className="h-5 w-5" />
+                </Button>
+                <Field label={finDeSemana ? 'Elegir fin de semana' : 'Elegir día'} htmlFor="libro-fecha" className="min-w-0">
+                  <TextInput
+                    id="libro-fecha"
+                    type="date"
+                    min={PRIMER_DIA}
+                    max={ULTIMO_DIA}
+                    value={desde}
+                    className="min-w-0 px-2 sm:px-3"
+                    onChange={(event) => {
+                      if (event.target.validity.valid) {
+                        setFecha(event.target.value);
+                        setErrorDescarga(null);
+                      }
+                    }}
+                  />
+                </Field>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-12 px-0"
+                  aria-label={finDeSemana ? 'Fin de semana siguiente' : 'Día siguiente'}
+                  disabled={siguiente > ULTIMO_DIA}
+                  onClick={() => navegar(siguiente)}
+                >
+                  <ChevronRight aria-hidden className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <section aria-labelledby="libro-periodo" className="mt-8">
@@ -266,10 +287,11 @@ export default function LibroVentas() {
               className="font-display text-xl first-letter:uppercase sm:text-2xl"
               aria-live="polite"
             >
-              {finDeSemana
-                ? rangoFechas.formatRange(new Date(desde + 'T12:00:00Z'), new Date(hasta + 'T12:00:00Z'))
-                : diaCompleto(desde)}
+              {general ? 'Resumen general' : fechaPeriodo}
             </h2>
+            {general && operaciones.length > 0 && (
+              <p className="mt-1 text-ink-2">{fechaPeriodo}</p>
+            )}
             <p className="tabular mt-2 mb-4 text-ink-2">
               <strong className="text-ink">{cantidad(resumen.operaciones, 'operación', 'operaciones')}</strong>
               {' · '}
@@ -319,7 +341,9 @@ export default function LibroVentas() {
             <h2 id="libro-operaciones" className="mb-3 font-display text-xl">Operaciones registradas</h2>
             {operaciones.length === 0 ? (
               <p className="rounded-2xl border border-line bg-card px-5 py-6 text-ink-2">
-                No hay operaciones registradas para {finDeSemana ? 'este fin de semana' : 'este día'}. Elige otra fecha para consultar sus ventas.
+                {general
+                  ? 'Todavía no hay operaciones registradas.'
+                  : `No hay operaciones registradas para ${finDeSemana ? 'este fin de semana' : 'este día'}. Elige otra fecha para consultar sus ventas.`}
               </p>
             ) : (
               <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
